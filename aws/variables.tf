@@ -9,6 +9,12 @@ variable "aws_region" {
   default     = "us-east-2"
 }
 
+variable "aws_additional_tags" {
+  description = "Map of additional tags to apply to all AWS resources"
+  type        = map(string)
+  default     = {}
+}
+
 variable "deployment_name" {
   description = "Name prefix for all AWS resources."
   type        = string
@@ -49,12 +55,6 @@ variable "rds_instance_class" {
   default     = "db.t4g.medium"
 }
 
-variable "additional_tags" {
-  description = "Map of additional tags to apply to all AWS resources"
-  type        = map(string)
-  default     = {}
-}
-
 variable "gdcn_license_key" {
   description = "GoodData.CN license string (base64-encoded)"
   type        = string
@@ -73,36 +73,42 @@ variable "wildcard_dns_provider" {
 }
 
 variable "helm_cluster_autoscaler_version" {
-  description = "Version of the cluster-autoscaler Helm chart to deploy"
+  description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
   type        = string
   default     = "9.46.6"
 }
 
 variable "helm_ingress_nginx_version" {
-  description = "Version of the ingress-nginx Helm chart to deploy"
+  description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
   type        = string
   default     = "4.12.3"
 }
 
 variable "helm_aws_lb_controller_version" {
-  description = "Version of the aws-laod-balancer-controller Helm chart to deploy"
+  description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string
   default     = "1.13.3"
 }
 
 variable "helm_cert_manager_version" {
-  description = "Version of the cert-manager Helm chart to deploy"
+  description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
   default     = "v1.18.2"
 }
 
+variable "helm_metrics_server_version" {
+  description = "Version of the metrics-server Helm chart to deploy. https://artifacthub.io/packages/helm/metrics-server/metrics-server"
+  type        = string
+  default     = "3.13.0"
+}
+
 variable "helm_gdcn_version" {
-  description = "Version of the gooddata-cn Helm chart to deploy"
+  description = "Version of the gooddata-cn Helm chart to deploy. https://artifacthub.io/packages/helm/gooddata-cn/gooddata-cn"
   type        = string
 }
 
 variable "helm_pulsar_version" {
-  description = "Version of the pulsar Helm chart to deploy"
+  description = "Version of the pulsar Helm chart to deploy. https://artifacthub.io/packages/helm/apache/pulsar"
   type        = string
   default     = "3.9.0"
 }

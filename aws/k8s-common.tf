@@ -28,10 +28,17 @@ module "k8s_common" {
     data.aws_region.current.name,
     aws_ecr_pull_through_cache_rule.quayio.ecr_repository_prefix
   )
+  cache_registryk8sio = format(
+    "%s.dkr.ecr.%s.amazonaws.com/%s",
+    data.aws_caller_identity.current.account_id,
+    data.aws_region.current.name,
+    aws_ecr_pull_through_cache_rule.registryk8sio.ecr_repository_prefix
+  )
 
-  helm_cert_manager_version = var.helm_cert_manager_version
-  helm_gdcn_version         = var.helm_gdcn_version
-  helm_pulsar_version       = var.helm_pulsar_version
+  helm_cert_manager_version   = var.helm_cert_manager_version
+  helm_metrics_server_version = var.helm_metrics_server_version
+  helm_gdcn_version           = var.helm_gdcn_version
+  helm_pulsar_version         = var.helm_pulsar_version
 
   ingress_ip  = aws_eip.lb[0].public_ip
   db_hostname = module.rds_postgresql.db_instance_address

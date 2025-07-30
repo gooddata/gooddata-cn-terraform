@@ -37,7 +37,7 @@ provider "aws" {
   default_tags {
     tags = merge(
       { Project = var.deployment_name },
-      var.additional_tags
+      var.aws_additional_tags
     )
   }
 }

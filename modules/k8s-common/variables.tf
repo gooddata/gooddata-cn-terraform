@@ -4,8 +4,10 @@ variable "letsencrypt_email" { type = string }
 
 variable "cache_dockerio" { type = string }
 variable "cache_quayio" { type = string }
+variable "cache_registryk8sio" { type = string }
 
 variable "helm_cert_manager_version" { type = string }
+variable "helm_metrics_server_version" { type = string }
 variable "helm_gdcn_version" { type = string }
 variable "helm_pulsar_version" { type = string }
 
