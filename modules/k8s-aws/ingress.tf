@@ -20,12 +20,12 @@ resource "helm_release" "ingress_nginx" {
 controller:
   replicaCount: 2
   image:
-    registry: ${var.cache_registryk8sio}
+    registry: ${var.registry_k8sio}
 
   admissionWebhooks:
     patch:
       image:
-        registry: ${var.cache_registryk8sio}
+        registry: ${var.registry_k8sio}
 
   config:
     allow-snippet-annotations: "true"

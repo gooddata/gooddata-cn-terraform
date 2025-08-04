@@ -13,12 +13,7 @@ module "k8s_aws" {
   deployment_name = var.deployment_name
   aws_region      = var.aws_region
 
-  cache_registryk8sio = format(
-    "%s.dkr.ecr.%s.amazonaws.com/%s",
-    data.aws_caller_identity.current.account_id,
-    data.aws_region.current.name,
-    aws_ecr_pull_through_cache_rule.registryk8sio.ecr_repository_prefix
-  )
+  registry_k8sio = local.registry_k8sio
 
   helm_cluster_autoscaler_version = var.helm_cluster_autoscaler_version
   helm_ingress_nginx_version      = var.helm_ingress_nginx_version
@@ -32,6 +27,6 @@ module "k8s_aws" {
 
   depends_on = [
     module.eks,
-    aws_ecr_pull_through_cache_rule.registryk8sio
+    aws_ecr_pull_through_cache_rule.k8sio
   ]
 }

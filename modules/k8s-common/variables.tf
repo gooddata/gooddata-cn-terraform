@@ -2,9 +2,9 @@ variable "deployment_name" { type = string }
 variable "gdcn_license_key" { type = string }
 variable "letsencrypt_email" { type = string }
 
-variable "cache_dockerio" { type = string }
-variable "cache_quayio" { type = string }
-variable "cache_registryk8sio" { type = string }
+variable "registry_dockerio" { type = string }
+variable "registry_quayio" { type = string }
+variable "registry_k8sio" { type = string }
 
 variable "helm_cert_manager_version" { type = string }
 variable "helm_metrics_server_version" { type = string }

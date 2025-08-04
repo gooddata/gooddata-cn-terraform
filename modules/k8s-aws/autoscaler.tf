@@ -83,7 +83,7 @@ resource "helm_release" "cluster_autoscaler" {
   # Values to configure Cluster Autoscaler
   values = [<<-EOF
 image:
-  repository: ${var.cache_registryk8sio}/autoscaling/cluster-autoscaler
+  repository: ${var.registry_k8sio}/autoscaling/cluster-autoscaler
 
 rbac:
   serviceAccount:

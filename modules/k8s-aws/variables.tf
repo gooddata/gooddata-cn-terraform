@@ -1,7 +1,7 @@
 variable "deployment_name" { type = string }
 variable "aws_region" { type = string }
 
-variable "cache_registryk8sio" { type = string }
+variable "registry_k8sio" { type = string }
 
 variable "helm_cluster_autoscaler_version" { type = string }
 variable "helm_ingress_nginx_version" { type = string }

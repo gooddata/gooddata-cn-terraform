@@ -16,7 +16,7 @@ resource "helm_release" "metrics-server" {
   version    = var.helm_metrics_server_version
   values = [<<EOF
 image:
-  repository: ${var.cache_registryk8sio}/metrics-server/metrics-server
+  repository: ${var.registry_k8sio}/metrics-server/metrics-server
   EOF
   ]
 }

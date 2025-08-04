@@ -47,14 +47,19 @@ Once everything is deployed, the `create-org.sh` script can be run to set up the
 
 1. Create a variables file called `settings.tfvars` that looks like this:
     ```terraform
-    aws_profile_name       = "my-profile" # as configured in ~/.aws/config
+    aws_profile_name       = "my-profile"      # as configured in ~/.aws/config
     aws_region             = "us-east-2"
     deployment_name        = "gooddata-cn-poc" # can be any lowercase string shorter than 20 characters
-    dockerhub_username     = "myusername"      # Docker Hub username (used to pull images without hitting rate limits). Free account is enough.
-    dockerhub_access_token = "myaccesstoken"   # Can be created in Settings > Personal Access Token
     helm_gdcn_version      = "<version>"       # from previous version (like 3.39.0)
-    gdcn_license_key       = "key/asdf=="
-    letsencrypt_email      = "me@example.com" # can be any email
+    gdcn_license_key       = "key/asdf=="      # provided by your GoodData contact
+    letsencrypt_email      = "me@example.com"  # can be any email address
+    ```
+
+1. **Note:** If you will put significant load on the cluster, you'll want to set up container image caching so you don't hit the Docker Hub rate limits. Add these three lines to your config:
+    ```terraform
+    ecr_cache_images       = true
+    dockerhub_username     = "myusername"    # Docker Hub username (used to increase DH rate limit). Free account is enough.
+    dockerhub_access_token = "myaccesstoken" # can be created in "Settings > Personal Access Token"
     ```
 
 1. `cd` into the directory of the cloud provider you'll be deploying to (ex. `aws`)

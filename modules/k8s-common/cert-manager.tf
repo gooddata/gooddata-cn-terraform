@@ -16,23 +16,23 @@ resource "helm_release" "cert-manager" {
   version    = var.helm_cert_manager_version
   values = [<<EOF
 image:
-  repository: ${var.cache_quayio}/jetstack/cert-manager-controller
+  repository: ${var.registry_quayio}/jetstack/cert-manager-controller
 
 webhook:
   image:
-    repository: ${var.cache_quayio}/jetstack/cert-manager-webhook
+    repository: ${var.registry_quayio}/jetstack/cert-manager-webhook
 
 cainjector:
   image:
-    repository: ${var.cache_quayio}/jetstack/cert-manager-cainjector
+    repository: ${var.registry_quayio}/jetstack/cert-manager-cainjector
 
 acmesolver:
   image:
-    repository: ${var.cache_quayio}/jetstack/cert-manager-acmesolver
+    repository: ${var.registry_quayio}/jetstack/cert-manager-acmesolver
 
 startupapicheck:
   image:
-    repository: ${var.cache_quayio}/jetstack/cert-manager-startupapicheck
+    repository: ${var.registry_quayio}/jetstack/cert-manager-startupapicheck
 
 installCRDs: true
   EOF

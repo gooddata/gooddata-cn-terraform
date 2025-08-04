@@ -24,11 +24,27 @@ variable "deployment_name" {
 variable "dockerhub_username" {
   description = "Docker Hub username (used to pull images without hitting rate limits). Free account is enough."
   type        = string
+  default     = ""
+  validation {
+    condition     = var.ecr_cache_images ? length(var.dockerhub_username) > 0 : true
+    error_message = "dockerhub_username must be provided when ecr_cache_images is true."
+  }
 }
 
 variable "dockerhub_access_token" {
   description = "Docker Hub access token (can be created in Settings > Personal Access Tokens)"
   type        = string
+  default     = ""
+  validation {
+    condition     = var.ecr_cache_images ? length(var.dockerhub_access_token) > 0 : true
+    error_message = "dockerhub_access_token must be provided when ecr_cache_images is true."
+  }
+}
+
+variable "ecr_cache_images" {
+  description = "Whether to use AWS ECR pull-through cache repositories for public container images. Set to false to pull images directly from their original registries."
+  type        = bool
+  default     = false
 }
 
 variable "eks_version" {

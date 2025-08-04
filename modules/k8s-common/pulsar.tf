@@ -12,7 +12,7 @@ resource "helm_release" "pulsar" {
   timeout          = 1800
 
   values = [<<-EOF
-defaultPulsarImageRepository: ${var.cache_dockerio}/apachepulsar/pulsar-all
+defaultPulsarImageRepository: ${var.registry_dockerio}/apachepulsar/pulsar-all
 
 components:
   functions: false

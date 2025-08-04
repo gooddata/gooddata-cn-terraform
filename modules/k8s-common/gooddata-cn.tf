@@ -117,20 +117,20 @@ service:
 
 # Container image cache configuration
 image:
-  repositoryPrefix: ${var.cache_dockerio}/gooddata
+  repositoryPrefix: ${var.registry_dockerio}/gooddata
 
 ## For all Bitnami charts
 global:
-  imageRegistry: ${var.cache_dockerio}
+  imageRegistry: ${var.registry_dockerio}
   security:
     # Bypasses checks since we're using the cache
     allowInsecureImages: true
 
 redis-ha:
   image:
-    repository: ${var.cache_dockerio}/library/redis
+    repository: ${var.registry_dockerio}/library/redis
   exporter:
-    image: ${var.cache_quayio}/oliver006/redis_exporter
+    image: ${var.registry_quayio}/oliver006/redis_exporter
 EOF
     ,
 
