@@ -77,7 +77,7 @@ resource "helm_release" "gooddata_cn" {
   # Load your existing customized‑values‑gdcn.yaml on disk for brevity.
   values = [
     <<-EOF
-replicaCount: 1
+replicaCount: 2
 
 deployVisualExporter: false
 deployPostgresHA: false
