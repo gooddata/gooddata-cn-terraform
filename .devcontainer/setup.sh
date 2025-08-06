@@ -14,7 +14,6 @@ sudo tar -xzf /tmp/tinkey.tgz -C /usr/local/bin tinkey tinkey_deploy.jar
 sudo chmod +x /usr/local/bin/tinkey
 sudo rm -f /tmp/tinkey.tgz
 
-
 # Install k9s CLI
 sudo apt-get update
 ARCH=$(dpkg --print-architecture)

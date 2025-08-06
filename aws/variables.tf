@@ -42,7 +42,7 @@ variable "dockerhub_access_token" {
 }
 
 variable "ecr_cache_images" {
-  description = "Whether to use AWS ECR pull-through cache repositories for public container images. Set to false to pull images directly from their original registries."
+  description = "If true, ECR pull-through cache rules will be created and all services configured to use it. If false, images are pulled from their original registries."
   type        = bool
   default     = false
 }
@@ -60,7 +60,7 @@ variable "eks_node_types" {
 }
 
 variable "eks_max_nodes" {
-  description = "Maximum number of EKS worker nodes."
+  description = "Maximum number of EKS worker nodes"
   type        = number
   default     = 5
 }
@@ -72,7 +72,7 @@ variable "rds_instance_class" {
 }
 
 variable "gdcn_license_key" {
-  description = "GoodData.CN license string (base64-encoded)"
+  description = "GoodData.CN license key (provided by your GoodData contact)"
   type        = string
   sensitive   = true
 }

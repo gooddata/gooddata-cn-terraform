@@ -56,7 +56,7 @@ autorecovery:
   restartPodsOnConfigMapChange: true
   configData:
     BOOKIE_MEM: >
-                        -Xms64m -Xmx128m -XX:MaxDirectMemorySize=128m
+      -Xms64m -Xmx128m -XX:MaxDirectMemorySize=128m
 broker:
   replicaCount: 1
   podMonitor:
@@ -68,7 +68,7 @@ broker:
       memory: 256Mi
   configData:
     PULSAR_MEM: >
-                        -Xms128m -Xmx256m -XX:MaxDirectMemorySize=128m
+      -Xms128m -Xmx256m -XX:MaxDirectMemorySize=128m
     managedLedgerDefaultEnsembleSize: "1"
     managedLedgerDefaultWriteQuorum: "1"
     managedLedgerDefaultAckQuorum: "1"

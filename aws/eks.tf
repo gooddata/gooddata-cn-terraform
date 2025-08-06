@@ -53,7 +53,6 @@ module "eks" {
       ami_type       = "BOTTLEROCKET_x86_64"
       instance_types = var.eks_node_types
 
-      # Needed by the aws-ebs-csi-driver
       iam_role_additional_policies = {
         AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
         AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"

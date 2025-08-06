@@ -14,13 +14,11 @@ resource "random_password" "db_password" {
   special = false
 }
 
-# Local values for convenience
 locals {
   db_username = "postgres"
   db_password = random_password.db_password.result
 }
 
-# RDS PostgreSQL via module
 module "rds_postgresql" {
   source  = "terraform-aws-modules/rds/aws"
   version = "~> 6.0"

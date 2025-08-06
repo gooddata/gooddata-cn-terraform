@@ -24,7 +24,6 @@ module "k8s_aws" {
   eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
   eks_cluster_oidc_issuer_url   = module.eks.cluster_oidc_issuer_url
 
-
   depends_on = [
     module.eks,
     aws_ecr_pull_through_cache_rule.k8sio

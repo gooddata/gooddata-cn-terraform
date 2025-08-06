@@ -135,6 +135,7 @@ EOF
     ,
 
     <<-EOF
+# GoodData.CN tiny size profile
 afmExecApi:
   jvmOptions: -Xmx880M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M
   resources:
@@ -231,8 +232,6 @@ measureEditor:
 metadataApi:
   jvmOptions: -Xmx2500M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:ActiveProcessorCount=6
     -Dkotlinx.coroutines.io.parallelism=16
-  # TODO There is a problem with metadata sizing at DUB1
-  # TODO see clusters/dub1/tiger-hr-patch.yaml
   resources:
     limits:
       cpu: 2000m
@@ -258,12 +257,6 @@ pdfStaplerService:
       cpu: 100m
       memory: 620Mi
 quiver:
-  # CQ-1320 - increase the number of DoPut slots to cater for increased
-  # load & long-running writes. Note: default is 8 slots. Each slot comes
-  # with ~5MB overhead (required by multi-part writes to S3).
-  #
-  # The sizing was also update to include additional 48Mi to cater for
-  # this increase.
   concurrentPutRequests: 16
   s3DurableStorage:
     durableS3WritesInProgress: 16
@@ -277,7 +270,6 @@ quiver:
         memory: 1456Mi
     xtab:
       limits:
-        # CQ-1478 - upsize to 1000m to see if it helps with the suspected Qualys CPU load spikes
         cpu: 1000m
         memory: 700Mi
       requests:
@@ -329,7 +321,6 @@ resultCache:
       memory: 3200Mi
   pulsar:
     invalidation:
-      # enable the new rate-limited invalidation mechanism
       enabled: true
 scanModel:
   jvmOptions: -Xmx220M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
@@ -431,7 +422,7 @@ EOF
 }
 
 output "auth_hostname" {
-  description = "The hostname for Dex authentication ingress"
+  description = "The hostname for GoodData.CN internal authentication (Dex) ingress"
   value       = local.auth_hostname
 }
 
