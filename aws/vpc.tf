@@ -2,7 +2,6 @@
 # Provision VPC
 ###
 
-# Retrieve the first 3 available AZ names
 data "aws_availability_zones" "available" {
   state = "available"
 }

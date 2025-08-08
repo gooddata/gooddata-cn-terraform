@@ -45,7 +45,7 @@ resource "random_id" "secret_suffix" {
 resource "aws_secretsmanager_secret" "dockerio" {
   count = var.ecr_cache_images ? 1 : 0
 
-  name        = "ecr-pullthroughcache/${var.deployment_name}-${random_id.s3_suffix.hex}-dockerio"
+  name        = "ecr-pullthroughcache/${var.deployment_name}-${random_id.secret_suffix.hex}-dockerio"
   description = "Credentials for Docker Hub used by ECR pull-through cache."
 }
 
