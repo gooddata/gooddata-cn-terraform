@@ -35,7 +35,7 @@ Once everything is deployed, the `create-org.sh` script can be run to set up the
     - [helm](https://helm.sh/docs/intro/install/)
     - [tinkey](https://developers.google.com/tink/tinkey-overview)
     - Standard utilities like `curl`, `openssl`, and `base64`
-1. GoodData.CN license key (your GoodData contact can helm you with this)
+1. GoodData.CN license key (your GoodData contact can help you with this)
 
 > **Note:** If you want to skip the installation of all of the CLI utilities, a VS Code Dev Containers configuration is provided in this repo. Just install the extension into any compatible IDE and the repo will reopen with all utilities installed.
 

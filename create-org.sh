@@ -13,7 +13,7 @@ curl_json() {
   status=${response##*$'\n'}
   body=${response%$'\n'*}
 
-  # Surface status and error body only when not 200/404
+  # Surface status and error body
   echo -e ">> HTTP status: ${status}" >&2
   if [[ "${status}" != "200" && "${status}" != "404" ]]; then
     echo "${body}" >&2
