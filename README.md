@@ -1,27 +1,24 @@
 # GoodData.CN Cloud POC
 
-Spin up a GoodData.CN proof-of-concept in the cloud in just a few minutes.
+Spin up a GoodData.CN proof‑of‑concept in AWS or GCP in just a few minutes.
 
-> **This deployment is for evaluation only – *not* production.**
-> It creates real AWS resources (EKS, RDS, S3, …) but without high availability or other production considerations. It can be used as a source of inspiration for a production-level setup. Deployment takes **≈20 minutes** and incurs normal AWS costs while running.
+> This deployment is for evaluation only – not production.
+> It creates real cloud resources (networking, Kubernetes, database, object storage, …) without high availability or other production considerations. Use it as a starting point for a production setup. A full deploy typically takes ≈20–30 minutes and incurs normal cloud costs.
 
 ---
 
-## How It Works
+## How it works
 
-Terraform provisions:
-  - **Amazon VPC** with public & private subnets across two AZs
-  - **Amazon RDS (PostgreSQL)** for GoodData metadata
-  - **Amazon S3** buckets for cache, data sources, and exports
-  - **Amazon EKS** with autoscaling worker nodes
-    - GoodData.CN
-    - Apache Pulsar (for GoodData.CN messaging handling)
-    - ingress-nginx (for handling requests)
-    - cert-manager (for provisioning TLS certificates for ingress)
-    - Other cloud-specific requirements
+Terraform provisions a minimal‑but‑complete environment in your chosen cloud:
+  - Networking: a new VPC with private subnets and egress via managed NAT
+  - Kubernetes: managed cluster with autoscaling worker nodes and a static public IP for ingress
+  - Database: managed PostgreSQL reachable privately from the cluster
+  - Object storage: buckets for caches, user uploads, and exports
+  - Kubernetes add‑ons: ingress‑nginx, cert‑manager, metrics‑server, and cloud‑specific storage classes/LB integration
+  - GoodData.CN: installed via Helm with a small resource profile
 
 
-Once everything is deployed, the `create-org.sh` script can be run to set up the first GoodData.CN organization.
+Once everything is deployed, run `create-org.sh` to set up the first GoodData.CN organization.
 
 ---
 
@@ -29,12 +26,10 @@ Once everything is deployed, the `create-org.sh` script can be run to set up the
 
 ### Setup
 1. Install the following CLI utilities:
-    - [Terraform](https://developer.hashicorp.com/terraform/install)
-    - Cloud provider CLI ([AWS](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html))
-    - [kubectl](https://kubernetes.io/docs/tasks/tools/)
-    - [helm](https://helm.sh/docs/intro/install/)
-    - [tinkey](https://developers.google.com/tink/tinkey-overview)
-    - Standard utilities like `curl`, `openssl`, and `base64`
+    - Terraform, kubectl, helm
+    - Cloud CLI: AWS CLI (v2) or gcloud
+    - Tinkey (used to generate an encryption key)
+    - Standard utilities: curl, openssl, base64
 1. GoodData.CN license key (your GoodData contact can help you with this)
 
 > **Note:** If you want to skip the installation of all of the CLI utilities, a VS Code Dev Containers configuration is provided in this repo. Just install the extension into any compatible IDE and the repo will reopen with all utilities installed.
@@ -45,26 +40,43 @@ Once everything is deployed, the `create-org.sh` script can be run to set up the
 
 1. Find out what the [latest version number of GoodData.CN is](https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/).
 
-1. Create a variables file called `settings.tfvars` that looks like this:
-    ```terraform
-    aws_profile_name       = "my-profile"      # as configured in ~/.aws/config
-    aws_region             = "us-east-2"
-    deployment_name        = "gooddata-cn-poc" # can be any lowercase string shorter than 20 characters
-    helm_gdcn_version      = "<version>"       # from previous version (like 3.39.0)
-    gdcn_license_key       = "key/asdf=="      # provided by your GoodData contact
-    letsencrypt_email      = "me@example.com"  # can be any email address
-    ```
+1. Create a variables file called `settings.tfvars`:
+    - For AWS:
+      ```terraform
+      aws_profile_name       = "my-profile"      # as configured in ~/.aws/config
+      aws_region             = "us-east-2"
+      deployment_name        = "gooddata-cn-poc" # lowercase, <20 chars
+      helm_gdcn_version      = "<version>"       # e.g., 3.39.0
+      gdcn_license_key       = "key/asdf=="
+      letsencrypt_email      = "me@example.com"
+      ```
+    - For GCP:
+      ```terraform
+      gcp_project_id         = "my-project-id"
+      gcp_region             = "us-central1"
+      deployment_name        = "gooddata-cn-poc"
+      helm_gdcn_version      = "<version>"
+      gdcn_license_key       = "key/asdf=="
+      letsencrypt_email      = "me@example.com"
+      ```
 
-1. **Note:** If you will put significant load on the cluster, you'll want to set up container image caching so you don't hit the Docker Hub rate limits. Add these three lines to your config:
-    ```terraform
-    ecr_cache_images       = true
-    dockerhub_username     = "myusername"    # Docker Hub username (used to increase DH rate limit). Free account is enough.
-    dockerhub_access_token = "myaccesstoken" # can be created in "Settings > Personal Access Token"
-    ```
+1. Optional: container image caching to avoid Docker Hub rate limiting
+    - For AWS (ECR pull‑through cache):
+      ```terraform
+      ecr_cache_images       = true
+      dockerhub_username     = "myusername"    # Docker Hub username (used to increase DH rate limit)
+      dockerhub_access_token = "myaccesstoken" # Docker Hub Personal Access Token
+      ```
+    - For GCP (Artifact Registry remotes):
+      ```terraform
+      ar_cache_images         = true
+      dockerhub_username      = "myusername"    # required if ar_cache_images = true
+      dockerhub_access_token  = "myaccesstoken" # required if ar_cache_images = true
+      ```
 
-1. `cd` into the directory of the cloud provider you'll be deploying to (ex. `aws`)
+1. `cd` into `aws` or `gcp`, depending on your target cloud
 
-1. Authenticate to your cloud provider's CLI (ex. `aws sso login`)
+1. Authenticate to your cloud provider's CLI (e.g., `aws sso login` or `gcloud auth login`)
 
 1. Initialize Terraform: `terraform init`
 
@@ -80,6 +92,14 @@ Once everything is deployed, the `create-org.sh` script can be run to set up the
             --name   "$(terraform output -raw eks_cluster_name)" \
             --region "$(terraform output -raw aws_region)" \
             --profile "$(terraform output -raw aws_profile_name)"
+        ```
+    - For GCP:
+
+        ```
+        gcloud container clusters get-credentials \
+            "$(terraform output -raw gke_cluster_name)" \
+            --region  "$(terraform output -raw gcp_region)" \
+            --project "$(terraform output -raw gcp_project_id)"
         ```
 
 1. Create the GoodData organization: `../create-org.sh`
