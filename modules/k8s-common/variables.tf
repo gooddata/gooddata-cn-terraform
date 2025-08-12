@@ -16,3 +16,9 @@ variable "db_hostname" { type = string }
 variable "db_username" { type = string }
 variable "db_password" { type = string }
 variable "wildcard_dns_provider" { type = string }
+
+variable "s3_endpoint_override" {
+  description = "Optional S3-compatible endpoint override for object storage (e.g., https://storage.googleapis.com on GCP)."
+  type        = string
+  default     = ""
+}
