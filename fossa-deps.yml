@@ -1,0 +1,40 @@
+remote-dependencies:
+  - name: gavinbunney/kubectl
+    version: "1.19.0"
+    url: https://github.com/gavinbunney/terraform-provider-kubectl
+
+  - name: hashicorp/aws
+    version: "5.100.0"
+    url: https://github.com/hashicorp/terraform-provider-aws
+
+  - name: hashicorp/cloudinit
+    version: "2.3.7"
+    url: https://github.com/hashicorp/terraform-provider-cloudinit
+
+  - name: hashicorp/external
+    version: "2.3.5"
+    url: https://github.com/hashicorp/terraform-provider-external
+
+  - name: hashicorp/helm
+    version: "3.0.2"
+    url: https://github.com/hashicorp/terraform-provider-helm
+
+  - name: hashicorp/kubernetes
+    version: "2.38.0"
+    url: https://github.com/hashicorp/terraform-provider-kubernetes
+
+  - name: hashicorp/null
+    version: "3.2.4"
+    url: https://github.com/hashicorp/terraform-provider-null
+
+  - name: hashicorp/random
+    version: "3.7.2"
+    url: https://github.com/hashicorp/terraform-provider-random
+
+  - name: hashicorp/time
+    version: "0.13.1"
+    url: https://github.com/hashicorp/terraform-provider-time
+
+  - name: hashicorp/tls
+    version: "4.1.0"
+    url: https://github.com/hashicorp/terraform-provider-tls
