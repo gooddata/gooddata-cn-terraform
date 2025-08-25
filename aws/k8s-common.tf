@@ -11,10 +11,14 @@ module "k8s_common" {
     kubectl    = kubectl
   }
 
-  deployment_name       = var.deployment_name
-  gdcn_license_key      = var.gdcn_license_key
-  letsencrypt_email     = var.letsencrypt_email
-  wildcard_dns_provider = var.wildcard_dns_provider
+  deployment_name            = var.deployment_name
+  gdcn_license_key           = var.gdcn_license_key
+  letsencrypt_email          = var.letsencrypt_email
+  wildcard_dns_provider      = var.wildcard_dns_provider
+  aws_region                 = var.aws_region
+  s3_quiver_cache_bucket_id  = aws_s3_bucket.buckets.quiver_cache.id
+  s3_datasource_fs_bucket_id = aws_s3_bucket.buckets.datasource_fs.id
+  s3_exports_bucket_id       = aws_s3_bucket.buckets.exports.id
 
   registry_dockerio = local.registry_dockerio
   registry_quayio   = local.registry_quayio
