@@ -77,23 +77,49 @@ resource "helm_release" "gooddata_cn" {
   # Load your existing customized‑values‑gdcn.yaml on disk for brevity.
   values = [
     <<-EOF
+# Run two replicas of each microservice for high availability
 replicaCount: 2
 
-deployVisualExporter: false
+# Disable in-cluster Postgres since we're using an external Postgres instance
 deployPostgresHA: false
 
+# Use the created encryption secret
 metadataApi:
   encryptor:
     existingSecret: "${kubernetes_secret.gdcn_encryption.metadata[0].name}"
 
+# Use the created license secret
 license:
   existingSecret: "${kubernetes_secret.gdcn_license.metadata[0].name}"
 
+# Configure export controller to use S3 for exports
+exportController:
+  exportS3Storage:
+    s3Region: "${var.aws_region}"
+    s3Bucket: "${var.s3_exports_bucket_id}"
+
+# Configure quiver to use S3 for durable storage
+quiver:
+  durableStorageType: "S3"
+  s3DurableStorage:
+    s3Region: "${var.aws_region}"
+    s3Bucket: "${var.s3_quiver_cache_bucket_id}"
+
+  # Configure datasource filesystem to use S3
+  datasourceFs:
+    storageType: "S3"
+
+  s3DatasourceFsStorage:
+    s3Region: "${var.aws_region}"
+    s3Bucket: "${var.s3_datasource_fs_bucket_id}"
+
+# Configure ingress to use HTTPS and Let's Encrypt
 ingress:
   lbProtocol: https
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt"
 
+# Configure Dex to allow the auth and org hostnames
 dex:
   config:
     database:
@@ -108,6 +134,7 @@ dex:
     tls:
       authSecretName: gooddata-cn-auth-tls
 
+# Use the external Postgres instance
 service:
   postgres:
     host: "${var.db_hostname}"
@@ -115,17 +142,18 @@ service:
     username: "${var.db_username}"
     password: "${var.db_password}"
 
-# Container image cache configuration
+# Configure all GoodData microservices to use the container image cache (if configured)
 image:
   repositoryPrefix: ${var.registry_dockerio}/gooddata
 
-## For all Bitnami charts
+# Since we're (optionally) using the container image cache, bypass the insecure image check
 global:
   imageRegistry: ${var.registry_dockerio}
   security:
     # Bypasses checks since we're using the cache
     allowInsecureImages: true
 
+# Configure Redis HA to use the container image cache (if configured)
 redis-ha:
   image:
     repository: ${var.registry_dockerio}/library/redis
@@ -135,7 +163,7 @@ EOF
     ,
 
     <<-EOF
-# GoodData.CN tiny size profile
+# Apply GoodData.CN "tiny" size profile
 afmExecApi:
   jvmOptions: -Xmx880M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M
   resources:
