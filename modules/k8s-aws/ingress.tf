@@ -34,7 +34,8 @@ controller:
     # https://github.com/kubernetes/ingress-nginx/issues/11176
     strict-validate-path-type: "false"
 
-    client-body-buffer-size: "1m"
+    client-body-buffer-size: "10m"
+    proxy-body-size: "100m"
     client-body-timeout: "180"
     large-client-header-buffers: "4 32k"
     client-header-buffer-size: "32k"
