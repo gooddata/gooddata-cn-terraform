@@ -62,7 +62,7 @@ variable "eks_node_types" {
 variable "eks_max_nodes" {
   description = "Maximum number of EKS worker nodes"
   type        = number
-  default     = 5
+  default     = 10
 }
 
 variable "rds_instance_class" {
@@ -86,6 +86,12 @@ variable "wildcard_dns_provider" {
   description = "Wildcard DNS service used to give a dynamic hostname for hosting GoodData.CN. [default: sslip.io]"
   type        = string
   default     = "sslip.io"
+}
+
+variable "gdcn_replica_count" {
+  description = "Replica count for GoodData.CN components (passed to the chart)."
+  type        = number
+  default     = 1
 }
 
 variable "helm_cluster_autoscaler_version" {

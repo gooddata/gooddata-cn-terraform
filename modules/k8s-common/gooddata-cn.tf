@@ -77,9 +77,9 @@ resource "helm_release" "gooddata_cn" {
   # Load your existing customized‑values‑gdcn.yaml on disk for brevity.
   values = [
     <<-EOF
-replicaCount: 2
+# Control number of replicas for all GoodData.CN microservices
+replicaCount: ${var.gdcn_replica_count}
 
-deployVisualExporter: false
 deployPostgresHA: false
 
 metadataApi:
