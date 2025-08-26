@@ -67,6 +67,8 @@ resource "aws_ecr_pull_through_cache_rule" "dockerio" {
   ecr_repository_prefix = "dockerio"
   upstream_registry_url = local.upstream_registry_dockerio
   credential_arn        = aws_secretsmanager_secret.dockerio[0].arn
+
+  depends_on = [aws_secretsmanager_secret.dockerio]
 }
 resource "aws_ecr_pull_through_cache_rule" "quayio" {
   count = var.ecr_cache_images ? 1 : 0
