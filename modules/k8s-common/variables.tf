@@ -11,8 +11,15 @@ variable "helm_metrics_server_version" { type = string }
 variable "helm_gdcn_version" { type = string }
 variable "helm_pulsar_version" { type = string }
 
+variable "deploy_metrics_server" { 
+  type        = bool 
+  default     = true
+  description = "Whether to deploy metrics-server (set to false for Azure)" 
+}
+
 variable "ingress_ip" { type = string }
 variable "db_hostname" { type = string }
 variable "db_username" { type = string }
 variable "db_password" { type = string }
 variable "wildcard_dns_provider" { type = string }
+variable "gdcn_replica_count" { type = number }
