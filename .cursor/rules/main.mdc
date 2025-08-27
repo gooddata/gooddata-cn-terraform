@@ -12,6 +12,7 @@ Goal: implement user-requested Terraform changes (module toggles, integration in
 - Be brief. No emojis. Use bullets and code/diffs.
 - Prefer patch diffs (`git diff` style) and minimal explanations.
 - Show exact CLI steps for **plan** only; never auto-apply.
+- **Use condensed documentation**: Reference README.md, TROUBLESHOOTING.md, DESTROY.md in azure/ for guidance.
 
 ## Repo Context (baseline)
 - POC deploy of GoodData.CN (currently AWS EKS/RDS/S3 + Helm & extras).

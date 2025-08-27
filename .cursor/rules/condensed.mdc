@@ -1,0 +1,39 @@
+---
+description: Concise rules for GoodData Terraform and Git operations
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# GoodData Project Rules (Condensed)
+
+## Terraform Operations
+**Goal**: Implement Terraform changes with minimal tokens, clear diffs.
+
+**Output Style**: Brief, no emojis, bullets/code only, `git diff` style patches.
+
+**Workflow**: Discover → Propose → Patch → Plan Steps → Approval Gate
+
+**Safety**: No auto-apply, user approval required, include rollback notes.
+
+## Git Commits (MANDATORY)
+**Format**: `<type>[scope]: <description>\n\n[body]\n\nJIRA: {TICKET-ID}\nRisk: {level}`
+
+**Types**: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+
+**Branch**: `{INITIALS}-{descriptive-name}` (lowercase, hyphens)
+
+**File Requirements**: ALL text files MUST end with newline character
+
+## Azure Specifics
+**Architecture**: AKS + nginx Ingress + PostgreSQL + Storage Account
+
+**Troubleshooting**: Start with ingress/certificates, check namespaces for finalizers
+
+**Common Issues**: Stuck namespaces, Public IP attachments, autoscaler auth
+
+**Destroy**: Use enhanced destroy.sh script with automatic cleanup
+
+## File Compliance
+**Check**: `tail -c1 file | wc -l` (must return 1)
+**Fix**: `echo "" >> filename`
+**Validate**: Run `terraform fmt` on all .tf files
