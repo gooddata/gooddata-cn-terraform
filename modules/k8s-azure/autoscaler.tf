@@ -4,7 +4,7 @@
 
 resource "kubernetes_namespace" "cluster_autoscaler" {
   count = var.deploy_cluster_autoscaler ? 1 : 0
-  
+
   metadata {
     name = "cluster-autoscaler"
   }
@@ -13,7 +13,7 @@ resource "kubernetes_namespace" "cluster_autoscaler" {
 # Install Cluster Autoscaler via Helm
 resource "helm_release" "cluster_autoscaler" {
   count = var.deploy_cluster_autoscaler ? 1 : 0
-  
+
   name       = "cluster-autoscaler"
   repository = "https://kubernetes.github.io/autoscaler"
   chart      = "cluster-autoscaler"

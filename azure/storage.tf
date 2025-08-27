@@ -40,9 +40,9 @@ resource "azurerm_storage_account" "main" {
   account_kind             = "StorageV2"
 
   # Security settings - temporarily enable public access for initial setup
-  public_network_access_enabled = true
+  public_network_access_enabled   = true
   allow_nested_items_to_be_public = false
-  
+
   # Enable blob versioning
   blob_properties {
     versioning_enabled = true
@@ -62,9 +62,9 @@ resource "azurerm_storage_account" "main" {
 
 # Create storage containers (after private endpoint is configured)
 resource "azurerm_storage_container" "containers" {
-  for_each             = local.storage_containers
-  name                 = each.value
-  storage_account_id   = azurerm_storage_account.main.id
+  for_each              = local.storage_containers
+  name                  = each.value
+  storage_account_id    = azurerm_storage_account.main.id
   container_access_type = "private"
 
   depends_on = [

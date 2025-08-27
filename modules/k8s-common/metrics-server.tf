@@ -4,7 +4,7 @@
 
 resource "kubernetes_namespace" "metrics-server" {
   count = var.deploy_metrics_server ? 1 : 0
-  
+
   metadata {
     name = "metrics-server"
   }
@@ -12,7 +12,7 @@ resource "kubernetes_namespace" "metrics-server" {
 
 resource "helm_release" "metrics-server" {
   count = var.deploy_metrics_server ? 1 : 0
-  
+
   name       = "metrics-server"
   namespace  = kubernetes_namespace.metrics-server[0].metadata[0].name
   chart      = "metrics-server"

@@ -27,7 +27,7 @@ module "k8s_common" {
 
   # Disable metrics-server for Azure (AKS provides its own)
   deploy_metrics_server = false
-  
+
   # GoodData.CN replica count for HA
   gdcn_replica_count = 1
 

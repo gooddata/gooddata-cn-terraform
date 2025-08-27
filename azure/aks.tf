@@ -28,22 +28,22 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   # Default node pool
   default_node_pool {
-    name               = "default"
-    vm_size            = var.aks_node_vm_size
-    vnet_subnet_id     = azurerm_subnet.aks.id
+    name                 = "default"
+    vm_size              = var.aks_node_vm_size
+    vnet_subnet_id       = azurerm_subnet.aks.id
     auto_scaling_enabled = true
-    min_count          = var.aks_min_nodes
-    max_count          = var.aks_max_nodes
-    max_pods           = 110
-    os_disk_size_gb    = 30
-    type               = "VirtualMachineScaleSets"
+    min_count            = var.aks_min_nodes
+    max_count            = var.aks_max_nodes
+    max_pods             = 110
+    os_disk_size_gb      = 30
+    type                 = "VirtualMachineScaleSets"
 
     upgrade_settings {
       max_surge = "1"
     }
 
     tags = merge(
-      { 
+      {
         Project = var.deployment_name
       },
       var.azure_additional_tags

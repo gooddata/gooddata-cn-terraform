@@ -40,17 +40,17 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
 
 # Create PostgreSQL Flexible Server
 resource "azurerm_postgresql_flexible_server" "main" {
-  name                      = "${var.deployment_name}-postgresql"
-  resource_group_name       = azurerm_resource_group.main.name
-  location                  = azurerm_resource_group.main.location
-  version                   = "16"
-  delegated_subnet_id       = azurerm_subnet.db.id
-  private_dns_zone_id       = azurerm_private_dns_zone.postgresql.id
-  administrator_login       = local.db_username
-  administrator_password    = local.db_password
-  zone                      = "1"
-  storage_mb                = var.postgresql_storage_mb
-  sku_name                  = var.postgresql_sku_name
+  name                   = "${var.deployment_name}-postgresql"
+  resource_group_name    = azurerm_resource_group.main.name
+  location               = azurerm_resource_group.main.location
+  version                = "16"
+  delegated_subnet_id    = azurerm_subnet.db.id
+  private_dns_zone_id    = azurerm_private_dns_zone.postgresql.id
+  administrator_login    = local.db_username
+  administrator_password = local.db_password
+  zone                   = "1"
+  storage_mb             = var.postgresql_storage_mb
+  sku_name               = var.postgresql_sku_name
 
   # Disable public network access when using VNet integration
   public_network_access_enabled = false
