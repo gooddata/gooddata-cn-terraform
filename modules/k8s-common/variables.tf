@@ -16,6 +16,10 @@ variable "deploy_metrics_server" {
   default     = true
   description = "Whether to deploy metrics-server (set to false for Azure)"
 }
+variable "gdcn_replica_count" {
+  description = "Number of replicas of GoodData.CN microserices to run"
+  type        = number
+}
 
 variable "ingress_ip" { type = string }
 variable "db_hostname" { type = string }
