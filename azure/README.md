@@ -7,6 +7,9 @@ cp terraform.tfvars.example terraform.tfvars
 # Edit: subscription_id, location, deployment_name
 terraform init && terraform plan && terraform apply
 ./test-connectivity.sh
+
+# Create first organization (interactive setup)
+../create-org.sh
 ```
 
 ## Config (terraform.tfvars)
@@ -21,6 +24,23 @@ AKS + nginx Ingress + PostgreSQL + Storage + Let's Encrypt TLS
 ## URLs
 - Org: https://org.{external_ip}.sslip.io
 - Auth: https://auth.{external_ip}.sslip.io
+
+## Organization Setup
+After successful terraform deployment, create your first organization:
+```bash
+../create-org.sh
+# Interactive script prompts for:
+# - Organization ID (default: test)
+# - Organization name (default: Test, Inc.)
+# - Hostname: org.{external_ip}.sslip.io
+# - Admin username/password
+# - First user email/password
+```
+Script automatically:
+- Creates Kubernetes Organization resource
+- Sets up first admin user
+- Configures authentication
+- Provides login URL and bearer token
 
 ## Issues
 1. No external IP: `kubectl get svc -n ingress-nginx`
