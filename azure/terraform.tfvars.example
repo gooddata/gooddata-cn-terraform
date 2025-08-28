@@ -1,0 +1,42 @@
+# Azure configuration
+azure_subscription_id = "your-subscription-id-here"
+azure_tenant_id       = "your-tenant-id-here"
+azure_location        = "East US"
+
+# Deployment configuration
+deployment_name = "gooddata-cn-poc"
+
+# AKS configuration
+aks_version     = "1.33"
+aks_node_vm_size = "Standard_D4ds_v6"
+aks_max_nodes   = 10
+aks_min_nodes   = 3
+
+# PostgreSQL configuration
+postgresql_sku_name   = "GP_Standard_D2ds_v5"
+postgresql_storage_mb = 32768
+
+# GoodData.CN configuration
+gdcn_license_key = "your-license-key-here"
+helm_gdcn_version = "3.42.0"
+gdcn_replica_count = 1
+
+# DNS configuration
+wildcard_dns_provider = "sslip.io"  # Optional, default value
+
+# Let's Encrypt configuration
+letsencrypt_email = "your-email@example.com"
+
+# Docker Hub configuration (optional, for image caching)
+acr_cache_images        = false
+dockerhub_username      = ""
+dockerhub_access_token  = ""
+
+# Additional tags
+azure_additional_tags = {
+  Environment = "dev"
+  Owner       = "your-name"
+}
+
+# Kubernetes components
+deploy_cluster_autoscaler = true  # Set to false to disable cluster autoscaler

@@ -1,0 +1,175 @@
+# Cursor Rules for GoodData.CN Azure Installation Troubleshooting
+
+## Azure Deployment Context
+- This is a GoodData.CN deployment on Azure AKS using nginx Ingress
+- Architecture: Azure LoadBalancer → nginx Ingress → GoodData.CN services  
+- TLS managed by cert-manager with Let's Encrypt
+- Replaced Azure Application Gateway with nginx for better compatibility
+
+## Troubleshooting Workflow
+
+### 1. Initial Status Check
+Always start with these commands to assess system health:
+```bash
+kubectl get ingress -n gooddata-cn -o wide
+kubectl get certificates -n gooddata-cn  
+kubectl get pods -n gooddata-cn | grep -E "(Running|Error|Pending)"
+kubectl get svc -n gooddata-cn | head -5
+```
+
+### 2. Connectivity Tests
+Test both internal and external connectivity:
+```bash
+# Internal service health
+kubectl exec -n gooddata-cn deployment/gooddata-cn-api-gateway -- curl -s -o /dev/null -w "%{http_code}" http://localhost:9092/health
+
+# External access test
+curl -k -I https://org.172.173.99.209.sslip.io --connect-timeout 10
+curl -k -I https://auth.172.173.99.209.sslip.io --connect-timeout 10
+```
+
+### 3. Certificate Troubleshooting
+Check Let's Encrypt certificate status:
+```bash
+kubectl describe certificate gooddata-cn-org-tls -n gooddata-cn
+kubectl describe certificate gooddata-cn-auth-tls -n gooddata-cn
+kubectl get challenges -A  # If certificates are pending
+```
+
+### 4. Common Issues & Solutions
+
+#### Issue: "URL not working" or "empty page"
+**Root Cause**: User expects dashboard but sees bootstrap page
+**Solution**: This is normal for fresh installations
+- Check if HTML contains `window.COMMITHASH` - indicates working UI
+- Guide user through initial organization setup
+
+#### Issue: Certificate not ready
+**Root Cause**: Let's Encrypt validation failing
+**Solution**: 
+```bash
+kubectl describe challenge -A
+kubectl logs -n cert-manager deployment/cert-manager
+```
+
+#### Issue: nginx Ingress not getting external IP
+**Root Cause**: LoadBalancer service not provisioned
+**Solution**:
+```bash
+kubectl get svc -n ingress-nginx
+kubectl describe svc ingress-nginx-controller -n ingress-nginx
+```
+
+#### Issue: Pods crashing or pending
+**Root Cause**: Resource constraints or configuration issues
+**Solution**:
+```bash
+kubectl describe pod <pod-name> -n gooddata-cn
+kubectl logs <pod-name> -n gooddata-cn --previous
+```
+
+### 5. Expected Healthy State
+
+**Ingress Status:**
+- Both `gooddata-cn-dex` and `gooddata-cn-org` ingresses should have external IP
+- Class should be `nginx`
+- Ports should show `80, 443`
+
+**Certificate Status:**
+- Both TLS certificates should show `Ready: True`
+- Valid for ~3 months from creation
+
+**Pod Status:**
+- All 32 GoodData.CN pods should be `Running`
+- No excessive restarts (>5)
+
+**External Access:**
+- Both URLs should return HTTP 200
+- Should serve complete HTML with JavaScript bundles
+
+### 6. Architecture-Specific Notes
+
+**nginx Ingress vs Azure Application Gateway:**
+- This deployment uses nginx Ingress for better Kubernetes integration
+- Azure Application Gateway was removed to avoid complex AGIC issues
+- Public IP managed by Azure LoadBalancer service
+
+**DNS Resolution:**
+- Uses sslip.io for wildcard DNS (*.IP.sslip.io)
+- No custom DNS configuration required
+- Works immediately with any public IP
+
+**TLS Certificates:**
+- Automated via cert-manager + Let's Encrypt
+- HTTP-01 challenge validation
+- Certificates auto-renew before expiry
+
+### 7. Quick Health Check Script
+```bash
+#!/bin/bash
+echo "=== GoodData.CN Azure Health Check ==="
+echo "1. Checking ingress..."
+kubectl get ingress -n gooddata-cn
+echo -e "\n2. Checking certificates..."
+kubectl get certificates -n gooddata-cn
+echo -e "\n3. Checking key pods..."
+kubectl get pods -n gooddata-cn | grep -E "(api-gateway|metadata|org|dex)"
+echo -e "\n4. Testing external access..."
+curl -k -s -o /dev/null -w "Org URL: %{http_code}\n" https://org.172.173.99.209.sslip.io
+curl -k -s -o /dev/null -w "Auth URL: %{http_code}\n" https://auth.172.173.99.209.sslip.io
+echo "=== Health check complete ==="
+```
+
+### 8. User Communication Guidelines
+
+**When URL appears "not working":**
+1. Verify it actually returns HTTP 200 (usually it does)
+2. Explain this is the setup page for fresh installations
+3. Guide through organization creation process
+4. Set expectations about what they should see
+
+**When certificates are pending:**
+1. Check if HTTP-01 challenges are completing
+2. Verify DNS resolution works for the domain
+3. Check cert-manager logs for detailed errors
+4. Allow 2-3 minutes for certificate issuance
+
+**When pods are failing:**
+1. Check resource constraints first (CPU/memory)
+2. Verify database connectivity (PostgreSQL)
+3. Check storage access (Azure Storage)
+4. Review Helm values for misconfigurations
+
+### 9. Recovery Procedures
+
+**Full system restart:**
+```bash
+kubectl rollout restart deployment -n gooddata-cn
+kubectl rollout restart deployment -n ingress-nginx
+```
+
+**Certificate refresh:**
+```bash
+kubectl delete certificate gooddata-cn-org-tls -n gooddata-cn
+kubectl delete certificate gooddata-cn-auth-tls -n gooddata-cn
+# Certificates will be recreated automatically
+```
+
+**Ingress refresh:**
+```bash
+kubectl delete ingress gooddata-cn-org -n gooddata-cn
+# Recreate manually or via Terraform
+```
+
+---
+
+## Cursor-Specific Instructions
+
+When troubleshooting Azure installations:
+1. Always read the TROUBLESHOOTING-AZURE.md file first
+2. Use the health check commands above systematically
+3. Remember that "URL not working" usually means "user needs setup guidance"
+4. Focus on infrastructure health, not application configuration
+5. Reference this architecture: Azure LB → nginx → GoodData.CN
+6. Check external IP assignment as the most common issue
+7. Verify certificates are ready before declaring problems

@@ -1,0 +1,221 @@
+---
+description: Git Commit Procedures and Branch Management - MANDATORY for ALL Git Operations
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Git Commit Procedures - MANDATORY
+
+**REQUIRED FOR ALL GIT OPERATIONS** - This rule applies to every commit, branch, and git interaction.
+
+## OFFICIAL GOODDATA GUIDELINES
+**Source**: [GoodData Commit Message Guideline](https://gooddata.atlassian.net/wiki/spaces/pap/pages/1720778756/Commit+Message+Guideline)
+
+All commits **MUST** follow the standardized format for clarity and uniformity:
+
+## Branch Naming Convention
+Format: `{INITIALS}-{descriptive-name}`
+- Example: `NSLO-cursor-rules`, `NSLO-mcp-improvements`
+- Use lowercase with hyphens
+- Include your initials for identification
+
+## MANDATORY COMMIT MESSAGE FORMAT
+**Per GoodData standards, ALL commits MUST use this format:**
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+**Required Elements:**
+- **Type**: MANDATORY - Must be one of the approved types below
+- **Description**: MANDATORY - Succinctly describe the change
+- **Footer**: MANDATORY - Must include JIRA ticket (or other approved references)
+
+**Official Reference**: [Conventional Commits Specification](https://www.conventionalcommits.org/)
+
+**GoodData Footer Requirements:**
+- Typically: `JIRA: {TICKET-ID}` 
+- Other approved keywords: `Fixes`, `Ref`, `Closes`
+- Additional: Risk level for operational changes
+
+### Commit Types
+- `feat`: New feature
+- `fix`: Bug fix  
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting)
+- `refactor`: Code refactoring
+- `perf`: Performance improvements
+- `test`: Adding/updating tests
+- `build`: Build system changes
+- `ci`: CI/CD changes
+- `chore`: Maintenance tasks
+- `revert`: Reverting previous changes
+
+### Scopes (Operations Context)
+- `mcp-config`: MCP server configurations
+- `k8s`: Kubernetes related changes
+- `grafana`: Grafana/monitoring changes
+- `docs`: Documentation updates
+- `scripts`: Installation/utility scripts
+- `rules`: Cursor rules changes
+
+### Risk Levels
+- `nonprod`: Safe for non-production environments
+- `low`: Low risk, well-tested changes
+- `medium`: Moderate risk, requires review
+- `high`: High risk, requires careful validation
+- `critical`: Critical changes, requires approvals
+
+## File Format Requirements
+**MANDATORY**: All text files MUST end with a newline character (LF/CRLF)
+- **Validation**: `tail -c1 file | wc -l` (should return 1)
+- **Auto-fix**: `echo "" >> filename`
+- **File types**: `*.md`, `*.mdc`, `*.json`, `*.sh`, `*.yaml`, `*.txt`
+
+## Selective Commit Process
+
+1. **Create Feature Branch**:
+   ```bash
+   git checkout -b {INITIALS}-{feature-name}
+   ```
+
+2. **Stage Files Selectively**:
+   ```bash
+   # Only add files related to the specific change
+   git add file1 file2 file3
+   # NOT: git add . (unless intentional)
+   ```
+
+3. **Commit with Proper Message (MANDATORY FORMAT)**:
+   ```bash
+   git commit -m "<type>[optional scope]: <description>
+
+   [optional body with detailed explanation]
+
+   JIRA: {TICKET-ID}
+   Risk: {level}"
+   ```
+
+4. **Verify Before Push**:
+   ```bash
+   git log --oneline -1  # Check last commit
+   git show --stat       # Review changes
+   ```
+
+## Examples
+
+### Good Examples:
+```
+feat(sdk-model): clarify attribute area sort
+- Clear implementation details
+JIRA: RAIL-2175
+```
+
+```
+chore(mcp-config): simplify Atlassian MCP to use npx
+- Replace Node.js wrapper with npx mcp-remote@latest
+JIRA: INFRA-4108
+Risk: nonprod
+```
+
+### Bad Examples:
+- `fix stuff` (too vague)
+- `update files` (no context)
+- `WIP` (not descriptive)
+- Missing JIRA ticket reference
+- Missing risk assessment
+- Files without final newline character
+
+## MANDATORY PRE-COMMIT CHECKLIST
+**🚨 CRITICAL: ALL items must be verified before ANY commit:**
+
+### Phase 1: File Validation (MANDATORY FIRST)
+- [ ] ✅ **STEP 1 COMPLETED**: Run complete repository newline validation script
+- [ ] ✅ **STEP 2 COMPLETED**: Run staged files validation script  
+- [ ] ✅ **NO VALIDATION FAILURES**: All files pass newline requirements
+- [ ] ✅ **File Line Endings**: ALL files end with proper newline character (CR/LF)
+
+### Phase 2: Content Validation  
+- [ ] ✅ **Format Compliance**: Message follows `<type>[scope]: <description>` format
+- [ ] ✅ **Official Guidelines**: Adheres to [GoodData Commit Message Guideline](https://gooddata.atlassian.net/wiki/spaces/pap/pages/1720778756/Commit+Message+Guideline)
+- [ ] ✅ **JIRA Reference**: Valid JIRA ticket referenced in footer
+- [ ] ✅ **Type Validation**: Uses approved commit type from list above
+- [ ] ✅ **Scope Appropriateness**: Scope matches the area of change
+- [ ] ✅ **Description Quality**: Clear, concise description of the change
+- [ ] ✅ **Risk Assessment**: Risk level assigned for operational changes
+
+### Phase 3: Change Validation
+- [ ] ✅ **File Staging**: Only relevant files staged (no accidental inclusions)
+- [ ] ✅ **Single Concern**: Commit focuses on one logical change
+- [ ] ✅ **Security Check**: No sensitive data (tokens, passwords) included
+
+**⛔ DO NOT PROCEED**: If ANY validation step fails, fix issues before committing!
+
+## VALIDATION REQUIREMENTS
+**MANDATORY: Run these commands before EVERY commit:**
+
+### 1. Pre-Commit Validation (REQUIRED)
+```bash
+# STEP 1: Check ALL repository files for missing newlines (MANDATORY)
+echo "=== VALIDATING ALL FILES FOR NEWLINES ==="
+for file in $(find . -type f \( -name "*.md" -o -name "*.sh" -o -name "*.json" -o -name "*.mdc" -o -name "*.yaml" -o -name "*.txt" \) | grep -v ".git"); do 
+  if [[ -s "$file" && $(tail -c1 "$file" | wc -l) -eq 0 ]]; then 
+    echo "🚨 CRITICAL ERROR: Missing newline: $file"; 
+    echo "FIX: echo '' >> \"$file\"";
+    exit 1;
+  fi; 
+done
+echo "✅ All files have proper newlines"
+
+# STEP 2: Check staged files specifically
+echo "=== VALIDATING STAGED FILES ==="
+for file in $(git diff --cached --name-only); do 
+  if [[ -s "$file" && $(tail -c1 "$file" | wc -l) -eq 0 ]]; then 
+    echo "🚨 CRITICAL ERROR: Staged file missing newline: $file"; 
+    exit 1;
+  fi; 
+done
+echo "✅ All staged files validated"
+
+# STEP 3: Check commit message format  
+echo "=== VALIDATING COMMIT MESSAGE ==="
+git log --oneline -1 | grep -E "^[a-z]+(\([a-z-]+\))?: .+" || echo "⚠️ Check commit message format"
+
+# STEP 4: Review staged changes
+echo "=== REVIEWING STAGED CHANGES ==="
+git show --stat
+```
+
+### 2. Emergency Validation (Use if above fails)
+```bash
+# Quick newline fix for any file
+echo "" >> filename
+
+# Verify fix worked
+tail -c1 filename | wc -l  # Should return 1
+```
+
+**🚨 CRITICAL: If any validation fails, DO NOT COMMIT until fixed!**
+
+## File Separation Guidelines
+Keep separate commits for:
+- Configuration changes vs new features
+- Documentation vs code changes  
+- Different functional areas (MCP vs K8s vs monitoring)
+- High-risk vs low-risk changes
+
+## ENFORCEMENT
+
+**MANDATORY COMPLIANCE**: This rule is enforced for ALL git operations.
+
+**Reference Documentation**: 
+- [GoodData Commit Message Guideline](https://gooddata.atlassian.net/wiki/spaces/pap/pages/1720778756/Commit+Message+Guideline)
+- [Conventional Commits Specification](https://www.conventionalcommits.org/)
+
+**Non-Compliance**: Commits that don't follow these guidelines must be amended or rebased to meet standards.
+
+**Remember**: Clean, focused commits following official GoodData standards make reviews easier, rollbacks safer, and maintain project quality.
