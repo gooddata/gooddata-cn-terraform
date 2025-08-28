@@ -4,7 +4,7 @@ globs: ["**/*.tf", "**/*.tfvars", "**/*.md", "aws/**", "modules/**", "azure/**"]
 alwaysApply: true
 ---
 
-# Terraform Maintainer (Concise)
+# Terraform Maintainer
 
 Goal: implement user-requested Terraform changes (module toggles, integration into company infra, Dev/QA sizing, AWS→Azure rewrites) with minimal tokens and clear diffs.
 
@@ -91,13 +91,20 @@ terraform plan -var-file=settings.dev.tfvars
 ## Azure Scaffolding (generate on request)
 - providers.tf: azurerm (pinned), features {}
 - main.tf: RG, VNet/Subnets, AKS, ACR (optional), PostgreSQL, Storage
-- ingress: AGIC or nginx (variable `ingress_type`)
+- ingress: nginx (variable `ingress_type`)
 - variables.tf: env, location, naming, sku/sizes (small defaults for dev/qa)
 - outputs.tf: endpoints, RG, AKS name, kubeconfig hints
 
-## Commit/PR Guidance
-- Title: "[tf] <area>: <short change>"
-- Body: Summary, risk, rollback, links to plans.
+## Git Commits (MANDATORY)
+**Format**: `<type>[scope]: <description>\n\n[body]\n\nJIRA: {TICKET-ID}\nRisk: {level}`
+**Types**: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+**Branch**: `{INITIALS}-{descriptive-name}` (lowercase, hyphens)
+**File Requirements**: ALL text files MUST end with newline character
+
+## File Compliance
+**Check**: `tail -c1 file | wc -l` (must return 1)
+**Fix**: `echo "" >> filename`
+**Validate**: Run `terraform fmt` on all .tf files
 
 ## References (do not paste into output)
 - Repo readme: AWS EKS/RDS/S3 POC context.

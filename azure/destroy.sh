@@ -165,19 +165,21 @@ cleanup_kubernetes() {
     if kubectl cluster-info >/dev/null 2>&1; then
         # Remove organizations first
         log_info "Removing organizations..."
-        kubectl delete organizations --all -A --ignore-not-found=true --timeout=30s || true
+        kubectl delete organizations --all -n gooddata-cn --ignore-not-found=true --timeout=120s || true
         
         # Remove PVCs that might prevent deletion
         log_info "Removing PersistentVolumeClaims..."
-        kubectl delete pvc --all -n gooddata-cn --ignore-not-found=true --timeout=60s
+        kubectl delete pvc --all -n gooddata-cn --ignore-not-found=true --timeout=60s || true
         
-        # Remove test organization
-        log_info "Removing test organization..."
-        kubectl delete -f test-organization.yaml --ignore-not-found=true
+        # Remove test organization files if they exist
+        log_info "Removing test organization files..."
+        if [ -f test-organization.yaml ]; then
+            kubectl delete -f test-organization.yaml --ignore-not-found=true || true
+        fi
         
         # Remove manual ingress resources
         log_info "Removing manual ingress resources..."
-        kubectl delete ingress test-simple-ingress -n gooddata-cn --ignore-not-found=true
+        kubectl delete ingress test-simple-ingress -n gooddata-cn --ignore-not-found=true || true
         
         log_success "Kubernetes cleanup completed"
     else

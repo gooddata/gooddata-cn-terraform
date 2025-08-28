@@ -88,5 +88,5 @@ data "kubernetes_service" "ingress_nginx" {
 
 output "ingress_external_ip" {
   description = "External IP address assigned to the nginx ingress LoadBalancer"
-  value       = data.kubernetes_service.ingress_nginx.status[0].load_balancer[0].ingress[0].ip
+  value       = try(data.kubernetes_service.ingress_nginx.status[0].load_balancer[0].ingress[0].ip, "")
 }

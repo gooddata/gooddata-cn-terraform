@@ -388,6 +388,11 @@ webComponents:
       cpu: 20m
       memory: 15Mi
 exportBuilder:
+  # Chromium in standalone container within export-builder pod
+  # export-builder connects to Chromium using Chrome DevTools Protocol (CDP)
+  playwright:
+    browser:
+      type: "cdp"
   # These settings must be aligned with resource.limits.memory value
   # The minimum memory limit in MeBiBytes is (codecachesize+Xmx+metaspace+175)*1.024
   jvmOptions: -XX:ReservedCodeCacheSize=60M -Xmx1500M -XX:MaxMetaspaceSize=210M -XX:MaxDirectMemorySize=128M
