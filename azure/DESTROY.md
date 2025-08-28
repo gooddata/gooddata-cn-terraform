@@ -4,7 +4,14 @@
 
 ## Quick Destroy
 ```bash
-./destroy.sh  # Enhanced script handles most issues automatically
+# Complete destruction (auto-approve, with timeout handling)
+./destroy.sh
+
+# Modular execution
+./destroy.sh terraform    # Only terraform destroy (5min timeout)
+./destroy.sh kubernetes   # Only clean stuck namespaces
+./destroy.sh verify       # Only verify completion
+./destroy.sh help         # Show all options
 ```
 
 ## Manual Steps (if script fails)

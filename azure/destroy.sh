@@ -1,9 +1,13 @@
 #!/bin/bash
 
-# Azure Terraform Destruction Script
+# Azure Terraform Destruction Script (Modular)
 # WARNING: This will destroy ALL Azure infrastructure!
 
 set -e
+
+# Configuration
+TERRAFORM_TIMEOUT=300  # 5 minutes timeout for terraform operations
+KUBECTL_TIMEOUT=60     # 1 minute timeout for kubectl operations
 
 # Colors for output
 RED='\033[0;31m'
@@ -29,7 +33,50 @@ log_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
+# Timeout function for long-running commands
+run_with_timeout() {
+    local timeout=$1
+    local command="${@:2}"
+    
+    log_info "Running command with ${timeout}s timeout: $command"
+    
+    if timeout "$timeout" bash -c "$command"; then
+        return 0
+    else
+        local exit_code=$?
+        if [ $exit_code -eq 124 ]; then
+            log_warning "Command timed out after ${timeout} seconds: $command"
+            return 124
+        else
+            log_error "Command failed with exit code $exit_code: $command"
+            return $exit_code
+        fi
+    fi
+}
+
+# Usage function
+usage() {
+    echo "Usage: $0 [SECTION]"
+    echo ""
+    echo "Sections (run individually or all):"
+    echo "  confirm      - Show confirmation dialog"
+    echo "  backup       - Create Kubernetes resource backup"
+    echo "  terraform    - Run terraform destroy with auto-approve"
+    echo "  kubernetes   - Clean up stuck Kubernetes resources"
+    echo "  verify       - Verify destruction completion"
+    echo "  cleanup      - Clean up local files"
+    echo "  all          - Run all sections (default)"
+    echo ""
+    echo "Examples:"
+    echo "  $0                    # Run complete destruction"
+    echo "  $0 terraform         # Only run terraform destroy"
+    echo "  $0 kubernetes        # Only clean up stuck namespaces"
+    echo ""
+}
+
 confirm_destruction() {
+    local skip_confirmation="${1:-false}"
+    
     echo -e "${RED}⚠️  CRITICAL WARNING ⚠️${NC}"
     echo -e "${RED}This will PERMANENTLY DELETE all Azure resources!${NC}"
     echo ""
@@ -43,6 +90,11 @@ confirm_destruction() {
     echo ""
     echo -e "${YELLOW}All data will be PERMANENTLY LOST!${NC}"
     echo ""
+    
+    if [ "$skip_confirmation" = "true" ]; then
+        log_warning "Running in auto-approve mode - skipping manual confirmation"
+        return 0
+    fi
     
     read -p "Are you absolutely sure you want to continue? (type 'YES' to confirm): " confirmation
     
@@ -111,13 +163,13 @@ cleanup_kubernetes() {
     log_info "Cleaning up Kubernetes resources..."
     
     if kubectl cluster-info >/dev/null 2>&1; then
-        # Remove PVCs that might prevent deletion
-        log_info "Removing PersistentVolumeClaims..."
-        kubectl delete pvc --all -n gooddata-cn --ignore-not-found=true --timeout=60s
-        
         # Remove organizations first
         log_info "Removing organizations..."
         kubectl delete organizations --all -A --ignore-not-found=true --timeout=30s || true
+        
+        # Remove PVCs that might prevent deletion
+        log_info "Removing PersistentVolumeClaims..."
+        kubectl delete pvc --all -n gooddata-cn --ignore-not-found=true --timeout=60s
         
         # Remove test organization
         log_info "Removing test organization..."
@@ -134,7 +186,7 @@ cleanup_kubernetes() {
 }
 
 terraform_destroy() {
-    log_info "Starting Terraform destruction..."
+    log_info "Starting Terraform destruction with auto-approve..."
     
     # Check if terraform is initialized
     if [ ! -d ".terraform" ]; then
@@ -142,49 +194,59 @@ terraform_destroy() {
         exit 1
     fi
     
-    # Show what will be destroyed
+    # Show what will be destroyed (quick plan)
     log_info "Showing resources that will be destroyed..."
-    terraform plan -destroy -var-file=terraform.tfvars
-    
-    echo ""
-    read -p "Proceed with Terraform destroy? (y/N): " proceed
-    
-    if [ "$proceed" = "y" ] || [ "$proceed" = "Y" ]; then
-        log_info "Executing terraform destroy..."
-        if ! terraform destroy -var-file=terraform.tfvars -auto-approve; then
-            log_warning "Terraform destroy encountered issues. Cleaning up stuck resources..."
-            
-            # Clean up common stuck namespaces
-            for namespace in gooddata-cn cluster-autoscaler ingress-nginx; do
-                cleanup_stuck_namespace "$namespace"
-            done
-            
-            log_info "Retrying terraform destroy after namespace cleanup..."
-            if ! terraform destroy -var-file=terraform.tfvars -auto-approve; then
-                log_warning "Still encountering issues. Attempting manual Azure LoadBalancer cleanup..."
-                
-                # Try to delete the kubernetes LoadBalancer if it still exists
-                NODE_RG=$(az aks show --name gooddata-cn-poc --resource-group gooddata-cn-poc-rg --query nodeResourceGroup -o tsv 2>/dev/null || true)
-                if [ ! -z "$NODE_RG" ]; then
-                    log_info "Attempting to clean up LoadBalancer in node resource group: $NODE_RG"
-                    az network lb delete --name kubernetes --resource-group "$NODE_RG" --yes 2>/dev/null || true
-                fi
-                
-                log_info "Final terraform destroy attempt..."
-                if ! terraform destroy -var-file=terraform.tfvars -auto-approve; then
-                    log_error "Terraform destroy failed. Some resources may need manual cleanup."
-                    log_warning "Common remaining resources:"
-                    echo "   - Public IP: gooddata-cn-poc-ingress-pip"
-                    echo "   - LoadBalancer in MC_gooddata-cn-poc-rg_gooddata-cn-poc_centralus"
-                    return 1
-                fi
-            fi
-        fi
-        log_success "Terraform destroy completed"
-    else
-        log_error "Terraform destroy cancelled"
-        exit 1
+    if ! run_with_timeout 60 "terraform plan -destroy -var-file=terraform.tfvars -out=destroy.plan"; then
+        log_warning "Terraform plan timed out or failed, proceeding with destroy anyway..."
     fi
+    
+    log_info "Executing terraform destroy with timeout handling..."
+    
+    # Attempt 1: Direct terraform destroy with timeout
+    if run_with_timeout "$TERRAFORM_TIMEOUT" "terraform destroy -var-file=terraform.tfvars -auto-approve"; then
+        log_success "Terraform destroy completed successfully"
+        return 0
+    fi
+    
+    # Attempt 2: Clean up stuck namespaces and retry
+    log_warning "Terraform destroy timed out or failed. Cleaning up stuck resources..."
+    for namespace in gooddata-cn cluster-autoscaler ingress-nginx; do
+        cleanup_stuck_namespace "$namespace"
+    done
+    
+    log_info "Retrying terraform destroy after namespace cleanup..."
+    if run_with_timeout "$TERRAFORM_TIMEOUT" "terraform destroy -var-file=terraform.tfvars -auto-approve"; then
+        log_success "Terraform destroy completed after namespace cleanup"
+        return 0
+    fi
+    
+    # Attempt 3: Manual Azure LoadBalancer cleanup and retry
+    log_warning "Still encountering issues. Attempting manual Azure LoadBalancer cleanup..."
+    NODE_RG=$(az aks show --name gooddata-cn-poc --resource-group gooddata-cn-poc-rg --query nodeResourceGroup -o tsv 2>/dev/null || true)
+    if [ ! -z "$NODE_RG" ]; then
+        log_info "Attempting to clean up LoadBalancer in node resource group: $NODE_RG"
+        az network lb delete --name kubernetes --resource-group "$NODE_RG" --yes 2>/dev/null || true
+        
+        # Also try to clean up public IPs
+        log_info "Cleaning up public IPs in node resource group..."
+        az network public-ip list --resource-group "$NODE_RG" --query "[].name" -o tsv 2>/dev/null | \
+        xargs -I {} az network public-ip delete --name {} --resource-group "$NODE_RG" --yes 2>/dev/null || true
+    fi
+    
+    log_info "Final terraform destroy attempt..."
+    if run_with_timeout "$TERRAFORM_TIMEOUT" "terraform destroy -var-file=terraform.tfvars -auto-approve"; then
+        log_success "Terraform destroy completed after manual cleanup"
+        return 0
+    fi
+    
+    # All attempts failed
+    log_error "All terraform destroy attempts failed. Manual cleanup may be required."
+    log_warning "Common remaining resources that may need manual deletion:"
+    echo "   - Public IP: gooddata-cn-poc-ingress-pip"
+    echo "   - LoadBalancer in MC_gooddata-cn-poc-rg_gooddata-cn-poc_centralus"
+    echo "   - Run: ./destroy.sh kubernetes  # to clean up stuck namespaces"
+    echo "   - Run: az group delete --name gooddata-cn-poc-rg --yes  # to force delete resource group"
+    return 1
 }
 
 verify_destruction() {
@@ -226,36 +288,69 @@ cleanup_local_files() {
     # Remove temporary files
     rm -f gooddata-selfsigned.crt gooddata-selfsigned.key
     rm -f auth-agic-ingress.yaml org-agic-ingress.yaml test-simple-ingress.yaml
+    rm -f destroy.plan
     
-    # Ask about terraform state files
-    read -p "Remove Terraform state files? (y/N): " remove_state
-    if [ "$remove_state" = "y" ] || [ "$remove_state" = "Y" ]; then
-        rm -f terraform.tfstate*
-        rm -f .terraform.lock.hcl
-        log_success "Terraform state files removed"
-    fi
+    # Remove terraform state files (auto-approve for consistency)
+    log_info "Removing Terraform state files..."
+    rm -f terraform.tfstate*
+    rm -f .terraform.lock.hcl
+    log_success "Terraform state files removed"
     
     log_success "Local cleanup completed"
 }
 
-main() {
-    log_info "Azure Terraform Destruction Script Started"
+run_section() {
+    local section=$1
+    
+    case "$section" in
+        "confirm")
+            confirm_destruction
+            ;;
+        "backup")
+            backup_data
+            ;;
+        "terraform")
+            log_warning "Running terraform destroy section - this will delete Azure infrastructure!"
+            confirm_destruction
+            terraform_destroy
+            ;;
+        "kubernetes")
+            log_info "Running Kubernetes cleanup section - this will clean stuck namespaces"
+            cleanup_kubernetes
+            ;;
+        "verify")
+            verify_destruction
+            ;;
+        "cleanup")
+            cleanup_local_files
+            ;;
+        "all")
+            run_all_sections
+            ;;
+        *)
+            log_error "Unknown section: $section"
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+run_all_sections() {
+    log_info "Azure Terraform Destruction Script Started (Auto-Approve Mode)"
     echo ""
     
     # Step 1: Confirmation
     confirm_destruction
     
-    # Step 2: Backup (optional)
-    read -p "Create backup of Kubernetes resources? (Y/n): " backup
-    if [ "$backup" != "n" ] && [ "$backup" != "N" ]; then
-        backup_data
-    fi
+    # Step 2: Backup (auto-create)
+    log_info "Creating backup automatically..."
+    backup_data
     
-    # Step 3: Kubernetes cleanup
-    cleanup_kubernetes
-    
-    # Step 4: Terraform destroy
+    # Step 3: Terraform destroy
     terraform_destroy
+    
+    # Step 4: Kubernetes cleanup
+    cleanup_kubernetes
     
     # Step 5: Verification
     verify_destruction
@@ -269,27 +364,60 @@ main() {
     log_info "Next steps:"
     echo "1. Monitor Azure billing for cost reductions"
     echo "2. Check Azure Activity Log for any errors"
-    echo "3. Backups are available in ./backups/ directory (if created)"
+    echo "3. Backups are available in ./backups/ directory"
     echo ""
     log_warning "Remember: All data has been permanently deleted!"
 }
 
 # Check prerequisites
-if ! command -v terraform >/dev/null 2>&1; then
-    log_error "Terraform is not installed or not in PATH"
-    exit 1
-fi
+check_prerequisites() {
+    local errors=0
+    
+    if ! command -v terraform >/dev/null 2>&1; then
+        log_error "Terraform is not installed or not in PATH"
+        errors=1
+    fi
 
-if ! command -v az >/dev/null 2>&1; then
-    log_error "Azure CLI is not installed or not in PATH"
-    exit 1
-fi
+    if ! command -v az >/dev/null 2>&1; then
+        log_error "Azure CLI is not installed or not in PATH"
+        errors=1
+    fi
+    
+    if ! command -v timeout >/dev/null 2>&1; then
+        log_error "timeout command is not available (install coreutils)"
+        errors=1
+    fi
 
-# Check Azure authentication
-if ! az account show >/dev/null 2>&1; then
-    log_error "Not authenticated with Azure CLI. Run 'az login' first."
-    exit 1
-fi
+    # Check Azure authentication (only if az is available)
+    if command -v az >/dev/null 2>&1; then
+        if ! az account show >/dev/null 2>&1; then
+            log_error "Not authenticated with Azure CLI. Run 'az login' first."
+            errors=1
+        fi
+    fi
+    
+    if [ $errors -eq 1 ]; then
+        exit 1
+    fi
+}
 
-# Run main function
+# Main execution
+main() {
+    local section="${1:-all}"
+    
+    # Handle help/usage
+    if [ "$section" = "-h" ] || [ "$section" = "--help" ] || [ "$section" = "help" ]; then
+        usage
+        exit 0
+    fi
+    
+    # Check prerequisites before running
+    check_prerequisites
+    
+    # Run the specified section
+    log_info "Running section: $section"
+    run_section "$section"
+}
+
+# Execute main function with all arguments
 main "$@"

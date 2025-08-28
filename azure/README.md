@@ -29,8 +29,17 @@ AKS + nginx Ingress + PostgreSQL + Storage + Let's Encrypt TLS
 
 ## Destroy
 ```bash
+# Complete destruction (auto-approve mode)
 ./destroy.sh
-# Manual cleanup if stuck namespaces:
+
+# Individual sections
+./destroy.sh terraform    # Only run terraform destroy with auto-approve
+./destroy.sh kubernetes   # Only clean up stuck namespaces  
+./destroy.sh verify       # Only verify destruction completion
+./destroy.sh help         # Show usage options
+
+# If terraform hangs, script automatically runs namespace cleanup
+# Manual cleanup if needed:
 export NS=gooddata-cn
 kubectl api-resources --verbs=list --namespaced -o name | xargs -n1 kubectl -n "$NS" get --ignore-not-found
 kubectl -n "$NS" patch <kind>/<name> -p '{"metadata":{"finalizers":[]}}' --type=merge
