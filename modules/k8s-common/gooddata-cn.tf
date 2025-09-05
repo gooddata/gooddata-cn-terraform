@@ -89,6 +89,18 @@ metadataApi:
 license:
   existingSecret: "${kubernetes_secret.gdcn_license.metadata[0].name}"
 
+# Optional S3-compatible endpoints (e.g., GCS S3/XML API)
+%{ if length(var.s3_endpoint_override) > 0 ~}
+quiver:
+  s3DatasourceFsStorage:
+    endpointOverride: "${var.s3_endpoint_override}"
+  s3DurableStorage:
+    endpointOverride: "${var.s3_endpoint_override}"
+exportController:
+  exportS3Storage:
+    endpointOverride: "${var.s3_endpoint_override}"
+%{ endif ~}
+
 ingress:
   lbProtocol: https
   annotations:
