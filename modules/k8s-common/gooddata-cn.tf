@@ -114,6 +114,7 @@ service:
     port: 5432
     username: "${var.db_username}"
     password: "${var.db_password}"
+    database: "${var.db_name}"
 
 # Container image cache configuration
 image:

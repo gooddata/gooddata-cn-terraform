@@ -24,6 +24,11 @@ variable "deployment_name" {
   description = "Name prefix for all Azure resources."
   type        = string
   default     = "gooddata-cn"
+
+  validation {
+    condition     = can(regex("^[a-z0-9]{1,18}$", var.deployment_name))
+    error_message = "The deployment_name must contain only lowercase letters and numbers, and be 1-18 characters long to allow space for 6-character random suffix."
+  }
 }
 
 variable "dockerhub_username" {
@@ -63,6 +68,12 @@ variable "aks_max_nodes" {
   default     = 10
 }
 
+variable "aks_enable_auto_scaling" {
+  description = "Enable AKS built-in cluster autoscaler for the default node pool"
+  type        = bool
+  default     = true
+}
+
 variable "aks_min_nodes" {
   description = "Minimum number of AKS worker nodes"
   type        = number
@@ -79,6 +90,12 @@ variable "postgresql_storage_mb" {
   description = "Azure Database for PostgreSQL storage in MB"
   type        = number
   default     = 32768
+}
+
+variable "postgresql_database_name" {
+  description = "Name of the PostgreSQL database for GoodData.CN metadata"
+  type        = string
+  default     = "gooddata"
 }
 
 variable "gdcn_license_key" {
@@ -104,13 +121,6 @@ variable "wildcard_dns_provider" {
   default     = "sslip.io"
 }
 
-variable "helm_cluster_autoscaler_version" {
-  description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
-  type        = string
-  default     = "9.50.1"
-}
-
-
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
@@ -132,12 +142,6 @@ variable "helm_pulsar_version" {
   description = "Version of the pulsar Helm chart to deploy. https://artifacthub.io/packages/helm/apache/pulsar"
   type        = string
   default     = "3.9.0"
-}
-
-variable "deploy_cluster_autoscaler" {
-  description = "Whether to deploy the cluster autoscaler for AKS"
-  type        = bool
-  default     = true
 }
 
 variable "helm_ingress_nginx_version" {

@@ -9,8 +9,9 @@ deployment_name = "gooddata-cn-poc"
 # AKS configuration
 aks_version     = "1.33"
 aks_node_vm_size = "Standard_D4ds_v6"
+aks_enable_auto_scaling = true   # Set to false to disable built-in autoscaler
 aks_max_nodes   = 10
-aks_min_nodes   = 3
+aks_min_nodes   = 3   # When autoscaling disabled, this becomes fixed node count
 
 # PostgreSQL configuration
 postgresql_sku_name   = "GP_Standard_D2ds_v5"
@@ -37,6 +38,3 @@ azure_additional_tags = {
   Environment = "dev"
   Owner       = "your-name"
 }
-
-# Kubernetes components
-deploy_cluster_autoscaler = true  # Set to false to disable cluster autoscaler

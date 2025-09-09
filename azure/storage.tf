@@ -14,21 +14,16 @@ resource "random_id" "storage_suffix" {
 }
 
 locals {
-  # Sanitize deployment name and append a random 6-character
-  # suffix for storage account name to make it globally unique
-  storage_account_name = substr(
-    replace(
-      "${replace(lower(var.deployment_name), "[^0-9a-z]", "")}${random_id.storage_suffix.hex}",
-      "-", ""
-    ),
-    0, 24
-  )
+  # Create globally unique storage account name with 6-character random suffix
+  # deployment_name is pre-validated to be lowercase alphanumeric and ≤18 chars
+  storage_account_name = "${var.deployment_name}${random_id.storage_suffix.hex}"
 
-  storage_containers = {
-    quiver_cache  = "quiver-cache"
-    datasource_fs = "quiver-datasource-fs"
-    exports       = "exports"
-  }
+  # List of storage containers needed for GoodData.CN
+  storage_containers = [
+    "quiver-cache",
+    "quiver-datasource-fs",
+    "exports"
+  ]
 }
 
 resource "azurerm_storage_account" "main" {
@@ -39,13 +34,13 @@ resource "azurerm_storage_account" "main" {
   account_replication_type = "LRS"
   account_kind             = "StorageV2"
 
-  # Security settings - temporarily enable public access for initial setup
-  public_network_access_enabled   = true
+  # Security settings - private access only via private endpoint
+  public_network_access_enabled   = false
   allow_nested_items_to_be_public = false
 
-  # Enable blob versioning
+  # Configure blob properties - no versioning needed for ephemeral data
   blob_properties {
-    versioning_enabled = true
+    versioning_enabled = false
     delete_retention_policy {
       days = 7
     }
@@ -62,7 +57,7 @@ resource "azurerm_storage_account" "main" {
 
 # Create storage containers (after private endpoint is configured)
 resource "azurerm_storage_container" "containers" {
-  for_each              = local.storage_containers
+  for_each              = toset(local.storage_containers)
   name                  = each.value
   storage_account_id    = azurerm_storage_account.main.id
   container_access_type = "private"

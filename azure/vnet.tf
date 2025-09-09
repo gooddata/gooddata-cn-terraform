@@ -53,31 +53,8 @@ resource "azurerm_network_security_group" "aks" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
 
-  # Allow HTTP traffic from internet
-  security_rule {
-    name                       = "allow-http"
-    priority                   = 1000
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  # Allow HTTPS traffic from internet
-  security_rule {
-    name                       = "allow-https"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "443"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
+  # No direct HTTP/HTTPS access rules needed
+  # Traffic flows: Internet → Azure LoadBalancer → nginx Ingress → Services
 
   tags = merge(
     { Project = var.deployment_name },

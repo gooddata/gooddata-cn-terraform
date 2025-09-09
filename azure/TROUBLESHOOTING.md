@@ -33,8 +33,9 @@ kubectl describe pod {pod-name} -n gooddata-cn
 
 **5. Autoscaler Issues**: 
 ```bash
-kubectl logs -n cluster-autoscaler deployment/cluster-autoscaler
-# Fix: Check RBAC permissions in aks-autoscaler-rbac.tf
+# AKS uses built-in managed autoscaler - check node pool configuration
+kubectl get nodes
+kubectl describe nodepool # or check Azure portal AKS node pool settings
 ```
 
 ## Recovery

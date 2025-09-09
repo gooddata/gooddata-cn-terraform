@@ -212,7 +212,7 @@ terraform_destroy() {
     
     # Attempt 2: Clean up stuck namespaces and retry
     log_warning "Terraform destroy timed out or failed. Cleaning up stuck resources..."
-    for namespace in gooddata-cn cluster-autoscaler ingress-nginx; do
+    for namespace in gooddata-cn ingress-nginx; do
         cleanup_stuck_namespace "$namespace"
     done
     

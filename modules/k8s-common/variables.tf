@@ -21,5 +21,10 @@ variable "ingress_ip" { type = string }
 variable "db_hostname" { type = string }
 variable "db_username" { type = string }
 variable "db_password" { type = string }
+variable "db_name" {
+  type        = string
+  default     = "gooddata"
+  description = "Name of the database for GoodData.CN metadata"
+}
 variable "wildcard_dns_provider" { type = string }
 variable "gdcn_replica_count" { type = number }

@@ -23,7 +23,7 @@ kubectl get organizations,secrets -n gooddata-cn -o yaml > backup.yaml
 
 **Clean Stuck Namespaces**:
 ```bash
-export NS=gooddata-cn  # or cluster-autoscaler, ingress-nginx
+export NS=gooddata-cn  # or ingress-nginx
 kubectl api-resources --verbs=list --namespaced -o name | xargs -n1 kubectl -n "$NS" get --ignore-not-found
 kubectl -n "$NS" patch <kind>/<name> -p '{"metadata":{"finalizers":[]}}' --type=merge
 ```

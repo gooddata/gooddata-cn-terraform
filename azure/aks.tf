@@ -31,9 +31,10 @@ resource "azurerm_kubernetes_cluster" "main" {
     name                 = "default"
     vm_size              = var.aks_node_vm_size
     vnet_subnet_id       = azurerm_subnet.aks.id
-    auto_scaling_enabled = true
-    min_count            = var.aks_min_nodes
-    max_count            = var.aks_max_nodes
+    auto_scaling_enabled = var.aks_enable_auto_scaling
+    min_count            = var.aks_enable_auto_scaling ? var.aks_min_nodes : null
+    max_count            = var.aks_enable_auto_scaling ? var.aks_max_nodes : null
+    node_count           = var.aks_enable_auto_scaling ? null : var.aks_min_nodes
     max_pods             = 110
     os_disk_size_gb      = 30
     type                 = "VirtualMachineScaleSets"

@@ -36,6 +36,7 @@ module "k8s_common" {
   db_hostname = azurerm_postgresql_flexible_server.main.fqdn
   db_username = local.db_username
   db_password = local.db_password
+  db_name     = var.postgresql_database_name
 
   depends_on = [
     azurerm_kubernetes_cluster.main,

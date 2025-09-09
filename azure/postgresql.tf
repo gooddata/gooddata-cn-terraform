@@ -84,7 +84,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
 
 # Create PostgreSQL database
 resource "azurerm_postgresql_flexible_server_database" "gooddata" {
-  name      = "gooddata"
+  name      = var.postgresql_database_name
   server_id = azurerm_postgresql_flexible_server.main.id
   collation = "en_US.utf8"
   charset   = "utf8"

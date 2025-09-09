@@ -68,6 +68,9 @@ controller:
       service.beta.kubernetes.io/azure-pip-name: "${var.deployment_name}-ingress-pip"
       service.beta.kubernetes.io/azure-pip-tags: "Project=${var.deployment_name}"
       service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: "4"
+      # Additional health check and protocol settings (matching AWS patterns)
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-protocol: "http"
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-port: "10254"
 EOF
   ]
 
