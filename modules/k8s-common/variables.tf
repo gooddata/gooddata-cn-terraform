@@ -28,3 +28,60 @@ variable "db_name" {
 }
 variable "wildcard_dns_provider" { type = string }
 variable "gdcn_replica_count" { type = number }
+
+# Organization variables
+variable "create_default_organization" {
+  type        = bool
+  default     = true
+  description = "Whether to create a default GoodData.CN organization"
+}
+
+variable "default_org_id" {
+  type        = string
+  default     = "demo"
+  description = "ID of the default organization"
+}
+
+variable "default_org_name" {
+  type        = string
+  default     = "demo-org"
+  description = "Kubernetes resource name for the default organization"
+}
+
+variable "default_org_display_name" {
+  type        = string
+  default     = "Demo Organization"
+  description = "Display name of the default organization"
+}
+
+# Azure Blob Storage variables for quiver cache
+variable "azure_storage_account_name" {
+  type        = string
+  default     = ""
+  description = "Azure Storage Account name for quiver cache (S3-compatible)"
+}
+
+variable "azure_storage_account_key" {
+  type        = string
+  default     = ""
+  description = "Azure Storage Account key for quiver cache"
+  sensitive   = true
+}
+
+variable "azure_storage_container_cache" {
+  type        = string
+  default     = "quiver-cache"
+  description = "Azure Blob Storage container name for quiver cache"
+}
+
+variable "azure_storage_endpoint" {
+  type        = string
+  default     = ""
+  description = "Azure Blob Storage endpoint URL"
+}
+
+variable "azure_region" {
+  type        = string
+  default     = ""
+  description = "Azure region for storage configuration"
+}

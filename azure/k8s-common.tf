@@ -38,6 +38,19 @@ module "k8s_common" {
   db_password = local.db_password
   db_name     = var.postgresql_database_name
 
+  # Organization configuration
+  create_default_organization = var.create_default_organization
+  default_org_id              = var.default_org_id
+  default_org_name            = "${var.default_org_id}-org"
+  default_org_display_name    = var.default_org_display_name
+
+  # Azure Blob Storage configuration for quiver cache
+  azure_storage_account_name    = azurerm_storage_account.main.name
+  azure_storage_account_key     = azurerm_storage_account.main.primary_access_key
+  azure_storage_container_cache = "quiver-cache"
+  azure_storage_endpoint        = "https://${azurerm_storage_account.main.name}.blob.core.windows.net"
+  azure_region                  = var.azure_location
+
   depends_on = [
     azurerm_kubernetes_cluster.main,
     module.k8s_azure,
@@ -54,4 +67,14 @@ output "auth_hostname" {
 output "gdcn_org_hostname" {
   description = "The hostname for GoodData.CN organization ingress"
   value       = module.k8s_common.gdcn_org_hostname
+}
+
+output "default_organization_id" {
+  description = "The ID of the default organization (if created)"
+  value       = module.k8s_common.default_organization_id
+}
+
+output "default_organization_hostname" {
+  description = "The hostname of the default organization (if created)"
+  value       = module.k8s_common.default_organization_hostname
 }

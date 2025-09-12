@@ -26,8 +26,8 @@ variable "deployment_name" {
   default     = "gooddata-cn"
 
   validation {
-    condition     = can(regex("^[a-z0-9]{1,18}$", var.deployment_name))
-    error_message = "The deployment_name must contain only lowercase letters and numbers, and be 1-18 characters long to allow space for 6-character random suffix."
+    condition     = can(regex("^[a-z0-9-]{1,50}$", var.deployment_name)) && length(replace(var.deployment_name, "/[^a-z0-9]/", "")) <= 18
+    error_message = "The deployment_name must contain only lowercase letters, numbers, and hyphens. After removing non-alphanumeric characters, it must be ≤18 characters to allow space for 6-character random suffix."
   }
 }
 
@@ -72,6 +72,35 @@ variable "aks_enable_auto_scaling" {
   description = "Enable AKS built-in cluster autoscaler for the default node pool"
   type        = bool
   default     = true
+}
+
+# GoodData.CN Organization Configuration
+variable "create_default_organization" {
+  description = "Whether to create a default GoodData.CN organization during deployment"
+  type        = bool
+  default     = true
+}
+
+variable "default_org_id" {
+  description = "ID of the default organization (used for API calls and realm names)"
+  type        = string
+  default     = "demo"
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.default_org_id)) && length(var.default_org_id) >= 2 && length(var.default_org_id) <= 20
+    error_message = "The default_org_id must be 2-20 characters, start and end with alphanumeric characters, and contain only lowercase letters, numbers, and hyphens."
+  }
+}
+
+variable "default_org_display_name" {
+  description = "Display name of the default organization"
+  type        = string
+  default     = "Demo Organization"
+
+  validation {
+    condition     = length(var.default_org_display_name) >= 1 && length(var.default_org_display_name) <= 100
+    error_message = "The default_org_display_name must be between 1 and 100 characters."
+  }
 }
 
 variable "aks_min_nodes" {
