@@ -53,8 +53,62 @@ resource "azurerm_network_security_group" "aks" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
 
-  # No direct HTTP/HTTPS access rules needed
-  # Traffic flows: Internet → Azure LoadBalancer → nginx Ingress → Services
+  # Allow Azure LoadBalancer to access NodePorts
+  # Traffic flow: Internet → Azure LoadBalancer → NodePorts → nginx Ingress → Services
+
+  # Allow LoadBalancer access to HTTP NodePort
+  security_rule {
+    name                       = "allow-lb-http-nodeport"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "30000-32767" # NodePort range
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+
+  # Allow LoadBalancer health checks  
+  security_rule {
+    name                       = "allow-lb-health-check"
+    priority                   = 101
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "10254" # nginx health check port
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+
+  # Allow VNet internal traffic to NodePorts (for internal communication)
+  security_rule {
+    name                       = "allow-vnet-nodeports"
+    priority                   = 102
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "30000-32767"
+    source_address_prefix      = "VirtualNetwork"
+    destination_address_prefix = "*"
+  }
+
+  # Allow Internet access to HTTP/HTTPS ports for Load Balancer traffic forwarding
+  # Note: Azure Load Balancer forwards Internet traffic directly to NodePort services
+  # The source appears as Internet, not AzureLoadBalancer for this traffic flow
+  security_rule {
+    name                       = "allow-internet-http-https"
+    priority                   = 103
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["80", "443"]
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
 
   tags = merge(
     { Project = var.deployment_name },

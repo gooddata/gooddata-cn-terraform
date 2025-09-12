@@ -4,7 +4,7 @@
 
 # If image caching is enabled, construct the registry URL. Otherwise, return the upstream one.
 locals {
-  upstream_registry_dockerio = "registry-1.docker.io"
+  upstream_registry_dockerio = "docker.io"
   registry_dockerio          = var.acr_cache_images ? "${azurerm_container_registry.main[0].login_server}/dockerio" : local.upstream_registry_dockerio
 
   upstream_registry_quayio = "quay.io"
@@ -101,7 +101,7 @@ locals {
 resource "azurerm_key_vault" "main" {
   count = var.acr_cache_images ? 1 : 0
 
-  name                = "${var.deployment_name}-kv-${random_id.acr_suffix[0].hex}"
+  name                = "gdcn-kv-${random_id.acr_suffix[0].hex}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
@@ -157,7 +157,7 @@ resource "azurerm_container_registry_credential_set" "dockerio" {
   }
 
   authentication_credentials {
-    username_secret_id = azurerm_key_vault_secret.dockerhub_username[0].id
-    password_secret_id = azurerm_key_vault_secret.dockerhub_token[0].id
+    username_secret_id = azurerm_key_vault_secret.dockerhub_username[0].versionless_id
+    password_secret_id = azurerm_key_vault_secret.dockerhub_token[0].versionless_id
   }
 }

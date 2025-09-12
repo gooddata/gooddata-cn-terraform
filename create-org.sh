@@ -126,7 +126,7 @@ if [ -z "${dex_response:-}" ]; then
   echo -e "\n\n>> ERROR: Failed to create first user after multiple attempts" >&2
   exit 1
 fi
-dex_auth_id=$(echo "$dex_response" | grep -oP '"authenticationId"\s*:\s*"\K[^"]+')
+dex_auth_id=$(echo "$dex_response" | sed -n 's/.*"authenticationId":"\([^"]*\)".*/\1/p')
 
 echo -e "\n\n>> Configuring first user in organization..."
 full=$(curl_json -X PATCH "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_ADMIN_USER}" \

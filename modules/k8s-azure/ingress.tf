@@ -71,6 +71,9 @@ controller:
       # Additional health check and protocol settings (matching AWS patterns)
       service.beta.kubernetes.io/azure-load-balancer-health-probe-protocol: "http"
       service.beta.kubernetes.io/azure-load-balancer-health-probe-port: "10254"
+      # Force both HTTP and HTTPS probes to use HTTP protocol
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-protocol-443: "http"
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-port-443: "10254"
 EOF
   ]
 

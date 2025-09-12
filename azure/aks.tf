@@ -58,10 +58,15 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   # Network configuration
   network_profile {
-    network_plugin    = "azure"
-    network_policy    = "azure"
-    dns_service_ip    = "10.2.0.10"
-    service_cidr      = "10.2.0.0/24"
+    network_plugin = "azure"
+    network_policy = "azure"
+    dns_service_ip = "10.2.0.10"
+    service_cidr   = "10.2.0.0/24"
+
+    # Use explicit outbound IP for predictable datasource connectivity
+    load_balancer_profile {
+      outbound_ip_address_ids = [azurerm_public_ip.aks_outbound.id]
+    }
     load_balancer_sku = "standard"
   }
 

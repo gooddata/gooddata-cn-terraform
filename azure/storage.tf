@@ -15,8 +15,8 @@ resource "random_id" "storage_suffix" {
 
 locals {
   # Create globally unique storage account name with 6-character random suffix
-  # deployment_name is pre-validated to be lowercase alphanumeric and ≤18 chars
-  storage_account_name = "${var.deployment_name}${random_id.storage_suffix.hex}"
+  # Sanitize deployment_name by removing non-alphanumeric characters for storage account naming
+  storage_account_name = "${replace(var.deployment_name, "/[^a-z0-9]/", "")}${random_id.storage_suffix.hex}"
 
   # List of storage containers needed for GoodData.CN
   storage_containers = [

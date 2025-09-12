@@ -66,6 +66,23 @@ resource "kubernetes_secret" "gdcn_license" {
   }
 }
 
+# Azure Storage credentials for quiver S3 durable storage
+resource "kubernetes_secret" "gdcn_azure_storage" {
+  count = var.azure_storage_account_name != "" ? 1 : 0
+
+  metadata {
+    name      = "gooddata-cn-secrets"
+    namespace = kubernetes_namespace.gdcn.metadata[0].name
+  }
+
+  data = {
+    s3AccessKey = var.azure_storage_account_name
+    s3SecretKey = var.azure_storage_account_key
+  }
+
+  type = "Opaque"
+}
+
 # Install GoodData.CN
 resource "helm_release" "gooddata_cn" {
   name       = "gooddata-cn"
@@ -236,10 +253,10 @@ metadataApi:
   resources:
     limits:
       cpu: 2000m
-      memory: 3600Mi
+      memory: 2600Mi
     requests:
       cpu: 750m
-      memory: 3600Mi
+      memory: 1600Mi
 organizationController:
   resources:
     limits:
@@ -260,7 +277,18 @@ pdfStaplerService:
 quiver:
   concurrentPutRequests: 16
   s3DurableStorage:
-    durableS3WritesInProgress: 16
+    durableS3WritesInProgress: 16%{if var.azure_storage_account_name != ""}
+    # Azure Blob Storage configuration (S3-compatible)
+    s3Bucket: "${var.azure_storage_container_cache}"
+    s3BucketPrefix: "cache/"
+    s3Region: "${var.azure_region}"
+    s3AccessKey: "${var.azure_storage_account_name}"
+    s3SecretKey: "${var.azure_storage_account_key}"
+    s3Endpoint: "${var.azure_storage_endpoint}"
+    s3ForcePathStyle: true
+    s3UseSSL: true
+    s3VerifySSL: false
+    authType: "aws_tokens"%{endif}
   resources:
     cache:
       limits:
@@ -299,10 +327,10 @@ redis-ha:
     resources:
       limits:
         cpu: 1500m
-        memory: 3800Mi
+        memory: 2800Mi
       requests:
         cpu: 700m
-        memory: 3800Mi
+        memory: 1800Mi
   sentinel:
     resources:
       limits:
@@ -319,7 +347,7 @@ resultCache:
       memory: 3200Mi
     requests:
       cpu: 200m
-      memory: 3200Mi
+      memory: 2200Mi
   pulsar:
     invalidation:
       enabled: true
@@ -341,7 +369,7 @@ sqlExecutor:
       memory: 2800Mi
     requests:
       cpu: 100m
-      memory: 2800Mi
+      memory: 1800Mi
 tabularExporter:
   resources:
     limits:
