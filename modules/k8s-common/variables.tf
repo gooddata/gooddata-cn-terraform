@@ -11,10 +11,9 @@ variable "helm_metrics_server_version" { type = string }
 variable "helm_gdcn_version" { type = string }
 variable "helm_pulsar_version" { type = string }
 
-variable "deploy_metrics_server" {
-  type        = bool
-  default     = true
-  description = "Whether to deploy metrics-server (set to false for Azure)"
+variable "gdcn_replica_count" {
+  description = "Number of replicas of GoodData.CN microserices to run"
+  type        = number
 }
 
 variable "ingress_ip" { type = string }

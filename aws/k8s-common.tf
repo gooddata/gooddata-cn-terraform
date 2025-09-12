@@ -15,6 +15,7 @@ module "k8s_common" {
   gdcn_license_key      = var.gdcn_license_key
   letsencrypt_email     = var.letsencrypt_email
   wildcard_dns_provider = var.wildcard_dns_provider
+  gdcn_replica_count    = var.gdcn_replica_count
 
   registry_dockerio = local.registry_dockerio
   registry_quayio   = local.registry_quayio
