@@ -19,6 +19,10 @@ variable "deployment_name" {
   description = "Name prefix for all AWS resources."
   type        = string
   default     = "gooddata-cn"
+  validation {
+    condition = can(regex("^[a-z](?:[a-z0-9-]*[a-z0-9])?$", var.deployment_name))
+    error_message = "deployment_name must be lowercase, start with a letter, contain only letters, numbers, and hyphens, and must not end with a hyphen."
+  }
 }
 
 variable "dockerhub_username" {

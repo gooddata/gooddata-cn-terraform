@@ -40,7 +40,7 @@ module "k8s_common" {
     module.k8s_aws,
     aws_ecr_pull_through_cache_rule.dockerio,
     aws_ecr_pull_through_cache_rule.quayio,
-    aws_ecr_pull_through_cache_rule.k8sio
+    aws_ecr_pull_through_cache_rule.k8sio,
   ]
 }
 

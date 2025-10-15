@@ -18,7 +18,7 @@ locals {
   # suffix for bucket names to make them globally unique
   bucket_prefix = format(
     "%s-%s",
-    replace(lower(var.deployment_name), "/[^0-9a-z-]/", "-"),
+    var.deployment_name,
     random_id.s3_suffix.hex
   )
 
@@ -67,17 +67,11 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "buckets" {
 
 # IAM policy granting GoodData.CN access to the three S3 buckets
 locals {
-  gdcn_s3_bucket_arns = [
-    aws_s3_bucket.buckets["quiver_cache"].arn,
-    aws_s3_bucket.buckets["datasource_fs"].arn,
-    aws_s3_bucket.buckets["exports"].arn,
-  ]
+  # Bucket ARNs derived from the S3 bucket map
+  gdcn_s3_bucket_arns = [for k in keys(local.s3_buckets) : aws_s3_bucket.buckets[k].arn]
 
-  gdcn_s3_object_arns = [
-    format("%s/*", aws_s3_bucket.buckets["quiver_cache"].arn),
-    format("%s/*", aws_s3_bucket.buckets["datasource_fs"].arn),
-    format("%s/*", aws_s3_bucket.buckets["exports"].arn),
-  ]
+  # Object ARNs (/* appended) for object-level permissions
+  gdcn_s3_object_arns = formatlist("%s/*", local.gdcn_s3_bucket_arns)
 }
 
 resource "aws_iam_policy" "gdcn_s3_access" {

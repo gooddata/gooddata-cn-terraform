@@ -49,7 +49,7 @@ Once everything is deployed, the `create-org.sh` script can be run to set up the
     ```terraform
     aws_profile_name       = "my-profile"      # as configured in ~/.aws/config
     aws_region             = "us-east-2"
-    deployment_name        = "gooddata-cn-poc" # can be any lowercase string shorter than 20 characters
+    deployment_name        = "gooddata-cn-poc" # lowercase letters, numbers, and hyphens (start with a letter)
     helm_gdcn_version      = "<version>"       # from previous version (like 3.39.0)
     gdcn_license_key       = "key/asdf=="      # provided by your GoodData contact
     letsencrypt_email      = "me@example.com"  # can be any email address
