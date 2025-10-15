@@ -8,7 +8,7 @@ data "aws_eks_cluster_auth" "cluster" {
 
 # Allow nodes to create repositories (the first time an image is pulled through the cache)
 resource "aws_iam_policy" "ecr_pull_through_cache_min" {
-  name        = "ECRPullThroughCacheMin"
+  name        = "${var.deployment_name}-ECRPullThroughCacheMin"
   description = "Allow worker nodes to create ECR repositories and import upstream images via pull-through cache."
 
   policy = jsonencode({
@@ -57,6 +57,7 @@ module "eks" {
         AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
         AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
         ECRPullThroughCacheMin             = aws_iam_policy.ecr_pull_through_cache_min.arn
+        GoodDataCNS3Access                 = aws_iam_policy.gdcn_s3_access.arn
       }
 
       min_size = 1

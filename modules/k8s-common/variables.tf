@@ -1,6 +1,10 @@
 variable "deployment_name" { type = string }
 variable "gdcn_license_key" { type = string }
 variable "letsencrypt_email" { type = string }
+variable "aws_region" { type = string }
+variable "s3_quiver_cache_bucket_id" { type = string }
+variable "s3_datasource_fs_bucket_id" { type = string }
+variable "s3_exports_bucket_id" { type = string }
 
 variable "registry_dockerio" { type = string }
 variable "registry_quayio" { type = string }

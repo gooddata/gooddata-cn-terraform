@@ -18,7 +18,7 @@ locals {
   # suffix for bucket names to make them globally unique
   bucket_prefix = format(
     "%s-%s",
-    replace(lower(var.deployment_name), "[^0-9a-z-]", "-"),
+    var.deployment_name,
     random_id.s3_suffix.hex
   )
 
@@ -63,4 +63,46 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "buckets" {
       sse_algorithm = "AES256"
     }
   }
+}
+
+# IAM policy granting GoodData.CN access to the three S3 buckets
+locals {
+  # Bucket ARNs derived from the S3 bucket map
+  gdcn_s3_bucket_arns = [for k in keys(local.s3_buckets) : aws_s3_bucket.buckets[k].arn]
+
+  # Object ARNs (/* appended) for object-level permissions
+  gdcn_s3_object_arns = formatlist("%s/*", local.gdcn_s3_bucket_arns)
+}
+
+resource "aws_iam_policy" "gdcn_s3_access" {
+  name        = "${var.deployment_name}-GoodDataCNS3Access"
+  description = "Allow GoodData.CN workloads to use S3 buckets for quiver cache, datasource FS, and exports."
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "AllowBucketListingAndLocation",
+        Effect = "Allow",
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation",
+          "s3:ListBucketMultipartUploads"
+        ],
+        Resource = local.gdcn_s3_bucket_arns
+      },
+      {
+        Sid    = "AllowObjectReadWriteAndMultipart",
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:AbortMultipartUpload",
+          "s3:ListMultipartUploadParts"
+        ],
+        Resource = local.gdcn_s3_object_arns
+      }
+    ]
+  })
 }
