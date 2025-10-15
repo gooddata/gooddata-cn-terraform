@@ -56,7 +56,7 @@ variable "eks_version" {
 variable "eks_node_types" {
   description = "List of EC2 instance types for EKS worker nodes"
   type        = list(string)
-  default     = ["m6i.large", "m6i.xlarge"]
+  default     = ["m6i.xlarge"]
 }
 
 variable "eks_max_nodes" {
@@ -91,7 +91,7 @@ variable "wildcard_dns_provider" {
 variable "gdcn_replica_count" {
   description = "Replica count for GoodData.CN components (passed to the chart)."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "helm_cluster_autoscaler_version" {
