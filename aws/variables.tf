@@ -20,7 +20,7 @@ variable "deployment_name" {
   type        = string
   default     = "gooddata-cn"
   validation {
-    condition = can(regex("^[a-z](?:[a-z0-9-]*[a-z0-9])?$", var.deployment_name))
+    condition     = can(regex("^[a-z](?:[a-z0-9-]*[a-z0-9])?$", var.deployment_name))
     error_message = "deployment_name must be lowercase, start with a letter, contain only letters, numbers, and hyphens, and must not end with a hyphen."
   }
 }
@@ -93,7 +93,7 @@ variable "wildcard_dns_provider" {
 }
 
 variable "gdcn_replica_count" {
-  description = "Replica count for GoodData.CN components (passed to the chart)."
+  description = "Replica count for GoodData.CN components (passed to the chart). Default is 2 for high availability."
   type        = number
   default     = 2
 }

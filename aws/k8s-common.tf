@@ -15,6 +15,7 @@ module "k8s_common" {
   gdcn_license_key           = var.gdcn_license_key
   letsencrypt_email          = var.letsencrypt_email
   wildcard_dns_provider      = var.wildcard_dns_provider
+  cloud                      = "aws"
   gdcn_replica_count         = var.gdcn_replica_count
   aws_region                 = var.aws_region
   s3_quiver_cache_bucket_id  = aws_s3_bucket.buckets["quiver_cache"].id
@@ -25,10 +26,9 @@ module "k8s_common" {
   registry_quayio   = local.registry_quayio
   registry_k8sio    = local.registry_k8sio
 
-  helm_cert_manager_version   = var.helm_cert_manager_version
-  helm_metrics_server_version = var.helm_metrics_server_version
-  helm_gdcn_version           = var.helm_gdcn_version
-  helm_pulsar_version         = var.helm_pulsar_version
+  helm_cert_manager_version = var.helm_cert_manager_version
+  helm_gdcn_version         = var.helm_gdcn_version
+  helm_pulsar_version       = var.helm_pulsar_version
 
   ingress_ip  = aws_eip.lb[0].public_ip
   db_hostname = module.rds_postgresql.db_instance_address

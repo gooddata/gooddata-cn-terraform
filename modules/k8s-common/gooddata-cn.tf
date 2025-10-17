@@ -9,7 +9,7 @@ locals {
 
 resource "kubernetes_namespace" "gdcn" {
   metadata {
-    name = "gooddata-cn"
+    name = var.gdcn_namespace
   }
 }
 
@@ -86,6 +86,10 @@ deployPostgresHA: false
 # Enable Quiver filesystem data source (enables uploading CSVs)
 deployQuiverDatasourceFs: true
 
+# Enable new export builder
+enableExportBuilderVisualExport: true
+deployVisualExporter: false
+
 # Use the created encryption secret
 metadataApi:
   encryptor:
@@ -95,7 +99,8 @@ metadataApi:
 license:
   existingSecret: "${kubernetes_secret.gdcn_license.metadata[0].name}"
 
-# Configure export controller to use S3 for exports
+# Configure export controller to use object storage for exports
+%{if var.cloud == "aws"~}
 exportController:
   fileStorageBaseUrl: s3://s3.${var.aws_region}.amazonaws.com/${var.s3_exports_bucket_id}
 
@@ -117,6 +122,51 @@ quiver:
   s3DatasourceFsStorage:
     s3Region: "${var.aws_region}"
     s3Bucket: "${var.s3_datasource_fs_bucket_id}"
+%{endif~}
+%{if var.cloud == "azure"~}
+serviceAccount:
+  name: ${var.gdcn_service_account_name}
+  annotations:
+    azure.workload.identity/use: "true"
+    azure.workload.identity/client-id: "${var.azure_uami_client_id}"
+
+exportController:
+  storageType: "abs"
+  exportABSStorage:
+    absAccountName: "${var.azure_storage_account_name}"
+    absContainer: "${var.azure_exports_container}"
+    absClientId: "${var.azure_uami_client_id}"
+
+  # Add Azure Workload Identity label
+  podLabels:
+    azure.workload.identity/use: "true"
+
+quiver:
+  durableStorageType: "ABS"
+  absDurableStorage:
+    absAccountName: "${var.azure_storage_account_name}"
+    absContainer: "${var.azure_quiver_container}"
+    authType: "azure_default"
+    absClientId: "${var.azure_uami_client_id}"
+  datasourceFs:
+    maxFileSize: 209715200
+    maxFileSizeTotal: 1073741824
+    storageType: "ABS"
+  absDatasourceFsStorage:
+    absAccountName: "${var.azure_storage_account_name}"
+    absContainer: "${var.azure_datasource_fs_container}"
+    authType: "azure_default"
+    absClientId: "${var.azure_uami_client_id}"
+
+  # Add Azure Workload Identity label
+  podLabels:
+    azure.workload.identity/use: "true"
+
+organizationController:
+  # Add Azure Workload Identity label
+  podLabels:
+    azure.workload.identity/use: "true"
+%{endif~}
 
 # Configure ingress to use HTTPS and Let's Encrypt
 ingress:
