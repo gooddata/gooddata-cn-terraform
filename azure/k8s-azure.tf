@@ -20,7 +20,9 @@ module "k8s_azure" {
 
   depends_on = [
     azurerm_kubernetes_cluster.main,
-    azurerm_container_registry_cache_rule.k8sio
+    azurerm_role_assignment.aks_acr_pull,
+    azurerm_container_registry_cache_rule.k8sio,
+    azurerm_key_vault_access_policy.acr_credential_set
   ]
 }
 

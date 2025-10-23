@@ -161,3 +161,16 @@ resource "azurerm_container_registry_credential_set" "dockerio" {
     password_secret_id = azurerm_key_vault_secret.dockerhub_token[0].versionless_id
   }
 }
+
+# Grant ACR credential set managed identity access to Key Vault secrets
+resource "azurerm_key_vault_access_policy" "acr_credential_set" {
+  count = var.acr_cache_images ? 1 : 0
+
+  key_vault_id = azurerm_key_vault.main[0].id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = azurerm_container_registry_credential_set.dockerio[0].identity[0].principal_id
+
+  secret_permissions = [
+    "Get"
+  ]
+}

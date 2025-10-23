@@ -53,9 +53,13 @@ module "k8s_common" {
 
   depends_on = [
     azurerm_kubernetes_cluster.main,
+    azurerm_postgresql_flexible_server.main,
+    azurerm_storage_account.main,
+    azurerm_role_assignment.aks_acr_pull,
     module.k8s_azure,
     azurerm_container_registry_cache_rule.dockerio,
-    azurerm_container_registry_cache_rule.quayio
+    azurerm_container_registry_cache_rule.quayio,
+    azurerm_key_vault_access_policy.acr_credential_set
   ]
 }
 

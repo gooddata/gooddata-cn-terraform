@@ -19,7 +19,7 @@ postgresql_storage_mb = 32768
 
 # GoodData.CN configuration
 gdcn_license_key = "your-license-key-here"
-helm_gdcn_version = "3.42.0"
+helm_gdcn_version = "3.47.0"
 gdcn_replica_count = 1
 
 # DNS configuration

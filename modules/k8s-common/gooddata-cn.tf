@@ -68,11 +68,22 @@ resource "kubernetes_secret" "gdcn_license" {
 
 # Azure Storage credentials for quiver S3 durable storage
 resource "kubernetes_secret" "gdcn_azure_storage" {
-  count = var.azure_storage_account_name != "" ? 1 : 0
-
+  # Count removed: Azure storage is always present in this deployment
+  # The conditional was causing "count depends on resource attributes" error
+  
   metadata {
     name      = "gooddata-cn-secrets"
     namespace = kubernetes_namespace.gdcn.metadata[0].name
+    
+    # Add Helm ownership labels/annotations to prevent conflicts
+    labels = {
+      "app.kubernetes.io/managed-by" = "Helm"
+    }
+    
+    annotations = {
+      "meta.helm.sh/release-name"      = "gooddata-cn"
+      "meta.helm.sh/release-namespace" = "gooddata-cn"
+    }
   }
 
   data = {
