@@ -1,0 +1,15 @@
+# AWS-specific overrides
+
+exportController:
+  fileStorageBaseUrl: s3://s3.${aws_region}.amazonaws.com/${s3_exports_bucket_id}
+
+quiver:
+  durableStorageType: "S3"
+  s3DurableStorage:
+    s3Region: "${aws_region}"
+    s3Bucket: "${s3_quiver_cache_bucket_id}"
+  datasourceFs:
+    storageType: "S3"
+  s3DatasourceFsStorage:
+    s3Region: "${aws_region}"
+    s3Bucket: "${s3_datasource_fs_bucket_id}"

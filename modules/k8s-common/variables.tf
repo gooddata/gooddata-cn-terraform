@@ -15,16 +15,19 @@ variable "db_password" { type = string }
 variable "wildcard_dns_provider" { type = string }
 variable "cloud" { type = string }
 
+variable "use_image_cache" {
+  type        = bool
+  default     = false
+}
+
 variable "gdcn_namespace" {
   type        = string
   default     = "gooddata-cn"
-  description = "The Kubernetes namespace for GoodData.CN"
 }
 
 variable "gdcn_service_account_name" {
   type        = string
   default     = "gooddata-cn"
-  description = "The ServiceAccount name for GoodData.CN workload identity"
 }
 
 variable "aws_region" {

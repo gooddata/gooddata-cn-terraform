@@ -26,6 +26,9 @@ module "k8s_common" {
   registry_quayio   = local.registry_quayio
   registry_k8sio    = local.registry_k8sio
 
+  # Apply image cache overrides only when ECR cache is enabled
+  use_image_cache = var.ecr_cache_images
+
   helm_cert_manager_version = var.helm_cert_manager_version
   helm_gdcn_version         = var.helm_gdcn_version
   helm_pulsar_version       = var.helm_pulsar_version

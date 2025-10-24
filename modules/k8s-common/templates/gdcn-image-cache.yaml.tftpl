@@ -1,0 +1,18 @@
+# Image cache overrides (apply only when ACR/ECR cache is enabled)
+
+# Configure all GoodData microservices to use the container image cache
+image:
+  repositoryPrefix: ${registry_dockerio}/gooddata
+
+# Bypass insecure image checks when using the cache
+global:
+  imageRegistry: ${registry_dockerio}
+  security:
+    allowInsecureImages: true
+
+# Configure Redis HA images to use the cache
+redis-ha:
+  image:
+    repository: ${registry_dockerio}/library/redis
+  exporter:
+    image: ${registry_quayio}/oliver006/redis_exporter

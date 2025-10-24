@@ -1,0 +1,300 @@
+# Apply GoodData.CN "tiny" size profile
+
+afmExecApi:
+  jvmOptions: -Xmx880M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1400Mi
+    requests:
+      cpu: 200m
+      memory: 1400Mi
+
+analyticalDesigner:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+
+apiDocs:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+
+apiGateway:
+  jvmOptions: -Xmx225M -XX:MaxMetaspaceSize=100M -XX:MaxDirectMemorySize=512M
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 1Gi
+
+authService:
+  jvmOptions: -Xmx220M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
+  resources:
+    limits:
+      cpu: 500m
+      memory: 716Mi
+    requests:
+      cpu: 100m
+      memory: 716Mi
+
+calcique:
+  jvmOptions: -Xmx850M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=650M
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2200Mi
+    requests:
+      cpu: 200m
+      memory: 2200Mi
+
+dashboards:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+
+exportController:
+  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=192M -XX:MaxDirectMemorySize=128M
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 100m
+      memory: 700Mi
+
+homeUi:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+
+ldmModeler:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 60Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+
+measureEditor:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+
+metadataApi:
+  jvmOptions: -Xmx2500M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:ActiveProcessorCount=6
+    -Dkotlinx.coroutines.io.parallelism=16
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 3600Mi
+    requests:
+      cpu: 750m
+      memory: 3600Mi
+
+organizationController:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 170Mi
+
+pdfStaplerService:
+  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=128M -XX:MaxDirectMemorySize=32M
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1500Mi
+    requests:
+      cpu: 100m
+      memory: 620Mi
+
+quiver:
+  concurrentPutRequests: 16
+  s3DurableStorage:
+    durableS3WritesInProgress: 16
+  resources:
+    cache:
+      limits:
+        cpu: 750m
+        memory: 1456Mi
+      requests:
+        cpu: 150m
+        memory: 1456Mi
+    xtab:
+      limits:
+        cpu: 1000m
+        memory: 700Mi
+      requests:
+        cpu: 250m
+        memory: 700Mi
+
+redis-ha:
+  configmapTest:
+    resources:
+      limits:
+        cpu: 50m
+        memory: 40Mi
+      requests:
+        cpu: 20m
+        memory: 40Mi
+  exporter:
+    resources:
+      limits:
+        cpu: 150m
+        memory: 20Mi
+      requests:
+        cpu: 20m
+        memory: 20Mi
+  redis:
+    config:
+      maxmemory: 2900m
+    resources:
+      limits:
+        cpu: 1500m
+        memory: 3800Mi
+      requests:
+        cpu: 700m
+        memory: 3800Mi
+  sentinel:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 35Mi
+      requests:
+        cpu: 50m
+        memory: 35Mi
+
+resultCache:
+  jvmOptions: -Xmx2000M -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M
+  resources:
+    limits:
+      cpu: 700m
+      memory: 3200Mi
+    requests:
+      cpu: 200m
+      memory: 3200Mi
+  pulsar:
+    invalidation:
+      enabled: true
+
+scanModel:
+  jvmOptions: -Xmx220M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
+  resources:
+    limits:
+      cpu: 500m
+      memory: 600Mi
+    requests:
+      cpu: 100m
+      memory: 600Mi
+
+sqlExecutor:
+  jvmOptions: -Xmx1800M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=256M
+    -XX:ActiveProcessorCount=6
+  resources:
+    limits:
+      cpu: 500m
+      memory: 2800Mi
+    requests:
+      cpu: 100m
+      memory: 2800Mi
+
+tabularExporter:
+  resources:
+    limits:
+      cpu: 400m
+      memory: 750Mi
+    requests:
+      cpu: 100m
+      memory: 750Mi
+
+visualExporterChromium:
+  resources:
+    limits:
+      cpu: 1200m
+      memory: 3Gi
+    requests:
+      cpu: 200m
+      memory: 3Gi
+
+visualExporterProxy:
+  resources:
+    limits:
+      cpu: 300m
+      memory: 100Mi
+    requests:
+      cpu: 100m
+      memory: 50Mi
+
+visualExporterService:
+  extraEnvVars:
+    - name: SERVER_TOMCAT_THREADS_MAX
+      value: "2"
+    - name: SERVER_TOMCAT_ACCEPTCOUNT
+      value: "500"
+  jvmOptions: -Xmx432M -XX:MaxMetaspaceSize=192M -XX:MaxDirectMemorySize=32M
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1280Mi
+    requests:
+      cpu: 500m
+      memory: 640Mi
+
+webComponents:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+
+exportBuilder:
+  # These settings must be aligned with resource.limits.memory value
+  # The minimum memory limit in MeBiBytes is (codecachesize+Xmx+metaspace+175)*1.024
+  jvmOptions: -XX:ReservedCodeCacheSize=60M -Xmx1500M -XX:MaxMetaspaceSize=210M -XX:MaxDirectMemorySize=128M
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2000Mi
+    requests:
+      cpu: 200m
+      memory: 550Mi
+
+apiGw:
+  resources:
+    limits:
+      cpu: 1400m
+      memory: 1000Mi
+    requests:
+      cpu: 280m
+      memory: 400Mi
+  # -- Custom JVM options
+  # These settings must be aligned with resource.limits.memory value
+  jvmOptions: "-Xms280m -Xmx800m -XX:ActiveProcessorCount=2"
