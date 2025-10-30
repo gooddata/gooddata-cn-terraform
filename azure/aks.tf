@@ -45,7 +45,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     max_count            = var.aks_enable_auto_scaling ? var.aks_max_nodes : null
     node_count           = var.aks_enable_auto_scaling ? null : var.aks_min_nodes
     max_pods             = 110
-    os_disk_size_gb      = 30
+    os_disk_size_gb      = 100
     type                 = "VirtualMachineScaleSets"
 
     upgrade_settings {
@@ -96,7 +96,12 @@ resource "azurerm_kubernetes_cluster" "main" {
   )
 
   depends_on = [
-    azurerm_subnet.aks
+    azurerm_subnet.aks,
+    azurerm_container_registry.main,
+    azurerm_container_registry_cache_rule.dockerio,
+    azurerm_container_registry_cache_rule.quayio,
+    azurerm_container_registry_cache_rule.k8sio,
+    azurerm_container_registry_credential_set.dockerio
   ]
 }
 

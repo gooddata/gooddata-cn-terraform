@@ -11,6 +11,8 @@ resource "kubernetes_namespace" "gdcn" {
   metadata {
     name = var.gdcn_namespace
   }
+
+  depends_on = [helm_release.cert-manager]
 }
 
 # Generate an AES‑256‑GCM keyset with Tinkey and capture it as base64

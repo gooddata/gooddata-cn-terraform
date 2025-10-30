@@ -91,23 +91,21 @@ resource "azurerm_key_vault" "main" {
   tenant_id           = data.azurerm_client_config.current.tenant_id
   sku_name            = "standard"
 
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azurerm_client_config.current.object_id
-
-    key_permissions = [
-      "Get", "List", "Create", "Delete", "Update", "Purge", "Recover"
-    ]
-
-    secret_permissions = [
-      "Get", "List", "Set", "Delete", "Purge", "Recover"
-    ]
-  }
+  rbac_authorization_enabled = true
 
   tags = merge(
     { Project = var.deployment_name },
     var.azure_additional_tags
   )
+}
+
+# Grant Terraform caller permissions to manage secrets in the Key Vault (RBAC)
+resource "azurerm_role_assignment" "kv_secrets_officer" {
+  count = var.acr_cache_images ? 1 : 0
+
+  scope                = azurerm_key_vault.main[0].id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
 }
 
 # Store Docker Hub username
@@ -117,6 +115,10 @@ resource "azurerm_key_vault_secret" "dockerhub_username" {
   name         = "dockerhub-username"
   value        = var.dockerhub_username
   key_vault_id = azurerm_key_vault.main[0].id
+
+  depends_on = [
+    azurerm_role_assignment.kv_secrets_officer
+  ]
 }
 
 # Store Docker Hub access token
@@ -126,6 +128,10 @@ resource "azurerm_key_vault_secret" "dockerhub_token" {
   name         = "dockerhub-token"
   value        = var.dockerhub_access_token
   key_vault_id = azurerm_key_vault.main[0].id
+
+  depends_on = [
+    azurerm_role_assignment.kv_secrets_officer
+  ]
 }
 
 # Create credential set for Docker Hub
@@ -146,17 +152,14 @@ resource "azurerm_container_registry_credential_set" "dockerio" {
   }
 }
 
-# Grant ACR credential set access to Key Vault secrets
-resource "azurerm_key_vault_access_policy" "acr_credential_set" {
+# Grant ACR credential set's managed identity read access to secrets (RBAC)
+resource "azurerm_role_assignment" "acr_credential_set_secrets_user" {
   count = var.acr_cache_images ? 1 : 0
 
-  key_vault_id = azurerm_key_vault.main[0].id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_container_registry_credential_set.dockerio[0].identity[0].principal_id
-
-  secret_permissions = [
-    "Get"
-  ]
+  scope                            = azurerm_key_vault.main[0].id
+  role_definition_name             = "Key Vault Secrets User"
+  principal_id                     = azurerm_container_registry_credential_set.dockerio[0].identity[0].principal_id
+  skip_service_principal_aad_check = true
 
   depends_on = [
     azurerm_container_registry_credential_set.dockerio

@@ -65,6 +65,7 @@ controller:
       service.beta.kubernetes.io/azure-load-balancer-resource-group: "${var.resource_group_name}"
       service.beta.kubernetes.io/azure-pip-name: "${var.ingress_public_ip_name}"
       service.beta.kubernetes.io/azure-pip-tags: "Project=${var.deployment_name}"
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: "/healthz"
 EOF
   ]
 
