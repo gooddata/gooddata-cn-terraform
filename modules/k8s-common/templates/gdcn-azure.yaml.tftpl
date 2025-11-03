@@ -7,6 +7,7 @@ serviceAccount:
     azure.workload.identity/client-id: "${azure_uami_client_id}"
 
 exportController:
+  useNewExportFlow: true
   storageType: "abs"
   exportABSStorage:
     absAccountName: "${azure_storage_account_name}"

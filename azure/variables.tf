@@ -26,7 +26,7 @@ variable "deployment_name" {
   default     = "gooddata-cn"
 
   validation {
-    condition     = can(regex("^[a-z0-9-]{1,50}$", var.deployment_name)) && length(replace(var.deployment_name, "/[^a-z0-9]/", "")) <= 18
+    condition     = can(regex("^[a-z0-9-]{1,50}$", var.deployment_name)) && length(join("", regexall("[0-9a-z]", lower(var.deployment_name)))) <= 18
     error_message = "The deployment_name must contain only lowercase letters, numbers, and hyphens. After removing non-alphanumeric characters, it must be ≤18 characters to allow space for 6-character random suffix."
   }
 }

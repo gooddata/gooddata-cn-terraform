@@ -16,18 +16,18 @@ variable "wildcard_dns_provider" { type = string }
 variable "cloud" { type = string }
 
 variable "use_image_cache" {
-  type        = bool
-  default     = false
+  type    = bool
+  default = false
 }
 
 variable "gdcn_namespace" {
-  type        = string
-  default     = "gooddata-cn"
+  type    = string
+  default = "gooddata-cn"
 }
 
 variable "gdcn_service_account_name" {
-  type        = string
-  default     = "gooddata-cn"
+  type    = string
+  default = "gooddata-cn"
 }
 
 variable "aws_region" {

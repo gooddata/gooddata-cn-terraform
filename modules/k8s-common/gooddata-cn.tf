@@ -78,16 +78,16 @@ resource "helm_release" "gooddata_cn" {
 
   values = compact([
     templatefile("${path.module}/templates/gdcn-base.yaml.tftpl", {
-      gdcn_replica_count      = var.gdcn_replica_count
-      encryption_secret_name  = kubernetes_secret.gdcn_encryption.metadata[0].name
-      license_secret_name     = kubernetes_secret.gdcn_license.metadata[0].name
-      gdcn_org_hostname       = local.gdcn_org_hostname
-      auth_hostname           = local.auth_hostname
-      db_hostname             = var.db_hostname
-      db_username             = var.db_username
-      db_password             = var.db_password
-      registry_dockerio       = var.registry_dockerio
-      registry_quayio         = var.registry_quayio
+      gdcn_replica_count     = var.gdcn_replica_count
+      encryption_secret_name = kubernetes_secret.gdcn_encryption.metadata[0].name
+      license_secret_name    = kubernetes_secret.gdcn_license.metadata[0].name
+      gdcn_org_hostname      = local.gdcn_org_hostname
+      auth_hostname          = local.auth_hostname
+      db_hostname            = var.db_hostname
+      db_username            = var.db_username
+      db_password            = var.db_password
+      registry_dockerio      = var.registry_dockerio
+      registry_quayio        = var.registry_quayio
     }),
     var.use_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
       registry_dockerio = var.registry_dockerio,
@@ -102,10 +102,10 @@ resource "helm_release" "gooddata_cn" {
       azure_datasource_fs_container = var.azure_datasource_fs_container
     }) : null,
     var.cloud == "aws" ? templatefile("${path.module}/templates/gdcn-aws.yaml.tftpl", {
-      aws_region                  = var.aws_region
-      s3_exports_bucket_id        = var.s3_exports_bucket_id
-      s3_quiver_cache_bucket_id   = var.s3_quiver_cache_bucket_id
-      s3_datasource_fs_bucket_id  = var.s3_datasource_fs_bucket_id
+      aws_region                 = var.aws_region
+      s3_exports_bucket_id       = var.s3_exports_bucket_id
+      s3_quiver_cache_bucket_id  = var.s3_quiver_cache_bucket_id
+      s3_datasource_fs_bucket_id = var.s3_datasource_fs_bucket_id
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-tiny.yaml.tftpl", {})
   ])

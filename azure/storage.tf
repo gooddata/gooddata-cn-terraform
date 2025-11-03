@@ -16,7 +16,8 @@ resource "random_id" "storage_suffix" {
 locals {
   # Create globally unique storage account name with 6-character random suffix
   # Sanitize deployment_name by removing non-alphanumeric characters for storage account naming
-  storage_account_name = "${replace(var.deployment_name, "/[^a-z0-9]/", "")}${random_id.storage_suffix.hex}"
+  storage_account_prefix = substr(join("", regexall("[0-9a-z]", lower(var.deployment_name))), 0, 18)
+  storage_account_name   = "${local.storage_account_prefix}${random_id.storage_suffix.hex}"
 
   # List of storage containers needed for GoodData.CN
   storage_containers = [
@@ -33,10 +34,6 @@ resource "azurerm_storage_account" "main" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
   account_kind             = "StorageV2"
-
-  # Security settings - private access only via private endpoint
-  public_network_access_enabled   = false
-  allow_nested_items_to_be_public = false
 
   # Configure blob properties - no versioning needed for ephemeral data
   blob_properties {
