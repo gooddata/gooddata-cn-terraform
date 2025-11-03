@@ -38,12 +38,6 @@ resource "azurerm_storage_account" "main" {
   # Configure blob properties - no versioning needed for ephemeral data
   blob_properties {
     versioning_enabled = false
-    delete_retention_policy {
-      days = 7
-    }
-    container_delete_retention_policy {
-      days = 7
-    }
   }
 
   tags = merge(

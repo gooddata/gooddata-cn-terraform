@@ -23,6 +23,7 @@ module "k8s_common" {
   cloud                     = "azure"
   gdcn_namespace            = local.gdcn_namespace
   gdcn_service_account_name = local.gdcn_service_account_name
+  gdcn_replica_count        = var.gdcn_replica_count
 
   registry_dockerio = local.registry_dockerio
   registry_quayio   = local.registry_quayio
@@ -34,7 +35,6 @@ module "k8s_common" {
   helm_cert_manager_version = var.helm_cert_manager_version
   helm_gdcn_version         = var.helm_gdcn_version
   helm_pulsar_version       = var.helm_pulsar_version
-  gdcn_replica_count        = var.gdcn_replica_count
 
   ingress_ip  = azurerm_public_ip.ingress.ip_address
   db_hostname = azurerm_postgresql_flexible_server.main.fqdn
@@ -43,11 +43,10 @@ module "k8s_common" {
 
   # Azure-specific storage configuration
   azure_storage_account_name    = azurerm_storage_account.main.name
-  azure_exports_container       = "exports"
-  azure_quiver_container        = "quiver-cache"
-  azure_datasource_fs_container = "quiver-datasource-fs"
+  azure_exports_container       = azurerm_storage_container.containers["exports"].name
+  azure_quiver_container        = azurerm_storage_container.containers["quiver-cache"].name
+  azure_datasource_fs_container = azurerm_storage_container.containers["quiver-datasource-fs"].name
   azure_uami_client_id          = azurerm_user_assigned_identity.gdcn.client_id
-
 
   depends_on = [
     azurerm_kubernetes_cluster.main,

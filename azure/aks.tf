@@ -2,22 +2,6 @@
 # Provision AKS cluster
 ###
 
-# AKS will use system-assigned managed identity for simplified authentication
-
-# Create Log Analytics Workspace for AKS monitoring
-resource "azurerm_log_analytics_workspace" "aks" {
-  name                = "${var.deployment_name}-aks-logs"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  sku                 = "PerGB2018"
-  retention_in_days   = 30
-
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
-}
-
 # Create the AKS cluster
 resource "azurerm_kubernetes_cluster" "main" {
   name                = var.deployment_name
@@ -46,16 +30,13 @@ resource "azurerm_kubernetes_cluster" "main" {
     node_count           = var.aks_enable_auto_scaling ? null : var.aks_min_nodes
     max_pods             = 110
     os_disk_size_gb      = 100
-    type                 = "VirtualMachineScaleSets"
 
     upgrade_settings {
-      max_surge = "1"
+      max_surge = "2"
     }
 
     tags = merge(
-      {
-        Project = var.deployment_name
-      },
+      { Project = var.deployment_name },
       var.azure_additional_tags
     )
   }
@@ -77,11 +58,6 @@ resource "azurerm_kubernetes_cluster" "main" {
     dns_service_ip    = "10.2.0.10"
     service_cidr      = "10.2.0.0/24"
     load_balancer_sku = "standard"
-  }
-
-  # Monitoring
-  oms_agent {
-    log_analytics_workspace_id = azurerm_log_analytics_workspace.aks.id
   }
 
   # Add-ons

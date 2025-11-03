@@ -11,9 +11,6 @@ resource "azurerm_public_ip" "ingress" {
   sku                 = "Standard"
 
   tags = merge(
-    {
-      Service = "nginx-ingress"
-    },
     { Project = var.deployment_name },
     var.azure_additional_tags
   )
