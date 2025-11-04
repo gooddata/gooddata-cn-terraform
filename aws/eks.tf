@@ -50,8 +50,10 @@ module "eks" {
 
   eks_managed_node_groups = {
     nodes = {
-      ami_type       = "BOTTLEROCKET_x86_64"
-      instance_types = var.eks_node_types
+      ami_type                   = "BOTTLEROCKET_x86_64"
+      instance_types             = var.eks_node_types
+      use_custom_launch_template = false
+      disk_size                  = 100
 
       iam_role_additional_policies = {
         AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
