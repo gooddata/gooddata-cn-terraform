@@ -2,6 +2,11 @@
 # Deploy all common Kubernetes resources
 ###
 
+locals {
+  gdcn_namespace            = "gooddata-cn"
+  gdcn_service_account_name = "gooddata-cn"
+}
+
 module "k8s_common" {
   source = "../modules/k8s-common"
 
@@ -11,12 +16,15 @@ module "k8s_common" {
     kubectl    = kubectl
   }
 
-  deployment_name       = var.deployment_name
-  gdcn_license_key      = var.gdcn_license_key
-  letsencrypt_email     = var.letsencrypt_email
-  wildcard_dns_provider = var.wildcard_dns_provider
-  cloud                 = "aws"
-  gdcn_replica_count    = var.gdcn_replica_count
+  deployment_name           = var.deployment_name
+  gdcn_license_key          = var.gdcn_license_key
+  letsencrypt_email         = var.letsencrypt_email
+  wildcard_dns_provider     = var.wildcard_dns_provider
+  cloud                     = "aws"
+  gdcn_namespace            = local.gdcn_namespace
+  gdcn_service_account_name = local.gdcn_service_account_name
+  gdcn_irsa_role_arn        = aws_iam_role.gdcn_irsa.arn
+  gdcn_replica_count        = var.gdcn_replica_count
 
   registry_dockerio = local.registry_dockerio
   registry_quayio   = local.registry_quayio

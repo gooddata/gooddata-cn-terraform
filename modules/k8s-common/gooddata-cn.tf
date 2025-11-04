@@ -106,6 +106,8 @@ resource "helm_release" "gooddata_cn" {
       s3_exports_bucket_id       = var.s3_exports_bucket_id
       s3_quiver_cache_bucket_id  = var.s3_quiver_cache_bucket_id
       s3_datasource_fs_bucket_id = var.s3_datasource_fs_bucket_id
+      gdcn_service_account_name  = var.gdcn_service_account_name
+      gdcn_irsa_role_arn         = var.gdcn_irsa_role_arn
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-tiny.yaml.tftpl", {})
   ])
