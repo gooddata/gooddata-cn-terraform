@@ -16,8 +16,8 @@ module "k8s_aws" {
   registry_k8sio = local.registry_k8sio
 
   helm_cluster_autoscaler_version = var.helm_cluster_autoscaler_version
-  helm_ingress_nginx_version      = var.helm_ingress_nginx_version
   helm_aws_lb_controller_version  = var.helm_aws_lb_controller_version
+  helm_metrics_server_version     = var.helm_metrics_server_version
 
   vpc_id                        = module.vpc.vpc_id
   eip_allocations               = join(",", aws_eip.lb[*].allocation_id)

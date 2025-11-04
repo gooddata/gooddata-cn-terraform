@@ -50,7 +50,7 @@ resource "aws_s3_bucket_versioning" "buckets" {
   bucket   = each.value.id
 
   versioning_configuration {
-    status = "Enabled"
+    status = "Suspended"
   }
 }
 

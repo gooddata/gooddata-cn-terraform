@@ -1,0 +1,42 @@
+# Azure-specific overrides
+
+serviceAccount:
+  name: ${gdcn_service_account_name}
+  annotations:
+    azure.workload.identity/use: "true"
+    azure.workload.identity/client-id: "${azure_uami_client_id}"
+
+exportController:
+  useNewExportFlow: true
+  storageType: "abs"
+  exportABSStorage:
+    absAccountName: "${azure_storage_account_name}"
+    absContainer: "${azure_exports_container}"
+    absClientId: "${azure_uami_client_id}"
+  podLabels:
+    azure.workload.identity/use: "true"
+
+quiver:
+  durableStorageType: "ABS"
+  absDurableStorage:
+    absAccountName: "${azure_storage_account_name}"
+    absContainer: "${azure_quiver_container}"
+    authType: "azure_default"
+    absClientId: "${azure_uami_client_id}"
+  datasourceFs:
+    storageType: "ABS"
+  absDatasourceFsStorage:
+    absAccountName: "${azure_storage_account_name}"
+    absContainer: "${azure_datasource_fs_container}"
+    authType: "azure_default"
+    absClientId: "${azure_uami_client_id}"
+  podLabels:
+    azure.workload.identity/use: "true"
+
+organizationController:
+  podLabels:
+    azure.workload.identity/use: "true"
+
+resultCache:
+  podLabels:
+    azure.workload.identity/use: "true"

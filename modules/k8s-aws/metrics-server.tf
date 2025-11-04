@@ -17,6 +17,6 @@ resource "helm_release" "metrics-server" {
   values = [<<EOF
 image:
   repository: ${var.registry_k8sio}/metrics-server/metrics-server
-  EOF
+EOF
   ]
 }

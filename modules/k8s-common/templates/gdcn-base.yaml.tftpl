@@ -1,0 +1,57 @@
+# Control number of replicas for all GoodData.CN microservices
+replicaCount: ${gdcn_replica_count}
+
+# Disable Postgres HA
+deployPostgresHA: false
+
+# Enable Quiver filesystem data source (enables uploading CSVs)
+deployQuiverDatasourceFs: true
+
+# Enable new export builder
+enableExportBuilderVisualExport: true
+deployVisualExporter: false
+
+# Use the created encryption secret
+metadataApi:
+  encryptor:
+    existingSecret: "${encryption_secret_name}"
+
+# Use the created license secret
+license:
+  existingSecret: "${license_secret_name}"
+
+# Configure ingress to use HTTPS and Let's Encrypt
+ingress:
+  lbProtocol: https
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    nginx.ingress.kubernetes.io/proxy-body-size: "200m"
+
+# Configure Dex to allow the auth and org hostnames
+dex:
+  config:
+    database:
+      sslMode: require
+    web:
+      allowedOrigins:
+        - "${gdcn_org_hostname}"
+  ingress:
+    authHost: "${auth_hostname}"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt"
+    tls:
+      authSecretName: gooddata-cn-auth-tls
+
+# Use the external Postgres instance
+service:
+  postgres:
+    host: "${db_hostname}"
+    port: 5432
+    username: "${db_username}"
+    password: "${db_password}"
+
+# Common Quiver datasource filesystem limits
+quiver:
+  datasourceFs:
+    maxFileSize: 209715200
+    maxFileSizeTotal: 1073741824
