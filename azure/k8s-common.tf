@@ -56,6 +56,7 @@ module "k8s_common" {
     azurerm_container_registry_cache_rule.dockerio,
     azurerm_container_registry_cache_rule.quayio,
     azurerm_container_registry_cache_rule.k8sio,
+    azurerm_role_assignment.aks_acr_pull,
     azurerm_user_assigned_identity.gdcn,
     azurerm_federated_identity_credential.gdcn
   ]
