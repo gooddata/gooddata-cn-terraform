@@ -54,8 +54,8 @@ resource "azurerm_postgresql_flexible_server" "main" {
   # Disable public network access when using VNet integration
   public_network_access_enabled = false
 
-  backup_retention_days        = 7
-  auto_grow_enabled            = true
+  backup_retention_days = 7
+  auto_grow_enabled     = true
 
   maintenance_window {
     day_of_week  = 0

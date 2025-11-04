@@ -11,12 +11,12 @@ module "k8s_common" {
     kubectl    = kubectl
   }
 
-  deployment_name           = var.deployment_name
-  gdcn_license_key          = var.gdcn_license_key
-  letsencrypt_email         = var.letsencrypt_email
-  wildcard_dns_provider     = var.wildcard_dns_provider
-  cloud                     = "aws"
-  gdcn_replica_count        = var.gdcn_replica_count
+  deployment_name       = var.deployment_name
+  gdcn_license_key      = var.gdcn_license_key
+  letsencrypt_email     = var.letsencrypt_email
+  wildcard_dns_provider = var.wildcard_dns_provider
+  cloud                 = "aws"
+  gdcn_replica_count    = var.gdcn_replica_count
 
   registry_dockerio = local.registry_dockerio
   registry_quayio   = local.registry_quayio
@@ -25,9 +25,10 @@ module "k8s_common" {
   # Apply image cache overrides only when ECR cache is enabled
   use_image_cache = var.ecr_cache_images
 
-  helm_cert_manager_version = var.helm_cert_manager_version
-  helm_gdcn_version         = var.helm_gdcn_version
-  helm_pulsar_version       = var.helm_pulsar_version
+  helm_cert_manager_version  = var.helm_cert_manager_version
+  helm_gdcn_version          = var.helm_gdcn_version
+  helm_pulsar_version        = var.helm_pulsar_version
+  helm_ingress_nginx_version = var.helm_ingress_nginx_version
 
   ingress_ip  = aws_eip.lb[0].public_ip
   db_hostname = module.rds_postgresql.db_instance_address
@@ -36,6 +37,7 @@ module "k8s_common" {
 
   # AWS-specific storage configuration
   aws_region                 = var.aws_region
+  ingress_eip_allocations    = join(",", aws_eip.lb[*].allocation_id)
   s3_quiver_cache_bucket_id  = aws_s3_bucket.buckets["quiver_cache"].id
   s3_datasource_fs_bucket_id = aws_s3_bucket.buckets["datasource_fs"].id
   s3_exports_bucket_id       = aws_s3_bucket.buckets["exports"].id

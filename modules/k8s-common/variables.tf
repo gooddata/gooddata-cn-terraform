@@ -7,6 +7,7 @@ variable "registry_k8sio" { type = string }
 variable "helm_cert_manager_version" { type = string }
 variable "helm_gdcn_version" { type = string }
 variable "helm_pulsar_version" { type = string }
+variable "helm_ingress_nginx_version" { type = string }
 variable "gdcn_replica_count" { type = number }
 variable "ingress_ip" { type = string }
 variable "db_hostname" { type = string }
@@ -31,6 +32,11 @@ variable "gdcn_service_account_name" {
 }
 
 variable "aws_region" {
+  type    = string
+  default = ""
+}
+
+variable "ingress_eip_allocations" {
   type    = string
   default = ""
 }
@@ -66,6 +72,16 @@ variable "azure_quiver_container" {
 }
 
 variable "azure_datasource_fs_container" {
+  type    = string
+  default = ""
+}
+
+variable "azure_resource_group_name" {
+  type    = string
+  default = ""
+}
+
+variable "azure_ingress_pip_name" {
   type    = string
   default = ""
 }

@@ -32,9 +32,10 @@ module "k8s_common" {
   # Apply image cache overrides only when ACR cache is enabled
   use_image_cache = var.acr_cache_images
 
-  helm_cert_manager_version = var.helm_cert_manager_version
-  helm_gdcn_version         = var.helm_gdcn_version
-  helm_pulsar_version       = var.helm_pulsar_version
+  helm_cert_manager_version  = var.helm_cert_manager_version
+  helm_gdcn_version          = var.helm_gdcn_version
+  helm_pulsar_version        = var.helm_pulsar_version
+  helm_ingress_nginx_version = var.helm_ingress_nginx_version
 
   ingress_ip  = azurerm_public_ip.ingress.ip_address
   db_hostname = azurerm_postgresql_flexible_server.main.fqdn
@@ -47,10 +48,11 @@ module "k8s_common" {
   azure_quiver_container        = azurerm_storage_container.containers["quiver-cache"].name
   azure_datasource_fs_container = azurerm_storage_container.containers["quiver-datasource-fs"].name
   azure_uami_client_id          = azurerm_user_assigned_identity.gdcn.client_id
+  azure_resource_group_name     = azurerm_resource_group.main.name
+  azure_ingress_pip_name        = azurerm_public_ip.ingress.name
 
   depends_on = [
     azurerm_kubernetes_cluster.main,
-    module.k8s_azure,
     azurerm_container_registry_cache_rule.dockerio,
     azurerm_container_registry_cache_rule.quayio,
     azurerm_container_registry_cache_rule.k8sio,
