@@ -1,5 +1,10 @@
 # AWS-specific overrides
 
+serviceAccount:
+  name: ${gdcn_service_account_name}
+  annotations:
+    eks.amazonaws.com/role-arn: "${gdcn_irsa_role_arn}"
+
 exportController:
   fileStorageBaseUrl: s3://s3.${aws_region}.amazonaws.com/${s3_exports_bucket_id}
 

@@ -31,6 +31,11 @@ variable "gdcn_service_account_name" {
   default = "gooddata-cn"
 }
 
+variable "gdcn_irsa_role_arn" {
+  type    = string
+  default = ""
+}
+
 variable "aws_region" {
   type    = string
   default = ""

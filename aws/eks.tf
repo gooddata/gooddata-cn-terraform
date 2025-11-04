@@ -57,7 +57,6 @@ module "eks" {
         AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
         AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
         ECRPullThroughCacheMin             = aws_iam_policy.ecr_pull_through_cache_min.arn
-        GoodDataCNS3Access                 = aws_iam_policy.gdcn_s3_access.arn
       }
 
       min_size = 1
