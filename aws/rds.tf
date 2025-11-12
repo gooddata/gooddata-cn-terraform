@@ -19,6 +19,39 @@ locals {
   db_password = random_password.db_password.result
 }
 
+# Security group for RDS PostgreSQL
+resource "aws_security_group" "rds" {
+  name        = "${var.deployment_name}-rds"
+  description = "Security group for RDS PostgreSQL database"
+  vpc_id      = module.vpc.vpc_id
+
+  tags = merge(
+    { Project = var.deployment_name },
+    var.aws_additional_tags
+  )
+
+  depends_on = [
+    module.vpc
+  ]
+}
+
+# Allow inbound PostgreSQL traffic from EKS node security group
+resource "aws_security_group_rule" "rds_postgres_ingress_from_nodes" {
+  type      = "ingress"
+  from_port = 5432
+  to_port   = 5432
+  protocol  = "tcp"
+  # Managed node groups attach the cluster primary security group (created by EKS)
+  source_security_group_id = module.eks.cluster_primary_security_group_id
+  security_group_id        = aws_security_group.rds.id
+  description              = "Allow PostgreSQL access from the EKS cluster primary security group"
+
+  depends_on = [
+    module.eks,
+    aws_security_group.rds
+  ]
+}
+
 module "rds_postgresql" {
   source  = "terraform-aws-modules/rds/aws"
   version = "~> 6.0"
@@ -39,7 +72,7 @@ module "rds_postgresql" {
 
   # Networking
   subnet_ids             = module.vpc.private_subnets
-  vpc_security_group_ids = [module.eks.node_security_group_id]
+  vpc_security_group_ids = [aws_security_group.rds.id]
   create_db_subnet_group = true
 
   # Connectivity & lifecycle
@@ -49,6 +82,9 @@ module "rds_postgresql" {
   deletion_protection = false
 
   depends_on = [
-    module.vpc
+    module.vpc,
+    module.eks,
+    aws_security_group.rds,
+    aws_security_group_rule.rds_postgres_ingress_from_nodes,
   ]
 }
