@@ -22,7 +22,7 @@ Terraform provisions:
     - Other cloud-specific prerequisites
 
 
-Once everything is deployed, the `create-org.sh` script can be run to set up the first GoodData.CN organization.
+Once everything is deployed, run `scripts/create-org.sh` to create your GoodData.CN organization and use `scripts/create-user.sh` whenever you need to add Dex-backed test users.
 
 ---
 
@@ -116,7 +116,11 @@ Once everything is deployed, the `create-org.sh` script can be run to set up the
             --overwrite-existing
         ```
 
-1. Create the GoodData organization: `../create-org.sh`
+1. Create the GoodData organization: `../scripts/create-org.sh`
+
+1. Configure authentication according to your needs:
+    - To use an external OIDC provider (recommended for anything beyond local testing), follow the [Set Up Authentication guide](https://www.gooddata.com/docs/cloud-native/latest/manage-organization/set-up-authentication/).
+    - For quick local testing with the default Dex instance, create one or more users by running `../scripts/create-user.sh`. The script provisions the user in Dex and then creates or updates the corresponding GoodData user record by calling the public API ([Manage Users docs](https://www.gooddata.com/docs/cloud-native/3.49/manage-organization/manage-users/)).
 
 1. Finally, open `https://<gdcn_org_hostname>` (exact address in Terraform output) and log in.
 
