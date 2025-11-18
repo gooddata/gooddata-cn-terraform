@@ -29,6 +29,13 @@ trim() {
   printf '%s' "${value}"
 }
 
+sanitize_user_id() {
+  local value="${1}"
+  value=${value//@/.at.}
+  value=${value//[^A-Za-z0-9._-]/-}
+  printf '%s' "${value}"
+}
+
 prompt_required() {
   local prompt="$1"
   local error="$2"
@@ -97,14 +104,20 @@ extract_auth_id() {
 }
 
 create_user() {
-  local full http_status dex_response existing existing_status existing_body local_auth_id
+  local payload full http_status dex_response existing existing_status existing_body local_auth_id
+
+  payload=$(jq -n \
+    --arg email "${GDCN_USER_EMAIL}" \
+    --arg password "${GDCN_USER_PASSWORD}" \
+    --arg displayName "${DISPLAY_NAME}" \
+    '{email: $email, password: $password, displayName: $displayName}')
 
   printf '\n\n>> Creating user...\n'
   for _ in {1..200}; do
     full=$(curl_json -X POST "https://${GDCN_ORG_HOSTNAME}/api/v1/auth/users" \
       -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
       -H "Content-type: application/json" \
-      -d "${create_user_payload}") || true
+      -d "${payload}") || true
     http_status=$(printf '%s\n' "${full}" | tail -n1)
     dex_response=$(printf '%s\n' "${full}" | sed '$d')
 
@@ -154,13 +167,32 @@ create_user() {
 }
 
 configure_user() {
-  local full http_status gd_response
+  local payload full http_status gd_response
+
+  payload=$(jq -n \
+    --arg id "${GDCN_USER_ID}" \
+    --arg email "${GDCN_USER_EMAIL}" \
+    --arg firstname "${GDCN_USER_FIRSTNAME}" \
+    --arg lastname "${GDCN_USER_LASTNAME}" \
+    --arg authId "${dex_auth_id}" \
+    '{
+      data: {
+        id: $id,
+        type: "user",
+        attributes: {
+          email: $email,
+          firstname: $firstname,
+          lastname: $lastname,
+          authenticationId: $authId
+        }
+      }
+    }')
 
   printf '\n>> Configuring user...\n'
   full=$(curl_json -X POST "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users" \
     -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
     -H "Content-Type: application/vnd.gooddata.api+json" \
-    -d "${configure_user_payload}") || true
+    -d "${payload}") || true
   http_status=${full##*$'\n'}
   gd_response=$(printf '%s\n' "${full}" | sed '$d')
 
@@ -173,27 +205,36 @@ configure_user() {
     curl_json -X PATCH "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_USER_ID_PATH}" \
       -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
       -H "Content-Type: application/vnd.gooddata.api+json" \
-      -d "${configure_user_payload}" >/dev/null
+      -d "${payload}" >/dev/null
     return 0
   fi
 
   die "Failed to create GoodData.CN user (HTTP ${http_status}). Response:\n${gd_response}"
 }
 
-promote_user_to_admin() {
-  local admin_payload
+add_user_to_admin_group() {
+  local payload
 
-  admin_payload=$(printf '%s' "${configure_user_payload}" | jq --arg admin "${GDCN_ADMIN_USER}" '.data.id = $admin')
-  printf '\n>> Updating GoodData.CN admin user (%s)...\n' "${GDCN_ADMIN_USER}"
-  curl_json -X PATCH "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_ADMIN_USER_PATH}" \
+  printf '\n>> Adding %s to admin group %s via user management action...\n' "${GDCN_USER_ID}" "${GDCN_ADMIN_GROUP_ID}"
+  payload=$(jq -n \
+    --arg id "${GDCN_USER_ID}" \
+    '{
+      members: [
+        {
+          id: $id
+        }
+      ]
+    }')
+
+  curl_json -X POST "https://${GDCN_ORG_HOSTNAME}/api/v1/actions/userManagement/userGroups/${GDCN_ADMIN_GROUP_ID}/addMembers" \
     -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
-    -H "Content-Type: application/vnd.gooddata.api+json" \
-    -d "${admin_payload}" >/dev/null
+    -H "Content-Type: application/json" \
+    -d "${payload}" >/dev/null
 }
 
+# Ask the user for info
 GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization hostname (from Terraform output: gdcn_org_hostname): " "GoodData.CN organization hostname is required")
 GDCN_ADMIN_USER=$(prompt_required ">> GoodData.CN existing ADMIN username: " "GoodData.CN admin username is required")
-GDCN_ADMIN_USER_PATH=$(urlencode "${GDCN_ADMIN_USER}")
 GDCN_ADMIN_PASSWORD=$(prompt_password ">> GoodData.CN existing ADMIN password: " "GoodData.CN admin password is required")
 GDCN_USER_FIRSTNAME=$(trim "$(prompt_required ">> New GoodData.CN user first name: " "First name cannot be empty")")
 if [[ -z "${GDCN_USER_FIRSTNAME}" ]]; then
@@ -204,52 +245,37 @@ if [[ -z "${GDCN_USER_LASTNAME}" ]]; then
   die "Last name cannot be empty"
 fi
 GDCN_USER_EMAIL=$(prompt_required ">> New GoodData.CN user email: " "GoodData.CN user email is required")
-GDCN_USER_ID_RAW=${GDCN_USER_EMAIL%%@*}
-if [[ -z "${GDCN_USER_ID_RAW}" ]]; then
-  die "Email must include a username before the @ symbol"
-fi
-GDCN_USER_ID=${GDCN_USER_ID_RAW//[^A-Za-z0-9._-]/-}
+GDCN_USER_ID=$(sanitize_user_id "${GDCN_USER_EMAIL}")
 if [[ -z "${GDCN_USER_ID}" ]]; then
-  die "Email username must contain at least one supported character (A-Za-z0-9._-)"
+  die "Failed to derive a valid user identifier from ${GDCN_USER_EMAIL}"
 fi
 GDCN_USER_ID_PATH=$(urlencode "${GDCN_USER_ID}")
 GDCN_USER_PASSWORD=$(prompt_password ">> New GoodData.CN user password: " "New GoodData.CN user password is required")
 GDCN_PROMOTE_TO_ADMIN=$(prompt_yes_no ">> Give this user admin privileges to GoodData.CN? [y/N]: " "n")
+if [[ "${GDCN_PROMOTE_TO_ADMIN}" == "yes" ]]; then
+  GDCN_ADMIN_GROUP_ID=$(prompt_required ">> GoodData.CN admin group ID [default: adminGroup]: " "Admin group ID is required" "adminGroup")
+  GDCN_ADMIN_GROUP_ID=$(trim "${GDCN_ADMIN_GROUP_ID}")
+  if [[ -z "${GDCN_ADMIN_GROUP_ID}" ]]; then
+    die "Admin group ID cannot be empty"
+  fi
+fi
 
 GDCN_BOOT_TOKEN_RAW="${GDCN_ADMIN_USER}:bootstrap:${GDCN_ADMIN_PASSWORD}"
 GDCN_BOOT_TOKEN=$(printf '%s' "${GDCN_BOOT_TOKEN_RAW}" | base64 | tr -d '\n')
 DISPLAY_NAME="${GDCN_USER_FIRSTNAME} ${GDCN_USER_LASTNAME}"
-create_user_payload=$(jq -n \
-  --arg email "${GDCN_USER_EMAIL}" \
-  --arg password "${GDCN_USER_PASSWORD}" \
-  --arg displayName "${DISPLAY_NAME}" \
-  '{email: $email, password: $password, displayName: $displayName}')
+
 dex_auth_id=""
 
+# Create the user in Dex
 create_user
 
-configure_user_payload=$(jq -n \
-  --arg id "${GDCN_USER_ID}" \
-  --arg email "${GDCN_USER_EMAIL}" \
-  --arg firstname "${GDCN_USER_FIRSTNAME}" \
-  --arg lastname "${GDCN_USER_LASTNAME}" \
-  --arg authId "${dex_auth_id}" \
-  '{
-    data: {
-      id: $id,
-      type: "user",
-      attributes: {
-        email: $email,
-        firstname: $firstname,
-        lastname: $lastname,
-        authenticationId: $authId
-      }
-    }
-  }')
+# Configure the user in GoodData.CN
 configure_user
 
 if [[ "${GDCN_PROMOTE_TO_ADMIN}" == "yes" ]]; then
-  promote_user_to_admin
+  # Add the user to the admin group
+  add_user_to_admin_group
+  echo -e "\n>> User ${GDCN_USER_EMAIL} now has admin privileges via group ${GDCN_ADMIN_GROUP_ID}."
 fi
 
 echo -e "\n>> User ${GDCN_USER_EMAIL} is ready. Log in at https://${GDCN_ORG_HOSTNAME} with ${GDCN_USER_EMAIL}."
