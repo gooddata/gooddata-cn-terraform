@@ -130,6 +130,17 @@ variable "wildcard_dns_provider" {
   default     = "sslip.io"
 }
 
+variable "ingress_controller" {
+  description = "Ingress controller to deploy. Azure currently supports ingress-nginx only."
+  type        = string
+  default     = "ingress-nginx"
+
+  validation {
+    condition     = var.ingress_controller == "ingress-nginx"
+    error_message = "Only ingress-nginx is supported on Azure deployments."
+  }
+}
+
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string

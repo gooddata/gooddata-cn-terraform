@@ -56,7 +56,20 @@ Once everything is deployed, run `scripts/create-org.sh` to create your GoodData
     helm_gdcn_version      = "<version>"       # from previous version (like 3.39.0)
     gdcn_license_key       = "key/asdf=="      # provided by your GoodData contact
     letsencrypt_email      = "me@example.com"  # can be any email address
+    wildcard_dns_provider  = "sslip.io"
+    ingress_controller     = "ingress-nginx"   # default ingress
     ```
+
+    To expose GoodData.CN through an AWS Application Load Balancer instead of ingress-nginx, set `ingress_controller = "alb"` and provide Route53 details. A `base_domain` is used as the parent for all GoodData hostnames (for example, `gooddata-cn.example.com` would produce `auth.gooddata-cn.example.com`, `org.gooddata-cn.example.com`, etc.). Enabling ExternalDNS lets the cluster manage Route53 records for you:
+
+    ```terraform
+    ingress_controller = "alb"
+    route53_zone_id     = "Z1234567890ABC"
+    base_domain         = "gooddata-cn.example.com"
+    enable_external_dns = true
+    ```
+
+    When `enable_external_dns` is `true`, the deployment installs ExternalDNS with an AWS IAM role scoped to the hosted zone. ExternalDNS automatically filters on `base_domain` (or falls back to the hosted zone name when `base_domain` is empty). If you leave ExternalDNS disabled, you'll need to manually create the Route53 records for the auth hostname and every organization hostname.
 
     For Azure:
     ```terraform
@@ -84,6 +97,12 @@ Once everything is deployed, run `scripts/create-org.sh` to create your GoodData
     dockerhub_username     = "myusername"    # Docker Hub username (used to increase DH rate limit). Free account is enough.
     dockerhub_access_token = "myaccesstoken" # can be created in "Settings > Personal Access Token"
     ```
+
+### DNS and multiple organizations
+
+- Terraform outputs `base_domain`, `auth_domain`, and `org_domain`. Run `terraform output -raw base_domain` after deployment to see the parent domain used for all hosts.
+- The `scripts/create-org.sh` helper prompts for a DNS label when ALB mode is enabled. The final hostname becomes `<label>.<base_domain>` (for example, `org1.gooddata-cn.example.com`), while Dex always lives at `auth.<base_domain>`.
+- Set `enable_external_dns = true` (recommended) so new organization hostnames are published to Route53 automatically. If you prefer to manage DNS manually, leave ExternalDNS disabled and create the required CNAME/A records yourself before running the scripts.
 
 1. Choose your provider and `cd` into its directory: `cd aws` or `cd azure`
 

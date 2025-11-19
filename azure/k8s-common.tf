@@ -21,6 +21,7 @@ module "k8s_common" {
   letsencrypt_email         = var.letsencrypt_email
   wildcard_dns_provider     = var.wildcard_dns_provider
   cloud                     = "azure"
+  ingress_controller        = var.ingress_controller
   gdcn_namespace            = local.gdcn_namespace
   gdcn_service_account_name = local.gdcn_service_account_name
   gdcn_replica_count        = var.gdcn_replica_count
@@ -62,13 +63,18 @@ module "k8s_common" {
   ]
 }
 
-output "auth_hostname" {
-  description = "The hostname for Dex authentication ingress"
-  value       = module.k8s_common.auth_hostname
+output "base_domain" {
+  description = "Base domain used for GoodData hostnames"
+  value       = module.k8s_common.base_domain
 }
 
-output "gdcn_org_hostname" {
+output "auth_domain" {
+  description = "The hostname for Dex authentication ingress"
+  value       = module.k8s_common.auth_domain
+}
+
+output "org_domain" {
   description = "The hostname for GoodData.CN organization ingress"
-  value       = module.k8s_common.gdcn_org_hostname
+  value       = module.k8s_common.org_domain
 }
 

@@ -92,6 +92,38 @@ variable "wildcard_dns_provider" {
   default     = "sslip.io"
 }
 
+variable "ingress_controller" {
+  description = "Ingress controller used to expose GoodData.CN. Supported values: ingress-nginx, alb."
+  type        = string
+  default     = "ingress-nginx"
+  validation {
+    condition     = contains(["ingress-nginx", "alb"], var.ingress_controller)
+    error_message = "ingress_controller must be either \"ingress-nginx\" or \"alb\"."
+  }
+}
+
+variable "base_domain" {
+  description = "Base domain used to construct GoodData hostnames. When empty, Terraform derives one from the ingress configuration."
+  type        = string
+  default     = ""
+}
+
+variable "enable_external_dns" {
+  description = "Whether to deploy ExternalDNS to manage Route53 records automatically."
+  type        = bool
+  default     = false
+}
+
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID that will contain GoodData.CN records when using the ALB ingress option or ExternalDNS."
+  type        = string
+  default     = ""
+  validation {
+    condition     = (var.ingress_controller != "alb" && !var.enable_external_dns) ? true : length(trimspace(var.route53_zone_id)) > 0
+    error_message = "route53_zone_id is required when ingress_controller is \"alb\" or external DNS is enabled."
+  }
+}
+
 variable "gdcn_replica_count" {
   description = "Replica count for GoodData.CN components (passed to the chart). Default is 2 for high availability."
   type        = number
@@ -126,6 +158,12 @@ variable "helm_metrics_server_version" {
   description = "Version of the metrics-server Helm chart to deploy. https://artifacthub.io/packages/helm/metrics-server/metrics-server"
   type        = string
   default     = "3.13.0"
+}
+
+variable "helm_external_dns_version" {
+  description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
+  type        = string
+  default     = "1.15.1"
 }
 
 variable "helm_gdcn_version" {

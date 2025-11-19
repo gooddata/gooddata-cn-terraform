@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/common.sh"
+
+require_command jq "jq CLI not found; install it to run this script."
+
 curl_json() {
   local response status body
   response=$(curl --silent --show-error --write-out "\n%{http_code}" "$@")
@@ -233,7 +239,13 @@ add_user_to_admin_group() {
 }
 
 # Ask the user for info
-GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization hostname (from Terraform output: gdcn_org_hostname): " "GoodData.CN organization hostname is required")
+load_tf_outputs
+DEFAULT_ORG_HOSTNAME=$(tf_output_value "org_domain")
+if [[ -n "${DEFAULT_ORG_HOSTNAME}" ]]; then
+  GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization hostname [default: ${DEFAULT_ORG_HOSTNAME}]: " "GoodData.CN organization hostname is required" "${DEFAULT_ORG_HOSTNAME}")
+else
+  GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization hostname (e.g. org.example.com): " "GoodData.CN organization hostname is required")
+fi
 GDCN_ADMIN_USER=$(prompt_required ">> GoodData.CN existing ADMIN username: " "GoodData.CN admin username is required")
 GDCN_ADMIN_PASSWORD=$(prompt_password ">> GoodData.CN existing ADMIN password: " "GoodData.CN admin password is required")
 GDCN_USER_FIRSTNAME=$(trim "$(prompt_required ">> New GoodData.CN user first name: " "First name cannot be empty")")
