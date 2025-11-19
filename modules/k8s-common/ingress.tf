@@ -2,7 +2,13 @@
 # Deploy ingress-nginx to Kubernetes with cloud-specific settings
 ###
 
+locals {
+  deploy_ingress_nginx = var.ingress_controller == "ingress-nginx"
+}
+
 resource "kubernetes_namespace" "ingress" {
+  count = local.deploy_ingress_nginx ? 1 : 0
+
   metadata {
     name = "ingress-nginx"
   }
@@ -86,10 +92,12 @@ locals {
 }
 
 resource "helm_release" "ingress_nginx" {
+  count = local.deploy_ingress_nginx ? 1 : 0
+
   name       = "ingress-nginx"
   repository = "https://kubernetes.github.io/ingress-nginx"
   chart      = "ingress-nginx"
-  namespace  = kubernetes_namespace.ingress.metadata[0].name
+  namespace  = kubernetes_namespace.ingress[count.index].metadata[0].name
   version    = var.helm_ingress_nginx_version
 
   values = [yamlencode(local.ingress_values)]

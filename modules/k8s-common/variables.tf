@@ -15,6 +15,7 @@ variable "db_username" { type = string }
 variable "db_password" { type = string }
 variable "wildcard_dns_provider" { type = string }
 variable "cloud" { type = string }
+variable "ingress_controller" { type = string }
 
 variable "use_image_cache" {
   type    = bool
@@ -59,6 +60,26 @@ variable "s3_datasource_fs_bucket_id" {
 variable "s3_exports_bucket_id" {
   type    = string
   default = ""
+}
+
+variable "base_domain" {
+  type    = string
+  default = ""
+}
+
+variable "ingress_class_name_override" {
+  type    = string
+  default = ""
+}
+
+variable "ingress_annotations_override" {
+  type    = map(string)
+  default = {}
+}
+
+variable "dex_ingress_annotations_override" {
+  type    = map(string)
+  default = {}
 }
 
 variable "azure_storage_account_name" {

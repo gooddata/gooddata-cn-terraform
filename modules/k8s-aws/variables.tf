@@ -1,11 +1,15 @@
 variable "deployment_name" { type = string }
 variable "aws_region" { type = string }
-
+variable "ingress_controller" { type = string }
+variable "base_domain" { type = string }
+variable "route53_zone_id" { type = string }
+variable "enable_external_dns" { type = bool }
 variable "registry_k8sio" { type = string }
 
 variable "helm_cluster_autoscaler_version" { type = string }
 variable "helm_aws_lb_controller_version" { type = string }
 variable "helm_metrics_server_version" { type = string }
+variable "helm_external_dns_version" { type = string }
 
 variable "vpc_id" { type = string }
 variable "eip_allocations" { type = string }

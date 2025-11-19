@@ -23,9 +23,17 @@ license:
 # Configure ingress to use HTTPS and Let's Encrypt
 ingress:
   lbProtocol: https
+%{ if ingress_class_name != "" }
+  ingressClassName: ${ingress_class_name}
+%{ endif }
+%{ if length(ingress_annotations) == 0 }
+  annotations: {}
+%{ else }
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt"
-    nginx.ingress.kubernetes.io/proxy-body-size: "200m"
+%{ for key, value in ingress_annotations ~}
+    ${jsonencode(key)}: ${jsonencode(value)}
+%{ endfor }
+%{ endif }
 
 # Configure Dex to allow the auth and org hostnames
 dex:
@@ -34,13 +42,28 @@ dex:
       sslMode: require
     web:
       allowedOrigins:
-        - "${gdcn_org_hostname}"
+        - "${org_domain}"
+%{ if base_domain != "" }
+        - "${base_domain}"
+        - "*.${base_domain}"
+%{ endif }
   ingress:
-    authHost: "${auth_hostname}"
+    authHost: "${auth_domain}"
+%{ if ingress_class_name != "" }
+    ingressClassName: ${ingress_class_name}
+%{ endif }
+%{ if length(dex_ingress_annotations) == 0 }
+    annotations: {}
+%{ else }
     annotations:
-      cert-manager.io/cluster-issuer: "letsencrypt"
+%{ for key, value in dex_ingress_annotations ~}
+      ${jsonencode(key)}: ${jsonencode(value)}
+%{ endfor }
+%{ endif }
+%{ if dex_tls_enabled }
     tls:
       authSecretName: gooddata-cn-auth-tls
+%{ endif }
 
 # Use the external Postgres instance
 service:
