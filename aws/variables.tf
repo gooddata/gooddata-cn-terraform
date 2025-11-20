@@ -86,6 +86,11 @@ variable "letsencrypt_email" {
   type        = string
 }
 
+variable "ses_sender_email" {
+  description = "Email address verified in SES and used as the SMTP sender"
+  type        = string
+}
+
 variable "wildcard_dns_provider" {
   description = "Wildcard DNS service used to give a dynamic hostname for hosting GoodData.CN. [default: sslip.io]"
   type        = string

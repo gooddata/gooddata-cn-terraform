@@ -13,6 +13,22 @@ variable "ingress_ip" { type = string }
 variable "db_hostname" { type = string }
 variable "db_username" { type = string }
 variable "db_password" { type = string }
+variable "smtp_enabled" {
+  type    = bool
+  default = false
+}
+variable "smtp_host" {
+  type    = string
+  default = ""
+}
+variable "smtp_username" {
+  type    = string
+  default = ""
+}
+variable "smtp_password" {
+  type    = string
+  default = ""
+}
 variable "wildcard_dns_provider" { type = string }
 variable "cloud" { type = string }
 
