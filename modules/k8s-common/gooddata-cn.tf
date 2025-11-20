@@ -89,6 +89,21 @@ resource "kubernetes_secret" "gdcn_license" {
   }
 }
 
+resource "kubernetes_secret" "gdcn_smtp" {
+  count = var.smtp_enabled ? 1 : 0
+
+  metadata {
+    name      = "gdcn-smtp"
+    namespace = kubernetes_namespace.gdcn.metadata[0].name
+  }
+
+  data = {
+    smtp_host     = var.smtp_host
+    smtp_username = var.smtp_username
+    smtp_password = var.smtp_password
+  }
+}
+
 # Install GoodData.CN
 resource "helm_release" "gooddata_cn" {
   name       = "gooddata-cn"
@@ -135,6 +150,11 @@ resource "helm_release" "gooddata_cn" {
       s3_datasource_fs_bucket_id = var.s3_datasource_fs_bucket_id
       gdcn_service_account_name  = local.gdcn_service_account_name
       gdcn_irsa_role_arn         = var.gdcn_irsa_role_arn
+    }) : null,
+    var.smtp_enabled ? templatefile("${path.module}/templates/gdcn-smtp.yaml.tftpl", {
+      smtp_host        = var.smtp_host
+      smtp_username    = var.smtp_username
+      smtp_secret_name = kubernetes_secret.gdcn_smtp[0].metadata[0].name
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-tiny.yaml.tftpl", {})
   ])

@@ -223,6 +223,12 @@ variable "letsencrypt_email" {
   }
 }
 
+variable "ses_sender_email" {
+  description = "Email address verified in SES and used as the SMTP sender. When empty, SES/SMTP integration is disabled."
+  type        = string
+  default     = ""
+}
+
 variable "pulsar_bookkeeper_replica_count" {
   description = "Replica count for Pulsar bookkeeper."
   type        = number

@@ -104,6 +104,26 @@ variable "ingress_nginx_replica_count" { type = number }
 
 variable "letsencrypt_email" { type = string }
 
+variable "smtp_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "smtp_host" {
+  type    = string
+  default = ""
+}
+
+variable "smtp_username" {
+  type    = string
+  default = ""
+}
+
+variable "smtp_password" {
+  type    = string
+  default = ""
+}
+
 variable "pulsar_bookkeeper_replica_count" { type = number }
 
 variable "pulsar_broker_replica_count" { type = number }

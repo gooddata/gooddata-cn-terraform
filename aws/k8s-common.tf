@@ -29,6 +29,7 @@ locals {
   } : {}) : {}
   alb_ingress_annotations     = local.alb_shared_annotations
   alb_dex_ingress_annotations = local.alb_shared_annotations
+  smtp_enabled                = trimspace(var.ses_sender_email) != ""
 }
 
 module "k8s_common" {
@@ -69,9 +70,13 @@ module "k8s_common" {
   helm_pulsar_version        = var.helm_pulsar_version
   helm_ingress_nginx_version = var.helm_ingress_nginx_version
 
-  db_hostname = module.rds_postgresql.db_instance_address
-  db_username = local.db_username
-  db_password = local.db_password
+  db_hostname   = module.rds_postgresql.db_instance_address
+  db_username   = local.db_username
+  db_password   = local.db_password
+  smtp_enabled  = local.smtp_enabled
+  smtp_host     = local.smtp_enabled ? local.ses_smtp_host : ""
+  smtp_username = local.smtp_enabled ? aws_iam_access_key.ses_smtp[0].id : ""
+  smtp_password = local.smtp_enabled ? aws_iam_access_key.ses_smtp[0].ses_smtp_password_v4 : ""
 
   # AWS-specific storage configuration
   aws_region                 = var.aws_region
