@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/common.sh"
+
+require_command jq "jq CLI not found; install it to run this script."
+
 curl_json() {
   local response status body
   response=$(curl --silent --show-error --write-out "\n%{http_code}" "$@")
@@ -20,13 +26,6 @@ curl_json() {
 die() {
   echo -e "\n\n>> ERROR: $*" >&2
   exit 1
-}
-
-trim() {
-  local value="${1:-}"
-  value=${value#"${value%%[![:space:]]*}"}
-  value=${value%"${value##*[![:space:]]}"}
-  printf '%s' "${value}"
 }
 
 sanitize_user_id() {
@@ -50,7 +49,7 @@ prompt_required() {
       printf '%s\n' "${value}"
       return 0
     fi
-    echo -e "\n\n>> ERROR: ${error}" >&2
+    echo -e "\n\n>> ERROR: ${error}\n\n" >&2
   done
 }
 
@@ -65,7 +64,7 @@ prompt_password() {
       printf '%s\n' "${value}"
       return 0
     fi
-    echo -e "\n\n>> ERROR: ${error}" >&2
+    echo -e "\n\n>> ERROR: ${error}\n\n" >&2
   done
 }
 
@@ -89,7 +88,7 @@ prompt_yes_no() {
         return 0
         ;;
       *)
-        echo -e "\n\n>> ERROR: Please answer yes or no." >&2
+        echo -e "\n\n>> ERROR: Please answer yes or no.\n\n" >&2
         ;;
     esac
   done
@@ -147,11 +146,11 @@ create_user() {
         return 0
         ;;
       401)
-        echo -e "\n\n>> Auth endpoint not ready (HTTP ${http_status}). Retrying in 5s..."
+        echo -e "\n\n>> Auth endpoint not ready (HTTP ${http_status}). Retrying in 5s...\n\n"
         sleep 5
         ;;
       429|5*|000)
-        echo -e "\n\n>> Auth endpoint not ready (HTTP ${http_status}). Retrying in 5s..."
+        echo -e "\n\n>> Auth endpoint not ready (HTTP ${http_status}). Retrying in 5s...\n\n"
         sleep 5
         ;;
       4*)
@@ -233,9 +232,73 @@ add_user_to_admin_group() {
 }
 
 # Ask the user for info
-GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization hostname (from Terraform output: gdcn_org_hostname): " "GoodData.CN organization hostname is required")
-GDCN_ADMIN_USER=$(prompt_required ">> GoodData.CN existing ADMIN username: " "GoodData.CN admin username is required")
-GDCN_ADMIN_PASSWORD=$(prompt_password ">> GoodData.CN existing ADMIN password: " "GoodData.CN admin password is required")
+load_tf_outputs
+require_tf_context "$(basename "$0")"
+SUPPORTED_ORG_IDS=("org")
+SUPPORTED_ORG_HOSTS=()
+declare -A ORG_ID_TO_HOST=()
+if command_exists jq && [[ "${TF_OUTPUTS_LOADED}" -eq 1 ]]; then
+  org_ids_raw=$(tf_output_value "org_ids")
+  if [[ -n "${org_ids_raw}" && "${org_ids_raw}" != "null" ]]; then
+    parsed_ids=()
+    while IFS= read -r org_id; do
+      if [[ -n "${org_id}" ]]; then
+        parsed_ids+=("${org_id}")
+      fi
+    done < <(jq -r '.[]' <<<"${org_ids_raw}" 2>/dev/null || true)
+    if [[ ${#parsed_ids[@]} -gt 0 ]]; then
+      SUPPORTED_ORG_IDS=("${parsed_ids[@]}")
+    fi
+  fi
+  org_domains_raw=$(tf_output_value "org_domains")
+  if [[ -n "${org_domains_raw}" && "${org_domains_raw}" != "null" ]]; then
+    while IFS= read -r org_domain; do
+      if [[ -n "${org_domain}" ]]; then
+        SUPPORTED_ORG_HOSTS+=("${org_domain}")
+      fi
+    done < <(jq -r '.[]' <<<"${org_domains_raw}" 2>/dev/null || true)
+  fi
+fi
+if [[ ${#SUPPORTED_ORG_HOSTS[@]} -eq ${#SUPPORTED_ORG_IDS[@]} ]]; then
+  for idx in "${!SUPPORTED_ORG_IDS[@]}"; do
+    ORG_ID_TO_HOST["${SUPPORTED_ORG_IDS[$idx]}"]="${SUPPORTED_ORG_HOSTS[$idx]}"
+  done
+fi
+ORG_ID_PROMPT_CHOICES=$(join_by ", " "${SUPPORTED_ORG_IDS[@]}")
+
+echo
+while true; do
+  read -ep ">> GoodData.CN organization ID for the new user [one of: ${ORG_ID_PROMPT_CHOICES}]: " GDCN_ORG_ID
+  GDCN_ORG_ID=$(trim "${GDCN_ORG_ID}")
+  if [[ -z "${GDCN_ORG_ID}" ]]; then
+    echo -e "\n\n>> ERROR: Organization ID is required\n\n" >&2
+    continue
+  fi
+  if [[ ! "${GDCN_ORG_ID}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+    echo -e "\n\n>> ERROR: Organization ID '${GDCN_ORG_ID}' must be lowercase alphanumeric (hyphens allowed inside).\n\n" >&2
+    continue
+  fi
+  is_supported="false"
+  for candidate in "${SUPPORTED_ORG_IDS[@]}"; do
+    if [[ "${GDCN_ORG_ID}" == "${candidate}" ]]; then
+      is_supported="true"
+      break
+    fi
+  done
+  if [[ "${is_supported}" != "true" ]]; then
+    echo -e "\n\n>> ERROR: '${GDCN_ORG_ID}' is not in the allowed list: ${ORG_ID_PROMPT_CHOICES}\n\n" >&2
+    continue
+  fi
+  break
+done
+
+GDCN_ORG_HOSTNAME="${ORG_ID_TO_HOST[${GDCN_ORG_ID}]:-}"
+if [[ -z "${GDCN_ORG_HOSTNAME}" ]]; then
+  warn "Terraform outputs missing or incomplete; unable to auto-detect hostname for '${GDCN_ORG_ID}'."
+  GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization domain (e.g. example.com): " "GoodData.CN organization domain is required")
+fi
+GDCN_ADMIN_USER=$(prompt_required ">> GoodData.CN EXISTING ADMIN username [default: admin]: " "GoodData.CN admin username is required" "admin")
+GDCN_ADMIN_PASSWORD=$(prompt_password ">> GoodData.CN EXISTING ADMIN password: " "GoodData.CN admin password is required")
 GDCN_USER_FIRSTNAME=$(trim "$(prompt_required ">> New GoodData.CN user first name: " "First name cannot be empty")")
 if [[ -z "${GDCN_USER_FIRSTNAME}" ]]; then
   die "First name cannot be empty"
@@ -278,4 +341,4 @@ if [[ "${GDCN_PROMOTE_TO_ADMIN}" == "yes" ]]; then
   echo -e "\n>> User ${GDCN_USER_EMAIL} now has admin privileges via group ${GDCN_ADMIN_GROUP_ID}."
 fi
 
-echo -e "\n>> User ${GDCN_USER_EMAIL} is ready. Log in at https://${GDCN_ORG_HOSTNAME} with ${GDCN_USER_EMAIL}."
+echo -e "\n>> User is ready. Log in at https://${GDCN_ORG_HOSTNAME} with ${GDCN_USER_EMAIL}."
