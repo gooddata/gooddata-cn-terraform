@@ -56,7 +56,7 @@ Once everything is deployed, run `scripts/create-org.sh` to create your GoodData
 
     The example files document every available option (compute sizing, ingress/DNS choices, image caching, Helm chart versions, etc.). Update at least the GoodData.CN version (`helm_gdcn_version`), license key, contact email, and deployment name.
 
-    - On AWS, `ingress_controller = "ingress-nginx"` (default) exposes the cluster through a wildcard DNS provider such as sslip.io. Set `ingress_controller = "alb"` to provision an AWS Application Load Balancer with Route53 + ExternalDNS managing hostnames. ALB mode **requires** `route53_zone_id`, automatically installs ExternalDNS, and only works with GoodData.CN Helm chart versions **3.50.0 or newer**.
+    - On AWS, `ingress_controller = "ingress-nginx"` (default) exposes the cluster through a wildcard DNS provider such as sslip.io. Set `ingress_controller = "alb"` to provision an AWS Application Load Balancer with Route53 + ExternalDNS managing hostnames. ALB mode **requires** `route53_zone_id`, automatically installs ExternalDNS, and only works with GoodData.CN Helm chart versions **3.51.0 or newer**.
     - Provide `base_domain` if you want predictable hostnames; otherwise Terraform derives `<deployment_name>.<route53_zone_name>` for ALB or `<deployment_name>.<ingress_ip>.<wildcard_dns_provider>` for ingress-nginx.
     - Azure currently supports ingress-nginx only. The Azure example file lists the same variables as the AWS file, minus the ALB-specific ones.
 

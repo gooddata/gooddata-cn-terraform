@@ -45,7 +45,7 @@ wildcard_dns_provider = "sslip.io"
 # base_domain = "gooddata-cn.example.com"
 
 # -- Option B: AWS ALB + Route53 (commented out)
-#   - Requires helm_gdcn_version >= 3.50.0.
+#   - Requires helm_gdcn_version >= 3.51.0.
 #   - Deploys AWS Load Balancer Controller, ExternalDNS, and an ACM wildcard cert.
 #   - Needs a Route53 hosted zone. Terraform publishes auth/org records automatically.
 # ingress_controller = "alb"

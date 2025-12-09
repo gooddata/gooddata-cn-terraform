@@ -169,7 +169,7 @@ variable "helm_gdcn_version" {
         )
       )
     )
-    error_message = "ingress_controller = \"alb\" requires helm_gdcn_version >= 3.50.0."
+    error_message = "ingress_controller = \"alb\" requires helm_gdcn_version >= 3.51.0."
   }
 }
 
