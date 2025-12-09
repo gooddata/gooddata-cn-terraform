@@ -1,0 +1,14 @@
+---
+description: Always fmt and plan Terraform after edits
+globs: ["**/*.tf", "**/*.tfvars"]
+alwaysApply: true
+---
+
+# Terraform Lint + Plan Automation
+
+Whenever Terraform sources change, run the following in the project root:
+
+1. `terraform fmt -recursive` — treat this as the lint step and let it auto-fix style issues. Re-run until it produces no diff.
+2. `terraform validate` — verify the configuration is consistent.
+
+If `terraform fmt` or `terraform validate` uncover issues, attempt to fix them automatically (reformat, correct obvious validation errors, update files) before re-running the sequence. If an issue cannot be auto-corrected, call it out explicitly so it can be resolved manually.
