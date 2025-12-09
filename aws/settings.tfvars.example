@@ -1,0 +1,74 @@
+###
+# AWS account & region
+###
+aws_profile_name = "my-profile"   # matches a profile in ~/.aws/config
+aws_region       = "eu-central-1"
+# aws_additional_tags = {
+#   Environment = "dev"
+# }
+
+###
+# Deployment configuration
+###
+helm_gdcn_version  = "3.50.0"   # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+gdcn_replica_count = 1
+deployment_name    = "gooddata-cn-poc"
+
+# Configure one or more GoodData.CN organization IDs that will be created later by the create-org.sh script (defaults to ["org"])
+# gdcn_org_ids = ["org", "demo"]
+
+# Component replica counts (lean defaults; uncomment below for HA)
+# alb_controller_replica_count    = 2
+# gdcn_replica_count              = 2
+# ingress_nginx_replica_count     = 2   # not used if ingress_controller != "ingress-nginx"
+# pulsar_bookkeeper_replica_count = 3
+# pulsar_broker_replica_count     = 3
+# pulsar_zookeeper_replica_count  = 3
+
+###
+# GoodData.CN license
+###
+gdcn_license_key = "key/asdf=="   # provided by GoodData
+
+###
+# Ingress and DNS (choose one configuration)
+###
+# -- Option A: ingress-nginx (default)
+#   - Deploys ingress-nginx + cert-manager.
+#   - Uses letsencrypt_email for Let's Encrypt TLS issuance.
+#   - Builds hostnames using wildcard_dns_provider (e.g., sslip.io, nip.io).
+ingress_controller    = "ingress-nginx"
+letsencrypt_email     = "me@example.com"
+wildcard_dns_provider = "sslip.io"
+
+# base_domain override (uncomment when you own DNS and want a fixed hostname)
+# base_domain = "gooddata-cn.example.com"
+
+# -- Option B: AWS ALB + Route53 (commented out)
+#   - Requires helm_gdcn_version >= 3.50.0.
+#   - Deploys AWS Load Balancer Controller, ExternalDNS, and an ACM wildcard cert.
+#   - Needs a Route53 hosted zone. Terraform publishes auth/org records automatically.
+# ingress_controller = "alb"
+# route53_zone_id    = "Z0123456789ABC"
+# base_domain        = "gooddata-cn.example.com"
+
+###
+# Container cache
+###
+# enable_image_cache     = true
+# dockerhub_username     = "myusername"
+# dockerhub_access_token = "myaccesstoken"
+
+###
+# EKS & infrastructure sizing
+###
+# eks_version                      = "1.33"
+# eks_node_types                   = ["m6i.xlarge"]
+# eks_max_nodes                    = 10
+# eks_endpoint_public_access       = true
+# eks_endpoint_public_access_cidrs = ["x.x.x.x/32"]
+# eks_endpoint_private_access      = false
+
+# rds_instance_class      = "db.t4g.medium"
+# rds_deletion_protection = false   # set this for easy teardown
+# rds_skip_final_snapshot = true   # set this for faster teardown
