@@ -21,7 +21,7 @@ components:
   pulsar_manager: false
 
 zookeeper:
-  replicaCount: 1
+  replicaCount: ${var.pulsar_zookeeper_replica_count}
   podManagementPolicy: OrderedReady
   podMonitor:
     enabled: false
@@ -32,7 +32,7 @@ zookeeper:
       size: 2Gi
 
 bookkeeper:
-  replicaCount: 1
+  replicaCount: ${var.pulsar_bookkeeper_replica_count}
   podMonitor:
     enabled: false
   restartPodsOnConfigMapChange: true
@@ -58,7 +58,7 @@ autorecovery:
     BOOKIE_MEM: >
       -Xms64m -Xmx128m -XX:MaxDirectMemorySize=128m
 broker:
-  replicaCount: 1
+  replicaCount: ${var.pulsar_broker_replica_count}
   podMonitor:
     enabled: false
   restartPodsOnConfigMapChange: true

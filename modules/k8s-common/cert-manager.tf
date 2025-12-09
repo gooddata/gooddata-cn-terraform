@@ -1,16 +1,24 @@
 ###
-# Deploy cert-manager to Kubernetes
+# Deploy cert-manager to Kubernetes only when ingress-nginx is in use
 ###
 
+locals {
+  deploy_cert_manager = var.ingress_controller == "ingress-nginx"
+}
+
 resource "kubernetes_namespace" "cert-manager" {
+  count = local.deploy_cert_manager ? 1 : 0
+
   metadata {
     name = "cert-manager"
   }
 }
 
 resource "helm_release" "cert-manager" {
+  count = local.deploy_cert_manager ? 1 : 0
+
   name       = "cert-manager"
-  namespace  = kubernetes_namespace.cert-manager.metadata[0].name
+  namespace  = kubernetes_namespace.cert-manager[0].metadata[0].name
   chart      = "cert-manager"
   repository = "https://charts.jetstack.io"
   version    = var.helm_cert_manager_version
@@ -42,6 +50,8 @@ installCRDs: true
 }
 
 resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
+  count = local.deploy_cert_manager ? 1 : 0
+
   yaml_body = <<-YAML
     apiVersion: cert-manager.io/v1
     kind: ClusterIssuer
@@ -56,7 +66,7 @@ resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
         solvers:
           - http01:
               ingress:
-                class: nginx
+                class: ${local.resolved_ingress_class_name}
                 annotations:
                   nginx.ingress.kubernetes.io/enable-validate-ingress: "false"
   YAML
