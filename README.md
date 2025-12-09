@@ -46,44 +46,28 @@ Once everything is deployed, run `scripts/create-org.sh` to create your GoodData
 
 1. Find out what the [latest version number of GoodData.CN is](https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/).
 
-1. Create a variables file called `settings.tfvars` for your provider.
+1. Copy the sample variables file for your provider and customize it:
 
-    For AWS:
-    ```terraform
-    aws_profile_name       = "my-profile"      # as configured in ~/.aws/config
-    aws_region             = "us-east-2"
-    deployment_name        = "gooddata-cn-poc" # lowercase letters, numbers, and hyphens (start with a letter)
-    helm_gdcn_version      = "<version>"       # from previous version (like 3.39.0)
-    gdcn_license_key       = "key/asdf=="      # provided by your GoodData contact
-    letsencrypt_email      = "me@example.com"  # can be any email address
+    ```
+    cp aws/settings.tfvars.example aws/settings.tfvars
+    # or
+    cp azure/settings.tfvars.example azure/settings.tfvars
     ```
 
-    For Azure:
-    ```terraform
-    azure_subscription_id  = "00000000-0000-0000-0000-000000000000"
-    azure_tenant_id        = "00000000-0000-0000-0000-000000000000"
-    azure_location         = "East US"
-    deployment_name        = "gooddata-cn-poc" # lowercase letters, numbers, and hyphens
-    helm_gdcn_version      = "<version>"       # from previous version (like 3.39.0)
-    gdcn_license_key       = "key/asdf=="      # provided by your GoodData contact
-    letsencrypt_email      = "me@example.com"  # can be any email address
-    ```
+    The example files document every available option (compute sizing, ingress/DNS choices, image caching, Helm chart versions, etc.). Update at least the GoodData.CN version (`helm_gdcn_version`), license key, contact email, and deployment name.
 
-1. **Note:** If you will put significant load on the cluster, you'll want to set up container image caching so you don't hit the Docker Hub rate limits. Add these three lines to your config:
+    - On AWS, `ingress_controller = "ingress-nginx"` (default) exposes the cluster through a wildcard DNS provider such as sslip.io. Set `ingress_controller = "alb"` to provision an AWS Application Load Balancer with Route53 + ExternalDNS managing hostnames. ALB mode **requires** `route53_zone_id`, automatically installs ExternalDNS, and only works with GoodData.CN Helm chart versions **3.51.0 or newer**.
+    - Provide `base_domain` if you want predictable hostnames; otherwise Terraform derives `<deployment_name>.<route53_zone_name>` for ALB or `<deployment_name>.<ingress_ip>.<wildcard_dns_provider>` for ingress-nginx.
+    - Azure currently supports ingress-nginx only. The Azure example file lists the same variables as the AWS file, minus the ALB-specific ones.
 
-    For AWS:
-    ```terraform
-    ecr_cache_images       = true
-    dockerhub_username     = "myusername"    # Docker Hub username (used to increase DH rate limit). Free account is enough.
-    dockerhub_access_token = "myaccesstoken" # can be created in "Settings > Personal Access Token"
-    ```
+1. **Note:** If you will put significant load on the cluster, enable container image caching so you don't hit Docker Hub rate limits. Set `enable_image_cache = true` and provide `dockerhub_username` and `dockerhub_access_token` in your tfvars.
 
-    For Azure:
-    ```terraform
-    acr_cache_images       = true
-    dockerhub_username     = "myusername"    # Docker Hub username (used to increase DH rate limit). Free account is enough.
-    dockerhub_access_token = "myaccesstoken" # can be created in "Settings > Personal Access Token"
-    ```
+### DNS and multiple organizations
+
+- Terraform outputs `base_domain`, `auth_domain`, `org_domains`, `org_ids`, and (when ALB is enabled) `alb_dns_name`. Run `terraform output -raw base_domain` after deployment to see the parent domain used for all hosts, `terraform output -json org_ids` or `terraform output -json org_domains` to inspect the configured organizations, and `terraform output -raw alb_dns_name` if you ever need to inspect the ALB target directly.
+- Set `gdcn_org_ids` in your tfvars to control which organization IDs/DNS labels the cluster should trust. Each entry becomes `<org_id>.<base_domain>` (or `<org_id>.<ingress_ip>.<wildcard_dns_provider>` in wildcard mode) and is included in Dex `allowedOrigins`.
+- The `scripts/create-org.sh` helper now reads that list. In `alb` mode it no longer prompts for a DNS label; instead it forces you to pick one of the configured IDs and automatically composes `<org_id>.<base_domain>` before ExternalDNS publishes the Route53 record. In ingress-nginx mode, you can keep the wildcard-generated hostname or type any fully qualified domain that already resolves to your ingress load balancer.
+- Dex always lives at `auth.<base_domain>`, while each organization hostname becomes `<org_id>.<base_domain>`. If you override the wildcard DNS provider or supply your own `base_domain`, make sure the DNS records exist before running the scripts.
 
 1. Choose your provider and `cd` into its directory: `cd aws` or `cd azure`
 

@@ -8,6 +8,8 @@ data "aws_eks_cluster_auth" "cluster" {
 
 # Allow nodes to create repositories (the first time an image is pulled through the cache)
 resource "aws_iam_policy" "ecr_pull_through_cache_min" {
+  count = var.enable_image_cache ? 1 : 0
+
   name        = "${var.deployment_name}-ECRPullThroughCacheMin"
   description = "Allow worker nodes to create ECR repositories and import upstream images via pull-through cache."
 
@@ -26,13 +28,21 @@ resource "aws_iam_policy" "ecr_pull_through_cache_min" {
   })
 }
 
+locals {
+  ecr_pull_through_cache_policy = var.enable_image_cache && length(aws_iam_policy.ecr_pull_through_cache_min) > 0 ? {
+    ECRPullThroughCacheMin = aws_iam_policy.ecr_pull_through_cache_min[0].arn
+  } : {}
+}
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
-  cluster_name                   = var.deployment_name
-  cluster_version                = var.eks_version
-  cluster_endpoint_public_access = true
+  cluster_name                         = var.deployment_name
+  cluster_version                      = var.eks_version
+  cluster_endpoint_public_access       = var.eks_endpoint_public_access
+  cluster_endpoint_private_access      = var.eks_endpoint_private_access
+  cluster_endpoint_public_access_cidrs = var.eks_endpoint_public_access_cidrs
 
   cluster_addons = {
     coredns                = {}
@@ -55,11 +65,16 @@ module "eks" {
       use_custom_launch_template = false
       disk_size                  = 100
 
-      iam_role_additional_policies = {
+      # Tags required by cluster-autoscaler autodiscovery and IAM conditions
+      tags = {
+        "k8s.io/cluster-autoscaler/enabled"                = "true"
+        "k8s.io/cluster-autoscaler/${var.deployment_name}" = "owned"
+      }
+
+      iam_role_additional_policies = merge({
         AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
         AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
-        ECRPullThroughCacheMin             = aws_iam_policy.ecr_pull_through_cache_min.arn
-      }
+      }, local.ecr_pull_through_cache_policy)
 
       min_size = 1
       max_size = var.eks_max_nodes
