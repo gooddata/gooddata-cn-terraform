@@ -1,0 +1,61 @@
+###
+# Azure subscription & location
+###
+azure_subscription_id = "00000000-0000-0000-0000-000000000000"
+azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
+azure_location        = "East US"
+# azure_additional_tags = {
+#   Environment = "dev"
+# }
+
+###
+# Deployment configuration
+###
+helm_gdcn_version = "3.50.0"   # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+deployment_name   = "gooddata-cn-poc"
+
+# Component replica counts (lean defaults; uncomment below for HA)
+# gdcn_replica_count              = 2
+# ingress_nginx_replica_count     = 2
+# pulsar_bookkeeper_replica_count = 3
+# pulsar_broker_replica_count     = 3
+# pulsar_zookeeper_replica_count  = 3
+
+# Configure one or more GoodData.CN organization IDs that will be created later by the create-org.sh script (defaults to ["org"])
+# gdcn_org_ids = ["org", "demo"]
+
+###
+# GoodData.CN license
+###
+gdcn_license_key = "key/asdf=="   # provided by GoodData
+
+###
+# Ingress and DNS
+###
+# Azure currently supports ingress-nginx only. Hostnames default to the wildcard
+# DNS provider (sslip.io, nip.io, etc.) using the public IP of the ingress.
+ingress_controller    = "ingress-nginx"
+letsencrypt_email     = "me@example.com"
+wildcard_dns_provider = "sslip.io"
+
+# base_domain override (uncomment when you own DNS and want a fixed hostname)
+# base_domain = "gooddata-cn.example.com"
+
+###
+# Container cache
+###
+# enable_image_cache     = true
+# dockerhub_username     = "myusername"
+# dockerhub_access_token = "myaccesstoken"
+
+###
+# AKS & infrastructure sizing
+###
+# aks_version                         = "1.30"
+# aks_node_vm_size                    = "Standard_D4as_v6"
+# aks_min_nodes                       = 2
+# aks_max_nodes                       = 10
+# aks_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
+
+# postgresql_sku_name   = "GP_Standard_D2ds_v5"
+# postgresql_storage_mb = 32768
