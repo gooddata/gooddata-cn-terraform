@@ -267,7 +267,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   version    = var.helm_aws_lb_controller_version
 
   values = [<<EOF
-    replicaCount: 1
+    replicaCount: ${var.alb_controller_replica_count}
     clusterName: ${var.deployment_name}
     region: ${var.aws_region}
     vpcId: ${var.vpc_id}
