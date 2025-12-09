@@ -8,6 +8,7 @@ locals {
   # Define subnet CIDRs - using larger subnet for AKS to accommodate more nodes
   aks_subnet_cidr = "10.0.0.0/22" # Provides ~1000 IPs instead of ~250
   db_subnet_cidr  = "10.0.4.0/24" # Moved to avoid overlap
+  pe_subnet_cidr  = "10.0.5.0/24" # Dedicated for private endpoints
 
 }
 
@@ -17,10 +18,7 @@ resource "azurerm_virtual_network" "main" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 # Subnet for AKS nodes
@@ -45,6 +43,14 @@ resource "azurerm_subnet" "db" {
       actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
     }
   }
+}
+
+# Subnet dedicated to private endpoints
+resource "azurerm_subnet" "private_endpoints" {
+  name                 = "${var.deployment_name}-pe-subnet"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [local.pe_subnet_cidr]
 }
 
 # Network Security Group for AKS subnet
@@ -95,41 +101,7 @@ resource "azurerm_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
-  # Allow Internet access to HTTP/HTTPS ports for Load Balancer traffic forwarding
-  # For inbound traffic via the public Azure Load Balancer, the node sees the source as AzureLoadBalancer.
-  # Allow NodePort range and health probes from AzureLoadBalancer.
-
-  # Allow Internet client traffic on 80 (forwarded via Azure Load Balancer)
-  security_rule {
-    name                       = "allow-lb-frontend-80"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "Internet"
-    destination_address_prefix = "*"
-  }
-
-  # Allow Internet client traffic on 443 (forwarded via Azure Load Balancer)
-  security_rule {
-    name                       = "allow-lb-frontend-443"
-    priority                   = 111
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "443"
-    source_address_prefix      = "Internet"
-    destination_address_prefix = "*"
-  }
-
-
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 # Associate NSG with AKS subnet
@@ -157,10 +129,7 @@ resource "azurerm_network_security_group" "db" {
     destination_address_prefix = "*"
   }
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 # Associate NSG with database subnet
