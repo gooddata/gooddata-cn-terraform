@@ -1,0 +1,13 @@
+---
+description: Enforce Conventional Commits for all commit messages
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# Conventional Commits Policy
+
+- Format every commit message per https://www.conventionalcommits.org/en/v1.0.0/
+- Structure: `<type>[optional scope]: <description>` (e.g., `feat(api): add reporting endpoint`).
+- Common types: `feat`, `fix`, `docs`, `chore`, `refactor`, `perf`, `test`, `build`, `ci`.
+- Mark breaking changes with `!` after type/scope or add a `BREAKING CHANGE:` footer.
+- Keep descriptions concise and lowercase; add body/footers when extra context is needed.
