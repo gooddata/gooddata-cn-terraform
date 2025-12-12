@@ -59,8 +59,11 @@ resource "azurerm_network_security_group" "aks" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
 
-  # Allow Azure LoadBalancer to access NodePorts
-  # Traffic flow: Internet → Azure LoadBalancer → NodePorts → nginx Ingress → Services
+  # Allow inbound ingress traffic via the public Azure Load Balancer.
+  #
+  # Note: with Azure Standard Load Balancer, data plane traffic can preserve the original client
+  # source IP. In that case, the node/pod sees the source as the real Internet client (not the
+  # "AzureLoadBalancer" tag), so the NSG must allow "Internet" to the relevant backend ports.
 
   # Allow LoadBalancer access to HTTP NodePort
   security_rule {
@@ -98,6 +101,38 @@ resource "azurerm_network_security_group" "aks" {
     source_port_range          = "*"
     destination_port_range     = "30000-32767"
     source_address_prefix      = "VirtualNetwork"
+    destination_address_prefix = "*"
+  }
+
+  # Allow HTTP/HTTPS ingress traffic.
+  #
+  # In some AKS/Azure LB modes, traffic forwarded to the cluster is delivered to the backend on
+  # ports 80/443 (not the NodePort range). When that happens, allowing "Internet" on 80/443 is
+  # required for ingress to work while still relying on the LB for reachability.
+
+  # Allow Internet client traffic on 80 (forwarded via Azure Load Balancer)
+  security_rule {
+    name                       = "allow-lb-frontend-80"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
+
+  # Allow Internet client traffic on 443 (forwarded via Azure Load Balancer)
+  security_rule {
+    name                       = "allow-lb-frontend-443"
+    priority                   = 111
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "Internet"
     destination_address_prefix = "*"
   }
 
