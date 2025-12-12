@@ -10,9 +10,6 @@ resource "azurerm_public_ip" "ingress" {
   allocation_method   = "Static"
   sku                 = "Standard"
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 

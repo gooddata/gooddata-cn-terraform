@@ -139,7 +139,9 @@ resource "helm_release" "gooddata_cn" {
   ])
 
   # Wait until all resources are ready before Terraform continues
-  timeout = 1800
+  wait          = true
+  wait_for_jobs = true
+  timeout       = 1800
 
   depends_on = [
     kubernetes_namespace.gdcn,

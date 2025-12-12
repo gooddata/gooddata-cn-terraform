@@ -8,6 +8,7 @@ locals {
   # Define subnet CIDRs - using larger subnet for AKS to accommodate more nodes
   aks_subnet_cidr = "10.0.0.0/22" # Provides ~1000 IPs instead of ~250
   db_subnet_cidr  = "10.0.4.0/24" # Moved to avoid overlap
+  pe_subnet_cidr  = "10.0.5.0/24" # Dedicated for private endpoints
 
 }
 
@@ -17,10 +18,7 @@ resource "azurerm_virtual_network" "main" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 # Subnet for AKS nodes
@@ -47,14 +45,25 @@ resource "azurerm_subnet" "db" {
   }
 }
 
+# Subnet dedicated to private endpoints
+resource "azurerm_subnet" "private_endpoints" {
+  name                 = "${var.deployment_name}-pe-subnet"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [local.pe_subnet_cidr]
+}
+
 # Network Security Group for AKS subnet
 resource "azurerm_network_security_group" "aks" {
   name                = "${var.deployment_name}-aks-nsg"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
 
-  # Allow Azure LoadBalancer to access NodePorts
-  # Traffic flow: Internet → Azure LoadBalancer → NodePorts → nginx Ingress → Services
+  # Allow inbound ingress traffic via the public Azure Load Balancer.
+  #
+  # Note: with Azure Standard Load Balancer, data plane traffic can preserve the original client
+  # source IP. In that case, the node/pod sees the source as the real Internet client (not the
+  # "AzureLoadBalancer" tag), so the NSG must allow "Internet" to the relevant backend ports.
 
   # Allow LoadBalancer access to HTTP NodePort
   security_rule {
@@ -95,9 +104,11 @@ resource "azurerm_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
-  # Allow Internet access to HTTP/HTTPS ports for Load Balancer traffic forwarding
-  # For inbound traffic via the public Azure Load Balancer, the node sees the source as AzureLoadBalancer.
-  # Allow NodePort range and health probes from AzureLoadBalancer.
+  # Allow HTTP/HTTPS ingress traffic.
+  #
+  # In some AKS/Azure LB modes, traffic forwarded to the cluster is delivered to the backend on
+  # ports 80/443 (not the NodePort range). When that happens, allowing "Internet" on 80/443 is
+  # required for ingress to work while still relying on the LB for reachability.
 
   # Allow Internet client traffic on 80 (forwarded via Azure Load Balancer)
   security_rule {
@@ -125,11 +136,7 @@ resource "azurerm_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
-
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 # Associate NSG with AKS subnet
@@ -157,10 +164,7 @@ resource "azurerm_network_security_group" "db" {
     destination_address_prefix = "*"
   }
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 # Associate NSG with database subnet

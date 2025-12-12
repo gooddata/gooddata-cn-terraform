@@ -19,15 +19,22 @@ resource "azurerm_kubernetes_cluster" "main" {
     tenant_id          = var.azure_tenant_id
   }
 
+  dynamic "api_server_access_profile" {
+    for_each = length(var.aks_api_server_authorized_ip_ranges) > 0 ? [true] : []
+    content {
+      authorized_ip_ranges = var.aks_api_server_authorized_ip_ranges
+    }
+  }
+
   # Default node pool
   default_node_pool {
     name                 = "default"
     vm_size              = var.aks_node_vm_size
     vnet_subnet_id       = azurerm_subnet.aks.id
-    auto_scaling_enabled = var.aks_enable_auto_scaling
-    min_count            = var.aks_enable_auto_scaling ? var.aks_min_nodes : null
-    max_count            = var.aks_enable_auto_scaling ? var.aks_max_nodes : null
-    node_count           = var.aks_enable_auto_scaling ? null : var.aks_min_nodes
+    auto_scaling_enabled = true
+    min_count            = var.aks_min_nodes
+    max_count            = var.aks_max_nodes
+    node_count           = null
     max_pods             = 110
     os_disk_size_gb      = 100
 
@@ -35,13 +42,9 @@ resource "azurerm_kubernetes_cluster" "main" {
       max_surge = "2"
     }
 
-    tags = merge(
-      { Project = var.deployment_name },
-      var.azure_additional_tags
-    )
+    tags = local.common_tags
   }
 
-  # Cluster autoscaler profile
   auto_scaler_profile {
     expander = "least-waste"
   }
@@ -66,10 +69,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 
 
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 
   depends_on = [
     azurerm_subnet.aks,
@@ -97,7 +97,7 @@ resource "azurerm_role_assignment" "aks_system_identity_network_contributor" {
 
 # Grant AKS cluster permissions to pull from ACR (if using ACR)
 resource "azurerm_role_assignment" "aks_acr_pull" {
-  count                = var.acr_cache_images ? 1 : 0
+  count                = var.enable_image_cache ? 1 : 0
   scope                = azurerm_container_registry.main[0].id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id

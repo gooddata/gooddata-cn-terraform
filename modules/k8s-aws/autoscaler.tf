@@ -74,11 +74,14 @@ EOF
 
 # Install Cluster Autoscaler via Helm
 resource "helm_release" "cluster_autoscaler" {
-  name       = "cluster-autoscaler"
-  repository = "https://kubernetes.github.io/autoscaler"
-  chart      = "cluster-autoscaler"
-  version    = var.helm_cluster_autoscaler_version
-  namespace  = kubernetes_namespace.cluster_autoscaler.metadata[0].name
+  name          = "cluster-autoscaler"
+  repository    = "https://kubernetes.github.io/autoscaler"
+  chart         = "cluster-autoscaler"
+  version       = var.helm_cluster_autoscaler_version
+  namespace     = kubernetes_namespace.cluster_autoscaler.metadata[0].name
+  wait          = true
+  wait_for_jobs = true
+  timeout       = 1800
 
   # Values to configure Cluster Autoscaler
   values = [<<-EOF

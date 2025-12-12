@@ -7,10 +7,7 @@ resource "azurerm_user_assigned_identity" "gdcn" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 resource "azurerm_role_assignment" "gdcn_blob_contrib" {
