@@ -92,5 +92,7 @@ module "k8s_common" {
     aws_ecr_pull_through_cache_rule.dockerio,
     aws_ecr_pull_through_cache_rule.quayio,
     aws_ecr_pull_through_cache_rule.k8sio,
+    aws_iam_role_policy_attachment.gdcn_irsa_s3_access,
+    aws_secretsmanager_secret_version.dockerio,
   ]
 }
