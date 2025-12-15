@@ -6,9 +6,9 @@ locals {
   vnet_cidr = "10.0.0.0/16"
 
   # Define subnet CIDRs - using larger subnet for AKS to accommodate more nodes
-  aks_subnet_cidr = "10.0.0.0/22" # Provides ~1000 IPs instead of ~250
-  db_subnet_cidr  = "10.0.4.0/24" # Moved to avoid overlap
-  pe_subnet_cidr  = "10.0.5.0/24" # Dedicated for private endpoints
+  aks_subnet_cidr = "10.0.0.0/20"  # Dedicated subnet for AKS nodes
+  db_subnet_cidr  = "10.0.16.0/24" # Dedicated subnet for database (non-overlapping)
+  pe_subnet_cidr  = "10.0.17.0/24" # Dedicated for private endpoints (non-overlapping)
 
 }
 

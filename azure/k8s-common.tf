@@ -16,13 +16,11 @@ module "k8s_common" {
     kubectl    = kubectl
   }
 
-  deployment_name           = var.deployment_name
-  gdcn_license_key          = var.gdcn_license_key
-  cloud                     = "azure"
-  ingress_controller        = var.ingress_controller
-  gdcn_namespace            = local.gdcn_namespace
-  gdcn_service_account_name = local.gdcn_service_account_name
-  gdcn_org_ids              = var.gdcn_org_ids
+  deployment_name    = var.deployment_name
+  gdcn_license_key   = var.gdcn_license_key
+  cloud              = "azure"
+  ingress_controller = var.ingress_controller
+  gdcn_org_ids       = var.gdcn_org_ids
 
   base_domain           = var.base_domain
   ingress_ip            = azurerm_public_ip.ingress.ip_address
