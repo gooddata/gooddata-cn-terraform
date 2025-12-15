@@ -35,14 +35,17 @@ provider "aws" {
   region  = var.aws_region
   profile = var.aws_profile_name
   default_tags {
-    tags = merge(
-      { Project = var.deployment_name },
-      var.aws_additional_tags
-    )
+    tags = local.common_tags
   }
 }
 
 locals {
+  # Shared tags applied to all AWS resources
+  common_tags = merge(
+    { Project = var.deployment_name },
+    var.aws_additional_tags
+  )
+
   # Shared Kubernetes auth settings (aws eks get-token)
   kube_host = module.eks.cluster_endpoint
   kube_ca   = base64decode(module.eks.cluster_certificate_authority_data)
