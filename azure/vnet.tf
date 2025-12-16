@@ -8,7 +8,6 @@ locals {
   # Define subnet CIDRs - using larger subnet for AKS to accommodate more nodes
   aks_subnet_cidr = "10.0.0.0/20"  # Dedicated subnet for AKS nodes
   db_subnet_cidr  = "10.0.16.0/24" # Dedicated subnet for database (non-overlapping)
-  pe_subnet_cidr  = "10.0.17.0/24" # Dedicated for private endpoints (non-overlapping)
 
 }
 
@@ -43,14 +42,6 @@ resource "azurerm_subnet" "db" {
       actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
     }
   }
-}
-
-# Subnet dedicated to private endpoints
-resource "azurerm_subnet" "private_endpoints" {
-  name                 = "${var.deployment_name}-pe-subnet"
-  resource_group_name  = azurerm_resource_group.main.name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = [local.pe_subnet_cidr]
 }
 
 # Network Security Group for AKS subnet

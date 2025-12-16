@@ -40,7 +40,7 @@ resource "azurerm_container_registry" "main" {
   resource_group_name           = azurerm_resource_group.main.name
   location                      = azurerm_resource_group.main.location
   sku                           = "Premium"
-  public_network_access_enabled = false
+  public_network_access_enabled = true
 
   tags = local.common_tags
 }
@@ -76,53 +76,6 @@ resource "azurerm_container_registry_cache_rule" "k8sio" {
   source_repo           = "${local.upstream_registry_k8sio}/*"
 }
 
-
-# Private DNS zone for ACR private endpoint
-resource "azurerm_private_dns_zone" "acr" {
-  count = var.enable_image_cache ? 1 : 0
-
-  name                = "privatelink.azurecr.io"
-  resource_group_name = azurerm_resource_group.main.name
-
-  tags = local.common_tags
-}
-
-# Link ACR private DNS zone to the VNet
-resource "azurerm_private_dns_zone_virtual_network_link" "acr" {
-  count = var.enable_image_cache ? 1 : 0
-
-  name                  = "${var.deployment_name}-acr-dns-link"
-  resource_group_name   = azurerm_resource_group.main.name
-  private_dns_zone_name = azurerm_private_dns_zone.acr[0].name
-  virtual_network_id    = azurerm_virtual_network.main.id
-  registration_enabled  = false
-
-  tags = local.common_tags
-}
-
-# Private endpoint for ACR
-resource "azurerm_private_endpoint" "acr" {
-  count = var.enable_image_cache ? 1 : 0
-
-  name                = "${var.deployment_name}-acr-pe"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  subnet_id           = azurerm_subnet.private_endpoints.id
-
-  private_service_connection {
-    name                           = "${var.deployment_name}-acr-psc"
-    private_connection_resource_id = azurerm_container_registry.main[0].id
-    is_manual_connection           = false
-    subresource_names              = ["registry"]
-  }
-
-  private_dns_zone_group {
-    name                 = "${var.deployment_name}-acr-dns-group"
-    private_dns_zone_ids = [azurerm_private_dns_zone.acr[0].id]
-  }
-
-  tags = local.common_tags
-}
 
 # Store Docker Hub credentials in Key Vault
 resource "azurerm_key_vault" "main" {
