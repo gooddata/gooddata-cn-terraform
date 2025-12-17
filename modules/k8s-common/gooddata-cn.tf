@@ -115,6 +115,7 @@ resource "helm_release" "gooddata_cn" {
       dex_ingress_annotations = local.dex_ingress_annotations
       dex_tls_enabled         = local.dex_tls_enabled
     }),
+    var.enable_ai_features ? templatefile("${path.module}/templates/gdcn-ai-features.yaml.tftpl", {}) : null,
     var.enable_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
       registry_dockerio = var.registry_dockerio,
       registry_quayio   = var.registry_quayio

@@ -11,8 +11,11 @@ azure_location        = "East US"
 ###
 # Deployment configuration
 ###
-helm_gdcn_version = "3.50.0"   # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+helm_gdcn_version = "3.50.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
 deployment_name   = "gooddata-cn-poc"
+
+# Deploys and enables GoodData generative AI services
+# enable_ai_features = true
 
 # Component replica counts (lean defaults; uncomment below for HA)
 # gdcn_replica_count              = 2
@@ -27,7 +30,7 @@ deployment_name   = "gooddata-cn-poc"
 ###
 # GoodData.CN license
 ###
-gdcn_license_key = "key/asdf=="   # provided by GoodData
+gdcn_license_key = "key/asdf==" # provided by GoodData
 
 ###
 # Ingress and DNS

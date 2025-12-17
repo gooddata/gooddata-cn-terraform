@@ -59,6 +59,12 @@ variable "dockerhub_username" {
   }
 }
 
+variable "enable_ai_features" {
+  description = "Enable AI features in the gooddata-cn chart (GenAI service, semantic search, chat, metadata sync, and Qdrant)."
+  type        = bool
+  default     = true
+}
+
 variable "enable_image_cache" {
   description = "Enable image caching (ECR pull-through cache). If false, images are pulled from upstream registries directly."
   type        = bool
