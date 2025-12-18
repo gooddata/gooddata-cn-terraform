@@ -70,22 +70,12 @@ variable "gdcn_irsa_role_arn" {
 
 variable "gdcn_license_key" { type = string }
 
-variable "gdcn_namespace" {
-  type    = string
-  default = "gooddata-cn"
-}
-
 variable "gdcn_org_ids" {
   type    = list(string)
   default = ["org"]
 }
 
 variable "gdcn_replica_count" { type = number }
-
-variable "gdcn_service_account_name" {
-  type    = string
-  default = "gooddata-cn"
-}
 
 variable "helm_cert_manager_version" { type = string }
 

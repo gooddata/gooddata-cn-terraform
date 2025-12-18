@@ -16,28 +16,33 @@ module "k8s_common" {
     kubectl    = kubectl
   }
 
-  deployment_name           = var.deployment_name
-  gdcn_license_key          = var.gdcn_license_key
-  letsencrypt_email         = var.letsencrypt_email
-  wildcard_dns_provider     = var.wildcard_dns_provider
-  cloud                     = "azure"
-  gdcn_namespace            = local.gdcn_namespace
-  gdcn_service_account_name = local.gdcn_service_account_name
-  gdcn_replica_count        = var.gdcn_replica_count
+  deployment_name    = var.deployment_name
+  gdcn_license_key   = var.gdcn_license_key
+  cloud              = "azure"
+  ingress_controller = var.ingress_controller
+  gdcn_org_ids       = var.gdcn_org_ids
 
-  registry_dockerio = local.registry_dockerio
-  registry_quayio   = local.registry_quayio
-  registry_k8sio    = local.registry_k8sio
+  base_domain           = var.base_domain
+  ingress_ip            = azurerm_public_ip.ingress.ip_address
+  letsencrypt_email     = var.letsencrypt_email
+  wildcard_dns_provider = var.wildcard_dns_provider
 
-  # Apply image cache overrides only when ACR cache is enabled
-  use_image_cache = var.acr_cache_images
+  gdcn_replica_count              = var.gdcn_replica_count
+  ingress_nginx_replica_count     = var.ingress_nginx_replica_count
+  pulsar_zookeeper_replica_count  = var.pulsar_zookeeper_replica_count
+  pulsar_bookkeeper_replica_count = var.pulsar_bookkeeper_replica_count
+  pulsar_broker_replica_count     = var.pulsar_broker_replica_count
+
+  enable_image_cache = var.enable_image_cache
+  registry_dockerio  = local.registry_dockerio
+  registry_quayio    = local.registry_quayio
+  registry_k8sio     = local.registry_k8sio
 
   helm_cert_manager_version  = var.helm_cert_manager_version
   helm_gdcn_version          = var.helm_gdcn_version
   helm_pulsar_version        = var.helm_pulsar_version
   helm_ingress_nginx_version = var.helm_ingress_nginx_version
 
-  ingress_ip  = azurerm_public_ip.ingress.ip_address
   db_hostname = azurerm_postgresql_flexible_server.main.fqdn
   db_username = local.db_username
   db_password = local.db_password
@@ -56,19 +61,31 @@ module "k8s_common" {
     azurerm_container_registry_cache_rule.dockerio,
     azurerm_container_registry_cache_rule.quayio,
     azurerm_container_registry_cache_rule.k8sio,
+    azurerm_role_assignment.gdcn_blob_contrib,
+    azurerm_role_assignment.acr_credential_set_secrets_user,
     azurerm_role_assignment.aks_acr_pull,
     azurerm_user_assigned_identity.gdcn,
     azurerm_federated_identity_credential.gdcn
   ]
 }
 
-output "auth_hostname" {
-  description = "The hostname for Dex authentication ingress"
-  value       = module.k8s_common.auth_hostname
+output "base_domain" {
+  description = "Base domain used for GoodData hostnames"
+  value       = module.k8s_common.base_domain
 }
 
-output "gdcn_org_hostname" {
-  description = "The hostname for GoodData.CN organization ingress"
-  value       = module.k8s_common.gdcn_org_hostname
+output "auth_domain" {
+  description = "The hostname for Dex authentication ingress"
+  value       = module.k8s_common.auth_domain
+}
+
+output "org_domains" {
+  description = "All GoodData.CN organization hostnames derived from gdcn_org_ids"
+  value       = module.k8s_common.org_domains
+}
+
+output "org_ids" {
+  description = "List of organization IDs/DNS labels allowed by this deployment"
+  value       = module.k8s_common.org_ids
 }
 

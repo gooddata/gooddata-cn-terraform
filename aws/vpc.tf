@@ -37,6 +37,8 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
+  tags = local.common_tags
+
   public_subnet_tags = {
     "kubernetes.io/role/elb"                       = "1"
     "kubernetes.io/cluster/${var.deployment_name}" = "shared"

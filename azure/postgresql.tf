@@ -18,10 +18,7 @@ resource "azurerm_private_dns_zone" "postgresql" {
   name                = "${var.deployment_name}.postgres.database.azure.com"
   resource_group_name = azurerm_resource_group.main.name
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 # Link Private DNS Zone to Virtual Network
@@ -32,10 +29,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
   resource_group_name   = azurerm_resource_group.main.name
   registration_enabled  = false
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 }
 
 # Create PostgreSQL Flexible Server
@@ -63,10 +57,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
     start_minute = 0
   }
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.azure_additional_tags
-  )
+  tags = local.common_tags
 
   lifecycle {
     ignore_changes = [
@@ -77,14 +68,6 @@ resource "azurerm_postgresql_flexible_server" "main" {
   depends_on = [
     azurerm_private_dns_zone_virtual_network_link.postgresql
   ]
-}
-
-# Create PostgreSQL database
-resource "azurerm_postgresql_flexible_server_database" "gooddata" {
-  name      = var.postgresql_database_name
-  server_id = azurerm_postgresql_flexible_server.main.id
-  collation = "en_US.utf8"
-  charset   = "utf8"
 }
 
 resource "azurerm_postgresql_flexible_server_configuration" "trigram" {

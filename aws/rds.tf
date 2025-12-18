@@ -25,10 +25,7 @@ resource "aws_security_group" "rds" {
   description = "Security group for RDS PostgreSQL database"
   vpc_id      = module.vpc.vpc_id
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.aws_additional_tags
-  )
+  tags = local.common_tags
 
   depends_on = [
     module.vpc
@@ -80,6 +77,8 @@ module "rds_postgresql" {
   storage_encrypted   = true
   skip_final_snapshot = var.rds_skip_final_snapshot
   deletion_protection = var.rds_deletion_protection
+
+  tags = local.common_tags
 
   depends_on = [
     module.vpc,

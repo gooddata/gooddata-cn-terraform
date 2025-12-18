@@ -16,13 +16,14 @@ locals {
   alb_tag_pairs             = [for k, v in var.aws_additional_tags : "${k}=${v}"]
   alb_tags_annotation       = local.use_alb && length(local.alb_tag_pairs) > 0 ? join(",", local.alb_tag_pairs) : null
   alb_shared_annotations = local.use_alb ? merge({
-    "alb.ingress.kubernetes.io/load-balancer-name" = local.alb_load_balancer_name
-    "alb.ingress.kubernetes.io/group.name"         = local.alb_load_balancer_name
-    "alb.ingress.kubernetes.io/scheme"             = "internet-facing"
-    "alb.ingress.kubernetes.io/target-type"        = "ip"
-    "alb.ingress.kubernetes.io/listen-ports"       = "[{\"HTTP\":80},{\"HTTPS\":443}]"
-    "alb.ingress.kubernetes.io/ssl-redirect"       = "443"
-    "alb.ingress.kubernetes.io/certificate-arn"    = local.alb_certificate_arn
+    "alb.ingress.kubernetes.io/load-balancer-name"       = local.alb_load_balancer_name
+    "alb.ingress.kubernetes.io/group.name"               = local.alb_load_balancer_name
+    "alb.ingress.kubernetes.io/scheme"                   = "internet-facing"
+    "alb.ingress.kubernetes.io/target-type"              = "ip"
+    "alb.ingress.kubernetes.io/listen-ports"             = "[{\"HTTP\":80},{\"HTTPS\":443}]"
+    "alb.ingress.kubernetes.io/ssl-redirect"             = "443"
+    "alb.ingress.kubernetes.io/certificate-arn"          = local.alb_certificate_arn
+    "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=180"
     }, local.alb_tags_annotation != null ? {
     "alb.ingress.kubernetes.io/tags" = local.alb_tags_annotation
   } : {}) : {}
@@ -39,14 +40,12 @@ module "k8s_common" {
     kubectl    = kubectl
   }
 
-  deployment_name           = var.deployment_name
-  gdcn_license_key          = var.gdcn_license_key
-  cloud                     = "aws"
-  ingress_controller        = var.ingress_controller
-  gdcn_namespace            = local.gdcn_namespace
-  gdcn_service_account_name = local.gdcn_service_account_name
-  gdcn_irsa_role_arn        = aws_iam_role.gdcn_irsa.arn
-  gdcn_org_ids              = var.gdcn_org_ids
+  deployment_name    = var.deployment_name
+  gdcn_license_key   = var.gdcn_license_key
+  cloud              = "aws"
+  ingress_controller = var.ingress_controller
+  gdcn_irsa_role_arn = aws_iam_role.gdcn_irsa.arn
+  gdcn_org_ids       = var.gdcn_org_ids
 
   base_domain           = local.base_domain
   ingress_ip            = local.ingress_ip
@@ -92,5 +91,7 @@ module "k8s_common" {
     aws_ecr_pull_through_cache_rule.dockerio,
     aws_ecr_pull_through_cache_rule.quayio,
     aws_ecr_pull_through_cache_rule.k8sio,
+    aws_iam_role_policy_attachment.gdcn_irsa_s3_access,
+    aws_secretsmanager_secret_version.dockerio,
   ]
 }
