@@ -44,6 +44,8 @@ module "eks" {
   cluster_endpoint_private_access      = var.eks_endpoint_private_access
   cluster_endpoint_public_access_cidrs = var.eks_endpoint_public_access_cidrs
 
+  tags = local.common_tags
+
   cluster_addons = {
     coredns                = {}
     eks-pod-identity-agent = {}
@@ -66,10 +68,13 @@ module "eks" {
       disk_size                  = 100
 
       # Tags required by cluster-autoscaler autodiscovery and IAM conditions
-      tags = {
-        "k8s.io/cluster-autoscaler/enabled"                = "true"
-        "k8s.io/cluster-autoscaler/${var.deployment_name}" = "owned"
-      }
+      tags = merge(
+        local.common_tags,
+        {
+          "k8s.io/cluster-autoscaler/enabled"                = "true"
+          "k8s.io/cluster-autoscaler/${var.deployment_name}" = "owned"
+        }
+      )
 
       iam_role_additional_policies = merge({
         AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"

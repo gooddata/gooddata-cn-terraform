@@ -33,6 +33,8 @@ resource "aws_s3_bucket" "buckets" {
   for_each      = local.s3_buckets
   bucket        = substr("${local.bucket_prefix}${each.value}", 0, 63)
   force_destroy = true
+
+  tags = local.common_tags
 }
 
 resource "aws_s3_bucket_public_access_block" "buckets" {

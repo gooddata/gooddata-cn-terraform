@@ -1,7 +1,7 @@
 ###
 # AWS account & region
 ###
-aws_profile_name = "my-profile"   # matches a profile in ~/.aws/config
+aws_profile_name = "my-profile" # matches a profile in ~/.aws/config
 aws_region       = "eu-central-1"
 # aws_additional_tags = {
 #   Environment = "dev"
@@ -10,9 +10,12 @@ aws_region       = "eu-central-1"
 ###
 # Deployment configuration
 ###
-helm_gdcn_version  = "3.50.0"   # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+helm_gdcn_version  = "3.50.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
 gdcn_replica_count = 1
 deployment_name    = "gooddata-cn-poc"
+
+# Deploys and enables GoodData generative AI services
+# enable_ai_features = true
 
 # Configure one or more GoodData.CN organization IDs that will be created later by the create-org.sh script (defaults to ["org"])
 # gdcn_org_ids = ["org", "demo"]
@@ -20,7 +23,7 @@ deployment_name    = "gooddata-cn-poc"
 # Component replica counts (lean defaults; uncomment below for HA)
 # alb_controller_replica_count    = 2
 # gdcn_replica_count              = 2
-# ingress_nginx_replica_count     = 2   # not used if ingress_controller != "ingress-nginx"
+# ingress_nginx_replica_count     = 2 # not used if ingress_controller != "ingress-nginx"
 # pulsar_bookkeeper_replica_count = 3
 # pulsar_broker_replica_count     = 3
 # pulsar_zookeeper_replica_count  = 3
@@ -28,7 +31,7 @@ deployment_name    = "gooddata-cn-poc"
 ###
 # GoodData.CN license
 ###
-gdcn_license_key = "key/asdf=="   # provided by GoodData
+gdcn_license_key = "key/asdf==" # provided by GoodData
 
 ###
 # Ingress and DNS (choose one configuration)
@@ -70,5 +73,5 @@ wildcard_dns_provider = "sslip.io"
 # eks_endpoint_private_access      = false
 
 # rds_instance_class      = "db.t4g.medium"
-# rds_deletion_protection = false   # set this for easy teardown
-# rds_skip_final_snapshot = true   # set this for faster teardown
+# rds_deletion_protection = false # set this for easy teardown
+# rds_skip_final_snapshot = true  # set this for faster teardown

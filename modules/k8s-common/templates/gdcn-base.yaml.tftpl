@@ -63,8 +63,8 @@ dex:
       authSecretName: gooddata-cn-auth-tls
 %{ endif }
 
-# Use the external Postgres instance
 service:
+  # Use the external Postgres instance
   postgres:
     host: "${db_hostname}"
     port: 5432

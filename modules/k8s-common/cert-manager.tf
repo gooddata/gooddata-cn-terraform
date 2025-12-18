@@ -17,11 +17,14 @@ resource "kubernetes_namespace" "cert-manager" {
 resource "helm_release" "cert-manager" {
   count = local.deploy_cert_manager ? 1 : 0
 
-  name       = "cert-manager"
-  namespace  = kubernetes_namespace.cert-manager[0].metadata[0].name
-  chart      = "cert-manager"
-  repository = "https://charts.jetstack.io"
-  version    = var.helm_cert_manager_version
+  name          = "cert-manager"
+  namespace     = kubernetes_namespace.cert-manager[0].metadata[0].name
+  chart         = "cert-manager"
+  repository    = "https://charts.jetstack.io"
+  version       = var.helm_cert_manager_version
+  wait          = true
+  wait_for_jobs = true
+  timeout       = 1800
   values = [<<EOF
 image:
   repository: ${var.registry_quayio}/jetstack/cert-manager-controller

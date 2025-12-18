@@ -26,10 +26,7 @@ resource "aws_iam_role" "gdcn_irsa" {
   name               = "${var.deployment_name}-gdcn-irsa"
   assume_role_policy = data.aws_iam_policy_document.gdcn_irsa_assume_role.json
 
-  tags = merge(
-    { Project = var.deployment_name },
-    var.aws_additional_tags
-  )
+  tags = local.common_tags
 
   depends_on = [
     module.eks

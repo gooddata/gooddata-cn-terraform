@@ -107,12 +107,15 @@ resource "kubernetes_service_account" "external_dns" {
 }
 
 resource "helm_release" "external_dns" {
-  count      = local.external_dns_enabled ? 1 : 0
-  name       = "external-dns"
-  repository = "https://kubernetes-sigs.github.io/external-dns/"
-  chart      = "external-dns"
-  version    = var.helm_external_dns_version
-  namespace  = kubernetes_namespace.external_dns[0].metadata[0].name
+  count         = local.external_dns_enabled ? 1 : 0
+  name          = "external-dns"
+  repository    = "https://kubernetes-sigs.github.io/external-dns/"
+  chart         = "external-dns"
+  version       = var.helm_external_dns_version
+  namespace     = kubernetes_namespace.external_dns[0].metadata[0].name
+  wait          = true
+  wait_for_jobs = true
+  timeout       = 1800
 
   values = [yamlencode({
     provider      = "aws"

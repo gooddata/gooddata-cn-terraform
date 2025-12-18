@@ -16,10 +16,10 @@ resource "aws_acm_certificate" "gdcn" {
   validation_method         = "DNS"
 
   tags = merge(
+    local.common_tags,
     {
       Name = "${var.deployment_name}-gdcn-alb-cert"
-    },
-    var.aws_additional_tags
+    }
   )
 
   lifecycle {

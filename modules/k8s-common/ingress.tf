@@ -85,11 +85,14 @@ resource "kubernetes_namespace" "ingress" {
 resource "helm_release" "ingress_nginx" {
   count = local.deploy_ingress_nginx ? 1 : 0
 
-  name       = "ingress-nginx"
-  repository = "https://kubernetes.github.io/ingress-nginx"
-  chart      = "ingress-nginx"
-  namespace  = kubernetes_namespace.ingress[count.index].metadata[0].name
-  version    = var.helm_ingress_nginx_version
+  name          = "ingress-nginx"
+  repository    = "https://kubernetes.github.io/ingress-nginx"
+  chart         = "ingress-nginx"
+  namespace     = kubernetes_namespace.ingress[count.index].metadata[0].name
+  version       = var.helm_ingress_nginx_version
+  wait          = true
+  wait_for_jobs = true
+  timeout       = 1800
 
   values = [yamlencode(local.ingress_values)]
 

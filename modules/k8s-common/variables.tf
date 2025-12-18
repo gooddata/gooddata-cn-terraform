@@ -58,10 +58,9 @@ variable "dex_ingress_annotations_override" {
   default = {}
 }
 
-variable "enable_image_cache" {
-  type    = bool
-  default = false
-}
+variable "enable_ai_features" { type = bool }
+
+variable "enable_image_cache" { type = bool }
 
 variable "gdcn_irsa_role_arn" {
   type    = string
@@ -70,22 +69,9 @@ variable "gdcn_irsa_role_arn" {
 
 variable "gdcn_license_key" { type = string }
 
-variable "gdcn_namespace" {
-  type    = string
-  default = "gooddata-cn"
-}
-
-variable "gdcn_org_ids" {
-  type    = list(string)
-  default = ["org"]
-}
+variable "gdcn_org_ids" { type = list(string) }
 
 variable "gdcn_replica_count" { type = number }
-
-variable "gdcn_service_account_name" {
-  type    = string
-  default = "gooddata-cn"
-}
 
 variable "helm_cert_manager_version" { type = string }
 
@@ -114,27 +100,15 @@ variable "ingress_eip_allocations" {
 
 variable "ingress_ip" { type = string }
 
-variable "ingress_nginx_replica_count" {
-  type    = number
-  default = 1
-}
+variable "ingress_nginx_replica_count" { type = number }
 
 variable "letsencrypt_email" { type = string }
 
-variable "pulsar_bookkeeper_replica_count" {
-  type    = number
-  default = 1
-}
+variable "pulsar_bookkeeper_replica_count" { type = number }
 
-variable "pulsar_broker_replica_count" {
-  type    = number
-  default = 1
-}
+variable "pulsar_broker_replica_count" { type = number }
 
-variable "pulsar_zookeeper_replica_count" {
-  type    = number
-  default = 1
-}
+variable "pulsar_zookeeper_replica_count" { type = number }
 
 variable "registry_dockerio" { type = string }
 

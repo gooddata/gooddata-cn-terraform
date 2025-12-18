@@ -32,7 +32,7 @@ locals {
 
 resource "kubernetes_namespace" "gdcn" {
   metadata {
-    name = var.gdcn_namespace
+    name = local.gdcn_namespace
   }
 }
 
@@ -115,12 +115,13 @@ resource "helm_release" "gooddata_cn" {
       dex_ingress_annotations = local.dex_ingress_annotations
       dex_tls_enabled         = local.dex_tls_enabled
     }),
+    var.enable_ai_features ? templatefile("${path.module}/templates/gdcn-ai-features.yaml.tftpl", {}) : null,
     var.enable_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
       registry_dockerio = var.registry_dockerio,
       registry_quayio   = var.registry_quayio
     }) : null,
     var.cloud == "azure" ? templatefile("${path.module}/templates/gdcn-azure.yaml.tftpl", {
-      gdcn_service_account_name     = var.gdcn_service_account_name
+      gdcn_service_account_name     = local.gdcn_service_account_name
       azure_uami_client_id          = var.azure_uami_client_id
       azure_storage_account_name    = var.azure_storage_account_name
       azure_exports_container       = var.azure_exports_container
@@ -132,14 +133,16 @@ resource "helm_release" "gooddata_cn" {
       s3_exports_bucket_id       = var.s3_exports_bucket_id
       s3_quiver_cache_bucket_id  = var.s3_quiver_cache_bucket_id
       s3_datasource_fs_bucket_id = var.s3_datasource_fs_bucket_id
-      gdcn_service_account_name  = var.gdcn_service_account_name
+      gdcn_service_account_name  = local.gdcn_service_account_name
       gdcn_irsa_role_arn         = var.gdcn_irsa_role_arn
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-tiny.yaml.tftpl", {})
   ])
 
   # Wait until all resources are ready before Terraform continues
-  timeout = 1800
+  wait          = true
+  wait_for_jobs = true
+  timeout       = 1800
 
   depends_on = [
     kubernetes_namespace.gdcn,
