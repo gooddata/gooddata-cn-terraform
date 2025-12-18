@@ -5,9 +5,12 @@
 resource "aws_eip" "lb" {
   count = var.ingress_controller == "ingress-nginx" ? length(module.vpc.public_subnets) : 0
 
-  tags = {
-    Name = "${var.deployment_name}-ingress-lb-${count.index}"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${var.deployment_name}-ingress-lb-${count.index}"
+    }
+  )
 }
 
 # HACK: AWS LB provisioned by Ingress controller may take some time

@@ -260,11 +260,14 @@ resource "kubernetes_service_account" "lb_controller" {
 }
 
 resource "helm_release" "aws_load_balancer_controller" {
-  name       = "aws-load-balancer-controller"
-  repository = "https://aws.github.io/eks-charts"
-  chart      = "aws-load-balancer-controller"
-  namespace  = kubernetes_namespace.alb.metadata[0].name
-  version    = var.helm_aws_lb_controller_version
+  name          = "aws-load-balancer-controller"
+  repository    = "https://aws.github.io/eks-charts"
+  chart         = "aws-load-balancer-controller"
+  namespace     = kubernetes_namespace.alb.metadata[0].name
+  version       = var.helm_aws_lb_controller_version
+  wait          = true
+  wait_for_jobs = true
+  timeout       = 1800
 
   values = [<<EOF
     replicaCount: ${var.alb_controller_replica_count}

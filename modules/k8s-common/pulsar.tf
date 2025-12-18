@@ -9,6 +9,8 @@ resource "helm_release" "pulsar" {
   namespace        = "pulsar"
   create_namespace = true
   version          = var.helm_pulsar_version
+  wait             = true
+  wait_for_jobs    = true
   timeout          = 1800
 
   values = [<<-EOF

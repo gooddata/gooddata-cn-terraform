@@ -1,4 +1,7 @@
 locals {
+  gdcn_namespace            = "gooddata-cn"
+  gdcn_service_account_name = "gooddata-cn"
+
   # Reuse a single ingress class name throughout the module
   resolved_ingress_class_name = trimspace(var.ingress_class_name_override) != "" ? trimspace(var.ingress_class_name_override) : "nginx"
 
