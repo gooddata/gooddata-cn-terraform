@@ -36,7 +36,7 @@ locals {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"
+  version = "~> 21.0"
 
   cluster_name                         = var.deployment_name
   cluster_version                      = var.eks_version
