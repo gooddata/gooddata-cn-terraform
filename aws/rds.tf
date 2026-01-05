@@ -51,7 +51,7 @@ resource "aws_security_group_rule" "rds_postgres_ingress_from_nodes" {
 
 module "rds_postgresql" {
   source  = "terraform-aws-modules/rds/aws"
-  version = "~> 6.0"
+  version = "~> 7.0"
 
   # Identifier & engine
   identifier        = var.deployment_name
