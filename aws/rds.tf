@@ -82,8 +82,6 @@ module "rds_postgresql" {
 
   depends_on = [
     module.vpc,
-    module.eks,
     aws_security_group.rds,
-    aws_security_group_rule.rds_postgres_ingress_from_nodes,
   ]
 }
