@@ -69,7 +69,15 @@ variable "gdcn_irsa_role_arn" {
 
 variable "gdcn_license_key" { type = string }
 
-variable "gdcn_org_ids" { type = list(string) }
+variable "gdcn_orgs" {
+  type = list(object({
+    admin_group = string
+    admin_user  = string
+    id          = string
+    name        = string
+  }))
+  default = []
+}
 
 variable "gdcn_replica_count" { type = number }
 

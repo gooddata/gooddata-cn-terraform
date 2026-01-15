@@ -14,13 +14,15 @@ module "k8s_common" {
     kubernetes = kubernetes
     helm       = helm
     kubectl    = kubectl
+    random     = random
+    external   = external
   }
 
   deployment_name    = var.deployment_name
   gdcn_license_key   = var.gdcn_license_key
+  gdcn_orgs          = var.gdcn_orgs
   cloud              = "azure"
   ingress_controller = var.ingress_controller
-  gdcn_org_ids       = var.gdcn_org_ids
 
   base_domain           = var.base_domain
   ingress_ip            = azurerm_public_ip.ingress.ip_address
@@ -81,7 +83,7 @@ output "auth_domain" {
 }
 
 output "org_domains" {
-  description = "All GoodData.CN organization hostnames derived from gdcn_org_ids"
+  description = "All GoodData.CN organization hostnames derived from gdcn_orgs"
   value       = module.k8s_common.org_domains
 }
 

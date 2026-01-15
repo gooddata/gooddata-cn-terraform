@@ -28,6 +28,37 @@ die() {
   exit 1
 }
 
+try_load_admin_credentials_from_secret() {
+  local namespace="${1}"
+  local org_id="${2}"
+  local secret_name="gdcn-org-admin-${org_id}"
+  local admin_user_b64 admin_password_b64 admin_user admin_password
+
+  command_exists kubectl || return 1
+  command_exists base64 || return 1
+
+  kubectl get secret -n "${namespace}" "${secret_name}" >/dev/null 2>&1 || return 1
+
+  admin_user_b64=$(kubectl get secret -n "${namespace}" "${secret_name}" -o jsonpath='{.data.adminUser}' 2>/dev/null || true)
+  admin_password_b64=$(kubectl get secret -n "${namespace}" "${secret_name}" -o jsonpath='{.data.adminPassword}' 2>/dev/null || true)
+
+  if [[ -z "${admin_user_b64}" || -z "${admin_password_b64}" ]]; then
+    return 1
+  fi
+
+  admin_user=$(printf '%s' "${admin_user_b64}" | base64 -d 2>/dev/null || true)
+  admin_password=$(printf '%s' "${admin_password_b64}" | base64 -d 2>/dev/null || true)
+
+  if [[ -z "${admin_user}" || -z "${admin_password}" ]]; then
+    return 1
+  fi
+
+  GDCN_ADMIN_USER="${admin_user}"
+  GDCN_ADMIN_PASSWORD="${admin_password}"
+  echo ">> Using admin credentials from Kubernetes Secret ${namespace}/${secret_name}"
+  return 0
+}
+
 sanitize_user_id() {
   local value="${1}"
   value=${value//@/.at.}
@@ -297,8 +328,19 @@ if [[ -z "${GDCN_ORG_HOSTNAME}" ]]; then
   warn "Terraform outputs missing or incomplete; unable to auto-detect hostname for '${GDCN_ORG_ID}'."
   GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization domain (e.g. example.com): " "GoodData.CN organization domain is required")
 fi
-GDCN_ADMIN_USER=$(prompt_required ">> GoodData.CN EXISTING ADMIN username [default: admin]: " "GoodData.CN admin username is required" "admin")
-GDCN_ADMIN_PASSWORD=$(prompt_password ">> GoodData.CN EXISTING ADMIN password: " "GoodData.CN admin password is required")
+
+# Admin credentials
+# - Prefer environment overrides if set (useful for CI)
+# - Otherwise, try to read from a Terraform-managed Secret
+# - Finally, prompt interactively as a fallback
+GDCN_NAMESPACE=${GDCN_NAMESPACE:-gooddata-cn}
+if [[ -n "${GDCN_ADMIN_USER:-}" && -n "${GDCN_ADMIN_PASSWORD:-}" ]]; then
+  echo ">> Using admin credentials from environment variables."
+elif ! try_load_admin_credentials_from_secret "${GDCN_NAMESPACE}" "${GDCN_ORG_ID}"; then
+  GDCN_ADMIN_USER=$(prompt_required ">> GoodData.CN EXISTING ADMIN username [default: admin]: " "GoodData.CN admin username is required" "admin")
+  GDCN_ADMIN_PASSWORD=$(prompt_password ">> GoodData.CN EXISTING ADMIN password: " "GoodData.CN admin password is required")
+fi
+
 GDCN_USER_FIRSTNAME=$(trim "$(prompt_required ">> New GoodData.CN user first name: " "First name cannot be empty")")
 if [[ -z "${GDCN_USER_FIRSTNAME}" ]]; then
   die "First name cannot be empty"
