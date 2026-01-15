@@ -23,7 +23,6 @@ module "k8s_aws" {
   helm_cluster_autoscaler_version = var.helm_cluster_autoscaler_version
   helm_aws_lb_controller_version  = var.helm_aws_lb_controller_version
   helm_metrics_server_version     = var.helm_metrics_server_version
-  helm_external_dns_version       = var.helm_external_dns_version
 
   vpc_id                        = module.vpc.vpc_id
   eip_allocations               = length(aws_eip.lb) > 0 ? join(",", aws_eip.lb[*].allocation_id) : ""

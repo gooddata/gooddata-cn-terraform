@@ -31,12 +31,5 @@ locals {
   )
 
   base_domain = trimspace(local.derived_base_domain)
-
-  // Default auth/org hosts piggyback on the base domain. If we still don't have
-  // one, reuse the ingress-nginx wildcard pattern so TLS + callbacks still work.
-  default_auth_domain = local.base_domain != "" ? "auth.${local.base_domain}" : (
-    var.ingress_controller == "ingress-nginx" && local.ingress_primary_eip != "" && var.wildcard_dns_provider != "" ? "auth.${local.ingress_primary_eip}.${var.wildcard_dns_provider}" : ""
-  )
-
 }
 

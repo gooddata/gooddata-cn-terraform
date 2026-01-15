@@ -65,3 +65,13 @@ data "aws_lb" "gdcn" {
   }
 }
 
+resource "aws_route53_record" "gdcn_alb_wildcard" {
+  count = local.use_alb && local.base_domain != "" ? 1 : 0
+
+  zone_id = local.cleaned_route53_zone_id
+  name    = "*.${local.base_domain}"
+  type    = "CNAME"
+  ttl     = 60
+  records = [data.aws_lb.gdcn[0].dns_name]
+}
+
