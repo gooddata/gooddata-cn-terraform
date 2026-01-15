@@ -62,6 +62,11 @@ variable "enable_ai_features" { type = bool }
 
 variable "enable_image_cache" { type = bool }
 
+variable "enable_istio" {
+  type    = bool
+  default = false
+}
+
 variable "gdcn_irsa_role_arn" {
   type    = string
   default = ""
@@ -86,6 +91,11 @@ variable "helm_cert_manager_version" { type = string }
 variable "helm_gdcn_version" { type = string }
 
 variable "helm_ingress_nginx_version" { type = string }
+
+variable "helm_istio_version" {
+  type    = string
+  default = ""
+}
 
 variable "helm_pulsar_version" { type = string }
 
