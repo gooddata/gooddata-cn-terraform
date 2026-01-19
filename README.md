@@ -22,7 +22,7 @@ Terraform provisions:
     - Other cloud-specific prerequisites
 
 
-Once everything is deployed, run `scripts/create-org.sh` to create your GoodData.CN organization and use `scripts/create-user.sh` whenever you need to add Dex-backed test users.
+If you define `gdcn_orgs` in your tfvars, Terraform will create the GoodData.CN `Organization` custom resources for you. Use `scripts/create-user.sh` whenever you need to add Dex-backed test users (it can read the Terraform-managed admin credentials from the cluster).
 
 ---
 
@@ -64,10 +64,9 @@ Once everything is deployed, run `scripts/create-org.sh` to create your GoodData
 
 ### DNS and multiple organizations
 
-- Terraform outputs `base_domain`, `auth_domain`, `org_domains`, `org_ids`, and (when ALB is enabled) `alb_dns_name`. Run `terraform output -raw base_domain` after deployment to see the parent domain used for all hosts, `terraform output -json org_ids` or `terraform output -json org_domains` to inspect the configured organizations, and `terraform output -raw alb_dns_name` if you ever need to inspect the ALB target directly.
-- Set `gdcn_org_ids` in your tfvars to control which organization IDs/DNS labels the cluster should trust. Each entry becomes `<org_id>.<base_domain>` (or `<org_id>.<ingress_ip>.<wildcard_dns_provider>` in wildcard mode) and is included in Dex `allowedOrigins`.
-- The `scripts/create-org.sh` helper now reads that list. In `alb` mode it no longer prompts for a DNS label; instead it forces you to pick one of the configured IDs and automatically composes `<org_id>.<base_domain>` before ExternalDNS publishes the Route53 record. In ingress-nginx mode, you can keep the wildcard-generated hostname or type any fully qualified domain that already resolves to your ingress load balancer.
-- Dex always lives at `auth.<base_domain>`, while each organization hostname becomes `<org_id>.<base_domain>`. If you override the wildcard DNS provider or supply your own `base_domain`, make sure the DNS records exist before running the scripts.
+- Terraform outputs `base_domain`, `auth_domain`, `org_domains`, `org_ids`, and (when ALB is enabled) `alb_dns_name`. Run `terraform output -raw base_domain` after deployment to see the parent domain used for all hosts, and `terraform output -raw alb_dns_name` if you ever need to inspect the ALB target directly.
+- Set `gdcn_orgs` in your tfvars to manage one or more `Organization` objects in Terraform. Each org becomes `<org_id>.<base_domain>` (or `<org_id>.<ingress_ip>.<wildcard_dns_provider>` in wildcard mode) and is included in Dex `allowedOrigins`.
+- Dex lives at `auth.<base_domain>`.
 
 1. Choose your provider and `cd` into its directory: `cd aws` or `cd azure`
 
@@ -100,11 +99,11 @@ Once everything is deployed, run `scripts/create-org.sh` to create your GoodData
             --overwrite-existing
         ```
 
-1. Create the GoodData organization: `../scripts/create-org.sh`
+1. If you set `gdcn_orgs`, Terraform already created the organizations. You can confirm with: `kubectl get organization -n gooddata-cn`
 
 1. Configure authentication according to your needs:
     - To use an external OIDC provider (recommended for anything beyond local testing), follow the [Set Up Authentication guide](https://www.gooddata.com/docs/cloud-native/latest/manage-organization/set-up-authentication/).
-    - For quick local testing with the default Dex instance, create one or more users by running `../scripts/create-user.sh`. The script provisions the user in Dex and then creates or updates the corresponding GoodData user record by calling the public API ([Manage Users docs](https://www.gooddata.com/docs/cloud-native/3.49/manage-organization/manage-users/)).
+    - For quick local testing with the default Dex instance, create one or more users by running `../scripts/create-user.sh`. If Terraform created the organization, the script will automatically read the admin credentials from the Secret `gooddata-cn/gdcn-org-admin-<org_id>` (fallbacks to prompting if the Secret is missing).
 
 1. Finally, open `https://<gdcn_org_hostname>` (exact address in Terraform output) and log in.
 
@@ -122,8 +121,6 @@ To upgrade GoodData.CN to the [latest version](https://www.gooddata.com/docs/clo
 ### Tearing down
 
 To delete all resources associated with the GoodData POC, follow these steps:
-
-1. Delete any GoodData.CN organizations: `kubectl delete org --all -n gooddata-cn`
 
 1. Run Terraform: `terraform destroy -var-file=settings.tfvars`
 

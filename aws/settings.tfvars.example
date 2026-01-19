@@ -17,8 +17,25 @@ deployment_name    = "gooddata-cn-poc"
 # Deploys and enables GoodData generative AI services
 # enable_ai_features = true
 
-# Configure one or more GoodData.CN organization IDs that will be created later by the create-org.sh script (defaults to ["org"])
-# gdcn_org_ids = ["org", "demo"]
+# Configure one or more GoodData.CN organizations to be managed by Terraform.
+# - If gdcn_orgs is empty, Terraform will not create any Organization objects.
+# - Each org must include id, name, admin_user, and admin_group.
+# - Hostnames are always derived as: <id>.<base_domain>
+#
+# gdcn_orgs = [
+#   {
+#     id          = "org"
+#     name        = "Test, Inc."
+#     admin_user  = "admin"
+#     admin_group = "adminGroup"
+#   },
+#   {
+#     id          = "demo"
+#     name        = "Demo, Inc."
+#     admin_user  = "admin"
+#     admin_group = "adminGroup"
+#   },
+# ]
 
 # Component replica counts (lean defaults; uncomment below for HA)
 # alb_controller_replica_count    = 2

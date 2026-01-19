@@ -38,14 +38,16 @@ module "k8s_common" {
     kubernetes = kubernetes
     helm       = helm
     kubectl    = kubectl
+    random     = random
+    external   = external
   }
 
   deployment_name    = var.deployment_name
   gdcn_license_key   = var.gdcn_license_key
+  gdcn_orgs          = var.gdcn_orgs
   cloud              = "aws"
   ingress_controller = var.ingress_controller
   gdcn_irsa_role_arn = aws_iam_role.gdcn_irsa.arn
-  gdcn_org_ids       = var.gdcn_org_ids
 
   base_domain           = local.base_domain
   ingress_ip            = local.ingress_ip

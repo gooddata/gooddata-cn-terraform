@@ -11,8 +11,8 @@ locals {
   auth_domain = local.base_domain != "" ? "auth.${local.base_domain}" : (
     var.ingress_ip != "" && local.wildcard_dns_provider != "" ? "auth.${var.ingress_ip}.${local.wildcard_dns_provider}" : ""
   )
-  org_ids_raw = distinct(compact([for id in var.gdcn_org_ids : trimspace(id)]))
-  org_ids     = length(local.org_ids_raw) > 0 ? local.org_ids_raw : ["org"]
+  org_ids_raw = distinct(compact([for org in var.gdcn_orgs : trimspace(org.id)]))
+  org_ids     = local.org_ids_raw
   org_domains = local.base_domain != "" ? [
     for id in local.org_ids : "${id}.${local.base_domain}"
     ] : var.ingress_ip != "" && local.wildcard_dns_provider != "" ? [
@@ -147,7 +147,7 @@ resource "helm_release" "gooddata_cn" {
   depends_on = [
     kubernetes_namespace.gdcn,
     helm_release.pulsar,
-    kubectl_manifest.letsencrypt_cluster_issuer
+    kubectl_manifest.letsencrypt_cluster_issuer,
   ]
 }
 
@@ -162,7 +162,7 @@ output "auth_domain" {
 }
 
 output "org_domains" {
-  description = "All GoodData.CN organization hostnames derived from gdcn_org_ids"
+  description = "All GoodData.CN organization hostnames derived from gdcn_orgs"
   value       = local.org_domains
 }
 

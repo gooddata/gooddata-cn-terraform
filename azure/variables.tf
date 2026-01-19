@@ -107,15 +107,29 @@ variable "gdcn_license_key" {
   sensitive   = true
 }
 
-variable "gdcn_org_ids" {
-  description = "List of organization IDs/DNS labels that GoodData.CN should trust (also controls Dex allowedOrigins)."
-  type        = list(string)
-  default     = ["org"]
+variable "gdcn_orgs" {
+  description = "Organizations to manage as Organization custom resources. If empty, Terraform does not create any Organization objects."
+  type = list(object({
+    admin_group = string
+    admin_user  = string
+    id          = string
+    name        = string
+  }))
+  default = []
+
   validation {
-    condition = length(var.gdcn_org_ids) > 0 && alltrue([
-      for id in var.gdcn_org_ids : can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", id))
+    condition = (
+      length(distinct([for org in var.gdcn_orgs : trimspace(org.id)])) == length(var.gdcn_orgs)
+      ) && alltrue([
+        for org in var.gdcn_orgs : (
+          length(trimspace(org.id)) > 0 &&
+          can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", trimspace(org.id))) &&
+          length(trimspace(org.name)) > 0 &&
+          length(trimspace(org.admin_user)) > 0 &&
+          length(trimspace(org.admin_group)) > 0
+        )
     ])
-    error_message = "gdcn_org_ids must contain at least one lowercase alphanumeric DNS label (hyphens allowed inside)."
+    error_message = "gdcn_orgs must have unique non-empty ids (lowercase DNS labels), and each org must set non-empty name, admin_user, and admin_group."
   }
 }
 

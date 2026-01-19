@@ -41,10 +41,14 @@ dex:
     database:
       sslMode: require
     web:
+%{ if length(org_domains) == 0 ~}
+      allowedOrigins: []
+%{ else ~}
       allowedOrigins:
 %{ for domain in org_domains ~}
         - "${domain}"
-%{ endfor }
+%{ endfor ~}
+%{ endif ~}
   ingress:
     authHost: "${auth_domain}"
 %{ if ingress_class_name != "" }
