@@ -61,6 +61,7 @@ module "k8s_common" {
   pulsar_zookeeper_replica_count  = var.pulsar_zookeeper_replica_count
 
   enable_ai_features = var.enable_ai_features
+  enable_istio       = var.enable_istio
   enable_image_cache = var.enable_image_cache
   registry_dockerio  = local.registry_dockerio
   registry_quayio    = local.registry_quayio
@@ -68,6 +69,7 @@ module "k8s_common" {
 
   helm_cert_manager_version  = var.helm_cert_manager_version
   helm_gdcn_version          = var.helm_gdcn_version
+  helm_istio_version         = var.helm_istio_version
   helm_pulsar_version        = var.helm_pulsar_version
   helm_ingress_nginx_version = var.helm_ingress_nginx_version
 

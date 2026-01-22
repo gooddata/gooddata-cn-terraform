@@ -27,12 +27,15 @@ locals {
   } : {}
   ingress_annotations     = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
-  dex_tls_enabled         = local.use_ingress_nginx
+  dex_tls_enabled         = local.use_ingress_nginx || var.enable_istio
 }
 
 resource "kubernetes_namespace" "gdcn" {
   metadata {
     name = local.gdcn_namespace
+    labels = var.enable_istio ? {
+      "istio-injection" = "enabled"
+    } : null
   }
 }
 
@@ -114,7 +117,11 @@ resource "helm_release" "gooddata_cn" {
       ingress_annotations     = local.ingress_annotations
       dex_ingress_annotations = local.dex_ingress_annotations
       dex_tls_enabled         = local.dex_tls_enabled
+      dex_tls_secret_name     = var.enable_istio ? local.istio_backend_tls_secret_name : "gooddata-cn-auth-tls"
     }),
+    var.enable_istio ? templatefile("${path.module}/templates/gdcn-istio.yaml.tftpl", {
+      existing_gateway = "${local.gdcn_namespace}/${local.istio_public_gateway_name}"
+    }) : null,
     var.enable_ai_features ? templatefile("${path.module}/templates/gdcn-ai-features.yaml.tftpl", {}) : null,
     var.enable_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
       registry_dockerio = var.registry_dockerio,
@@ -148,6 +155,8 @@ resource "helm_release" "gooddata_cn" {
     kubernetes_namespace.gdcn,
     helm_release.pulsar,
     kubectl_manifest.letsencrypt_cluster_issuer,
+    helm_release.istio_ingress_gateway,
+    kubectl_manifest.istio_public_gateway,
   ]
 }
 

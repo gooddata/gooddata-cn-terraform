@@ -71,6 +71,20 @@ variable "enable_image_cache" {
   default     = false
 }
 
+variable "enable_istio" {
+  description = "When true (and ingress_controller = \"alb\"), deploy Istio and route ALB traffic through the Istio ingress gateway (NodePort) using Istio Gateway + VirtualService."
+  type        = bool
+  default     = false
+  validation {
+    condition = var.enable_istio ? (
+      var.ingress_controller == "alb" &&
+      length(trimspace(var.route53_zone_id)) > 0 &&
+      length(trimspace(var.base_domain)) > 0
+    ) : true
+    error_message = "enable_istio requires ingress_controller = \"alb\" and both route53_zone_id and base_domain to be set."
+  }
+}
+
 variable "eks_endpoint_private_access" {
   description = "Whether the EKS API server is reachable privately from within the VPC."
   type        = bool
@@ -167,12 +181,6 @@ variable "helm_cluster_autoscaler_version" {
   default     = "9.46.6"
 }
 
-variable "helm_external_dns_version" {
-  description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
-  type        = string
-  default     = "1.15.1"
-}
-
 variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy. https://artifacthub.io/packages/helm/gooddata-cn/gooddata-cn"
   type        = string
@@ -199,6 +207,12 @@ variable "helm_ingress_nginx_version" {
   default     = "4.12.3"
 }
 
+variable "helm_istio_version" {
+  description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
+  type        = string
+  default     = "1.28.2"
+}
+
 variable "helm_metrics_server_version" {
   description = "Version of the metrics-server Helm chart to deploy. https://artifacthub.io/packages/helm/metrics-server/metrics-server"
   type        = string
@@ -212,7 +226,7 @@ variable "helm_pulsar_version" {
 }
 
 variable "ingress_controller" {
-  description = "Ingress controller used to expose GoodData.CN. Use ingress-nginx for wildcard DNS, alb for Route53-managed ALB."
+  description = "How GoodData.CN is exposed externally. Use ingress-nginx for wildcard DNS, or alb for Route53-managed ALB."
   type        = string
   default     = "ingress-nginx"
   validation {

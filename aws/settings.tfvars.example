@@ -73,6 +73,16 @@ wildcard_dns_provider = "sslip.io"
 # base_domain        = "gooddata-cn.example.com"
 
 ###
+# Istio (optional; used with ingress_controller = "alb")
+###
+# ALB → Istio
+#   - Terminates TLS at ALB using ACM, then forwards to the Istio *ingress gateway* (Envoy) Service (NodePort).
+#     Note: the Istio `Gateway` resource is L7 config applied *on* the ingress gateway pods; it is not an AWS/ELB target by itself.
+#   - GoodData uses Istio Gateway + VirtualService for org routing (no Kubernetes Ingress objects).
+# enable_istio       = true
+# helm_istio_version = "1.28.2"
+
+###
 # Container cache
 ###
 # enable_image_cache     = true

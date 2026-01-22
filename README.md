@@ -16,8 +16,8 @@ Terraform provisions:
   - **Managed Kubernetes cluster**
     - GoodData.CN
     - Apache Pulsar (for messaging)
-    - ingress-nginx (ingress)
-    - cert-manager (TLS)
+    - ingress-nginx + cert-manager (TLS) when `ingress_controller = "ingress-nginx"`
+    - Istio (service mesh + ingress gateway) when `ingress_controller = "alb"` and `enable_istio = true`
     - Autoscaling and metrics support
     - Other cloud-specific prerequisites
 
@@ -56,7 +56,10 @@ If you define `gdcn_orgs` in your tfvars, Terraform will create the GoodData.CN 
 
     The example files document every available option (compute sizing, ingress/DNS choices, image caching, Helm chart versions, etc.). Update at least the GoodData.CN version (`helm_gdcn_version`), license key, contact email, and deployment name.
 
-    - On AWS, `ingress_controller = "ingress-nginx"` (default) exposes the cluster through a wildcard DNS provider such as sslip.io. Set `ingress_controller = "alb"` to provision an AWS Application Load Balancer with Route53 + ExternalDNS managing hostnames. ALB mode **requires** `route53_zone_id`, automatically installs ExternalDNS, and only works with GoodData.CN Helm chart versions **3.51.0 or newer**.
+    - On AWS:
+      - `ingress_controller = "ingress-nginx"` (default) exposes the cluster through a wildcard DNS provider such as sslip.io.
+      - `ingress_controller = "alb"` provisions an AWS Application Load Balancer and Terraform manages Route53 records for org/auth hostnames. ALB mode **requires** `route53_zone_id` and only works with GoodData.CN Helm chart versions **3.51.0 or newer**.
+      - Set `enable_istio = true` (with `ingress_controller = "alb"`) to route ALB traffic through the Istio ingress gateway (NodePort) and use Istio **Gateway + VirtualService** for org routing (no Kubernetes Ingress objects for org routing). This matches the AWS blog “ALB + ACM + Istio” architecture.
     - Provide `base_domain` if you want predictable hostnames; otherwise Terraform derives `<deployment_name>.<route53_zone_name>` for ALB or `<deployment_name>.<ingress_ip>.<wildcard_dns_provider>` for ingress-nginx.
     - Azure currently supports ingress-nginx only. The Azure example file lists the same variables as the AWS file, minus the ALB-specific ones.
 
@@ -66,6 +69,7 @@ If you define `gdcn_orgs` in your tfvars, Terraform will create the GoodData.CN 
 
 - Terraform outputs `base_domain`, `auth_domain`, `org_domains`, `org_ids`, and (when ALB is enabled) `alb_dns_name`. Run `terraform output -raw base_domain` after deployment to see the parent domain used for all hosts, and `terraform output -raw alb_dns_name` if you ever need to inspect the ALB target directly.
 - Set `gdcn_orgs` in your tfvars to manage one or more `Organization` objects in Terraform. Each org becomes `<org_id>.<base_domain>` (or `<org_id>.<ingress_ip>.<wildcard_dns_provider>` in wildcard mode) and is included in Dex `allowedOrigins`.
+- When `enable_istio = true`, Terraform automatically sets `Organization.spec.tls.secretName = alb-backend-tls` so the chart-managed Istio `shared-gateway` serves **HTTPS/443** and ALB → Istio can be **HTTPS end-to-end**.
 - Dex lives at `auth.<base_domain>`.
 
 1. Choose your provider and `cd` into its directory: `cd aws` or `cd azure`
