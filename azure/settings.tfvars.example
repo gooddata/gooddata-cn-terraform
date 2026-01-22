@@ -1,69 +1,83 @@
 ###
 # Azure subscription & location
 ###
-azure_subscription_id = "00000000-0000-0000-0000-000000000000"
-azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
-azure_location        = "East US"
+# Set if you want to override the subscription/tenant from `az login`.
+# Otherwise, Terraform uses your current Azure CLI session.
+# azure_subscription_id = "00000000-0000-0000-0000-000000000000"
+# azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
+
+# Region to deploy resources to
+azure_location = "East US"
+
+# Additional tags to apply to all Azure resources
 # azure_additional_tags = {
 #   Environment = "dev"
 # }
 
 ###
-# Deployment configuration
+# GoodData.CN deployment configuration
 ###
-helm_gdcn_version = "3.50.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
-deployment_name   = "gooddata-cn-poc"
+helm_gdcn_version = "3.52.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+deployment_name   = "gooddata-cn"
 
-# Size profile controls replicas/resources across services:
-# - dev: lowest footprint, not HA
-# - prod-small: small prod cluster, HA
-# NOTE: switching size profiles can be disruptive because persistent volume sizes
-# cannot be reduced in-place.
-size_profile = "prod-small"
+# GoodData.CN license key
+gdcn_license_key = "key/asdf==" # provided by GoodData
 
 # Deploys and enables GoodData generative AI services
 # enable_ai_features = true
 
+# Size profile controls replicas/resources across services:
+# - dev: lowest footprint, not HA
+# - prod-small: HA (>= 2 replica per service), resources for services increased
+# NOTE: switching size profile after deploying isn't supported since persistent
+# volume sizes can't be automatically adjusted in-place.
+size_profile = "prod-small"
+
+###
+# DNS
+###
+# Azure DNS records must be managed externally.
+# Terraform outputs the public IP address and required DNS records.
+
+###
+# Ingress
+###
+# Azure uses ingress-nginx with a public IP.
+
+# When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
+# ingress_nginx_behind_l7 = true
+
+###
+# TLS
+###
+# TLS is managed by cert-manager using Let's Encrypt certificates.
+letsencrypt_email = "me@example.com"
+
+###
+# Organization configuration
+###
+# Authentication endpoint hostname
+auth_hostname = "auth.gooddata.example.com"
+
 # Configure one or more GoodData.CN organizations to be managed by Terraform.
 # - If gdcn_orgs is empty, Terraform will not create any Organization objects.
-# - Each org must include id, name, admin_user, and admin_group.
-# - Hostnames are always derived as: <id>.<base_domain>
+# - Each org must include id, name, admin_user, admin_group, and hostname.
+# - Hostnames are provided explicitly per org.
 #
-# gdcn_orgs = [
-#   {
-#     id          = "org"
-#     name        = "Test, Inc."
-#     admin_user  = "admin"
-#     admin_group = "adminGroup"
-#   },
-#   {
-#     id          = "demo"
-#     name        = "Demo, Inc."
-#     admin_user  = "admin"
-#     admin_group = "adminGroup"
-#   },
-# ]
+gdcn_orgs = [
+  {
+    id          = "main"
+    name        = "Main Organization"
+    admin_user  = "admin"
+    admin_group = "adminGroup"
+    hostname    = "gooddata.example.com"
+  }
+]
 
 ###
-# GoodData.CN license
+# Container image caching
 ###
-gdcn_license_key = "key/asdf==" # provided by GoodData
-
-###
-# Ingress and DNS
-###
-# Azure currently supports ingress-nginx only. Hostnames default to the wildcard
-# DNS provider (sslip.io, nip.io, etc.) using the public IP of the ingress.
-ingress_controller    = "ingress-nginx"
-letsencrypt_email     = "me@example.com"
-wildcard_dns_provider = "sslip.io"
-
-# base_domain override (uncomment when you own DNS and want a fixed hostname)
-# base_domain = "gooddata-cn.example.com"
-
-###
-# Container cache
-###
+# Uncomment to enable image caching and avoid Docker Hub rate limits
 # enable_image_cache     = true
 # dockerhub_username     = "myusername"
 # dockerhub_access_token = "myaccesstoken"
