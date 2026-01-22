@@ -47,7 +47,7 @@ dex:
 %{ endfor ~}
 %{ endif ~}
   ingress:
-    authHost: "${auth_domain}"
+    authHost: "${auth_hostname}"
 %{ if ingress_class_name != "" }
     ingressClassName: ${ingress_class_name}
 %{ endif }

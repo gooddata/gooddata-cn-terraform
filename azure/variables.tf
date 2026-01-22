@@ -28,6 +28,15 @@ variable "aks_version" {
   default     = null
 }
 
+variable "auth_hostname" {
+  description = "Hostname for the default GoodData identity provider (Dex) ingress."
+  type        = string
+  validation {
+    condition     = length(trimspace(var.auth_hostname)) > 0
+    error_message = "auth_hostname must be provided."
+  }
+}
+
 variable "azure_additional_tags" {
   description = "Map of additional tags to apply to all Azure resources"
   type        = map(string)
@@ -41,19 +50,15 @@ variable "azure_location" {
 }
 
 variable "azure_subscription_id" {
-  description = "Azure subscription ID to deploy resources to."
+  description = "Azure subscription ID to deploy resources to. If not set, uses current az login subscription."
   type        = string
+  default     = null
 }
 
 variable "azure_tenant_id" {
-  description = "Azure tenant ID for authentication."
+  description = "Azure tenant ID for authentication. If not set, uses current az login tenant."
   type        = string
-}
-
-variable "base_domain" {
-  description = "Base domain used to construct GoodData hostnames. When empty, Terraform derives one from the ingress configuration."
-  type        = string
-  default     = ""
+  default     = null
 }
 
 variable "deployment_name" {
@@ -112,6 +117,7 @@ variable "gdcn_orgs" {
   type = list(object({
     admin_group = string
     admin_user  = string
+    hostname    = string
     id          = string
     name        = string
   }))
@@ -119,17 +125,19 @@ variable "gdcn_orgs" {
 
   validation {
     condition = (
-      length(distinct([for org in var.gdcn_orgs : trimspace(org.id)])) == length(var.gdcn_orgs)
+      length(distinct([for org in var.gdcn_orgs : trimspace(org.id)])) == length(var.gdcn_orgs) &&
+      length(distinct([for org in var.gdcn_orgs : trimspace(org.hostname)])) == length(var.gdcn_orgs)
       ) && alltrue([
         for org in var.gdcn_orgs : (
           length(trimspace(org.id)) > 0 &&
           can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", trimspace(org.id))) &&
           length(trimspace(org.name)) > 0 &&
           length(trimspace(org.admin_user)) > 0 &&
-          length(trimspace(org.admin_group)) > 0
+          length(trimspace(org.admin_group)) > 0 &&
+          length(trimspace(org.hostname)) > 0
         )
     ])
-    error_message = "gdcn_orgs must have unique non-empty ids (lowercase DNS labels), and each org must set non-empty name, admin_user, and admin_group."
+    error_message = "gdcn_orgs must have unique non-empty ids (lowercase DNS labels) and hostnames, and each org must set non-empty name, admin_user, admin_group, and hostname."
   }
 }
 
@@ -173,9 +181,20 @@ variable "ingress_controller" {
   }
 }
 
+variable "ingress_nginx_behind_l7" {
+  description = "Whether ingress-nginx is running behind an L7 proxy/load balancer (enables use-forwarded-headers)."
+  type        = bool
+  default     = false
+}
+
 variable "letsencrypt_email" {
-  description = "Email address used for Let's Encrypt ACME registration"
+  description = "Email address used for Let's Encrypt ACME registration (only required when tls_mode = \"cert-manager\")"
   type        = string
+  default     = ""
+  validation {
+    condition     = var.tls_mode != "cert-manager" ? true : length(trimspace(var.letsencrypt_email)) > 0
+    error_message = "letsencrypt_email must be provided when tls_mode is \"cert-manager\"."
+  }
 }
 
 variable "postgresql_sku_name" {
@@ -200,8 +219,12 @@ variable "size_profile" {
   }
 }
 
-variable "wildcard_dns_provider" {
-  description = "Wildcard DNS service used to give a dynamic hostname for hosting GoodData.CN. [default: sslip.io]"
+variable "tls_mode" {
+  description = "TLS management mode. Use cert-manager for Let's Encrypt certificates."
   type        = string
-  default     = "sslip.io"
+  default     = "cert-manager"
+  validation {
+    condition     = var.tls_mode == "cert-manager"
+    error_message = "tls_mode must be \"cert-manager\" on Azure."
+  }
 }
