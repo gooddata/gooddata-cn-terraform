@@ -45,6 +45,7 @@ module "k8s_common" {
   deployment_name    = var.deployment_name
   gdcn_license_key   = var.gdcn_license_key
   gdcn_orgs          = var.gdcn_orgs
+  size_profile       = var.size_profile
   cloud              = "aws"
   ingress_controller = var.ingress_controller
   gdcn_irsa_role_arn = aws_iam_role.gdcn_irsa.arn
@@ -53,12 +54,6 @@ module "k8s_common" {
   ingress_ip            = local.ingress_ip
   letsencrypt_email     = var.letsencrypt_email
   wildcard_dns_provider = var.wildcard_dns_provider
-
-  gdcn_replica_count              = var.gdcn_replica_count
-  ingress_nginx_replica_count     = var.ingress_nginx_replica_count
-  pulsar_bookkeeper_replica_count = var.pulsar_bookkeeper_replica_count
-  pulsar_broker_replica_count     = var.pulsar_broker_replica_count
-  pulsar_zookeeper_replica_count  = var.pulsar_zookeeper_replica_count
 
   enable_ai_features = var.enable_ai_features
   enable_image_cache = var.enable_image_cache

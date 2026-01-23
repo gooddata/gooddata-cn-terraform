@@ -1,9 +1,3 @@
-variable "alb_controller_replica_count" {
-  description = "Replica count for the AWS Load Balancer Controller."
-  type        = number
-  default     = 1
-}
-
 variable "aws_additional_tags" {
   description = "Map of additional tags to apply to all AWS resources"
   type        = map(string)
@@ -143,12 +137,6 @@ variable "gdcn_orgs" {
   }
 }
 
-variable "gdcn_replica_count" {
-  description = "Replica count for GoodData.CN components (passed to the chart). Default is 2 for high availability."
-  type        = number
-  default     = 1
-}
-
 variable "helm_aws_lb_controller_version" {
   description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string
@@ -221,12 +209,6 @@ variable "ingress_controller" {
   }
 }
 
-variable "ingress_nginx_replica_count" {
-  description = "Replica count for the ingress-nginx controller."
-  type        = number
-  default     = 1
-}
-
 variable "letsencrypt_email" {
   description = "Email address used for Let's Encrypt ACME registration (only required when ingress_controller = \"ingress-nginx\")"
   type        = string
@@ -235,24 +217,6 @@ variable "letsencrypt_email" {
     condition     = var.ingress_controller != "ingress-nginx" ? true : length(trimspace(var.letsencrypt_email)) > 0
     error_message = "letsencrypt_email must be provided when ingress_controller = \"ingress-nginx\"."
   }
-}
-
-variable "pulsar_bookkeeper_replica_count" {
-  description = "Replica count for Pulsar bookkeeper."
-  type        = number
-  default     = 1
-}
-
-variable "pulsar_broker_replica_count" {
-  description = "Replica count for Pulsar broker."
-  type        = number
-  default     = 1
-}
-
-variable "pulsar_zookeeper_replica_count" {
-  description = "Replica count for Pulsar zookeeper."
-  type        = number
-  default     = 1
 }
 
 variable "rds_deletion_protection" {
@@ -280,6 +244,16 @@ variable "route53_zone_id" {
   validation {
     condition     = var.ingress_controller != "alb" ? true : length(trimspace(var.route53_zone_id)) > 0
     error_message = "route53_zone_id is required when ingress_controller is \"alb\"."
+  }
+}
+
+variable "size_profile" {
+  description = "Sizing profile for GoodData.CN and supporting services."
+  type        = string
+  default     = "prod-small"
+  validation {
+    condition     = contains(["dev", "prod-small"], var.size_profile)
+    error_message = "size_profile must be one of: dev, prod-small."
   }
 }
 

@@ -14,15 +14,15 @@ azure_location        = "East US"
 helm_gdcn_version = "3.50.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
 deployment_name   = "gooddata-cn-poc"
 
+# Size profile controls replicas/resources across services:
+# - dev: lowest footprint, not HA
+# - prod-small: small prod cluster, HA
+# NOTE: switching size profiles can be disruptive because persistent volume sizes
+# cannot be reduced in-place.
+size_profile = "prod-small"
+
 # Deploys and enables GoodData generative AI services
 # enable_ai_features = true
-
-# Component replica counts (lean defaults; uncomment below for HA)
-# gdcn_replica_count              = 2
-# ingress_nginx_replica_count     = 2
-# pulsar_bookkeeper_replica_count = 3
-# pulsar_broker_replica_count     = 3
-# pulsar_zookeeper_replica_count  = 3
 
 # Configure one or more GoodData.CN organizations to be managed by Terraform.
 # - If gdcn_orgs is empty, Terraform will not create any Organization objects.

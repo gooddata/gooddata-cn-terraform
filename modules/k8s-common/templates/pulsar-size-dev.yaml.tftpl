@@ -1,0 +1,48 @@
+# Apply Pulsar "dev" size profile
+
+autorecovery:
+  replicaCount: 0
+bookkeeper:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 768Mi
+    requests:
+      cpu: 300m
+      memory: 512Mi
+  volumes:
+    journal:
+      name: journal
+      size: 1Gi
+    ledgers:
+      name: ledgers
+      size: 1Gi
+broker:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 300m
+      memory: 512Mi
+  configData:
+    PULSAR_MEM: >
+      -Xms128m -Xmx256m -XX:MaxDirectMemorySize=128m
+    managedLedgerDefaultEnsembleSize: "1"
+    managedLedgerDefaultWriteQuorum: "1"
+    managedLedgerDefaultAckQuorum: "1"
+zookeeper:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 768Mi
+    requests:
+      cpu: 100m
+      memory: 384Mi
+  volumes:
+    data:
+      name: data
+      size: 1Gi
