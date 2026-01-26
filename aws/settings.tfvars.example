@@ -14,6 +14,13 @@ helm_gdcn_version  = "3.50.0" # use latest version here: https://www.gooddata.co
 gdcn_replica_count = 1
 deployment_name    = "gooddata-cn-poc"
 
+# Size profile controls replicas/resources across services:
+# - dev: lowest footprint, not HA
+# - prod-small: HA (>= 2 replica per service), resources for services increased
+# NOTE: switching size profile after deploying isn't supported since persistent
+# volume sizes can't be automatically adjusted in-place.
+size_profile = "prod-small"
+
 # Deploys and enables GoodData generative AI services
 # enable_ai_features = true
 
@@ -36,14 +43,6 @@ deployment_name    = "gooddata-cn-poc"
 #     admin_group = "adminGroup"
 #   },
 # ]
-
-# Component replica counts (lean defaults; uncomment below for HA)
-# alb_controller_replica_count    = 2
-# gdcn_replica_count              = 2
-# ingress_nginx_replica_count     = 2 # not used if ingress_controller != "ingress-nginx"
-# pulsar_bookkeeper_replica_count = 3
-# pulsar_broker_replica_count     = 3
-# pulsar_zookeeper_replica_count  = 3
 
 ###
 # GoodData.CN license

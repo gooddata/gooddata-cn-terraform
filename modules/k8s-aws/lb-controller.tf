@@ -270,7 +270,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   timeout       = 1800
 
   values = [<<EOF
-    replicaCount: ${var.alb_controller_replica_count}
+    replicaCount: ${var.size_profile == "dev" ? 1 : 2}
     clusterName: ${var.deployment_name}
     region: ${var.aws_region}
     vpcId: ${var.vpc_id}

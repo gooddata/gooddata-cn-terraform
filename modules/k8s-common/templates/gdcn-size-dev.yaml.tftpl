@@ -1,0 +1,24 @@
+# Apply GoodData.CN "dev" size profile
+
+replicaCount: 1
+
+redis-ha:
+  replicas: 1
+  hardAntiAffinity: false
+  persistentVolume:
+    size: 1Gi
+
+etcd:
+  replicaCount: 1
+  persistence:
+    size: 1Gi
+
+qdrant:
+  replicaCount: 1
+  config:
+    storage:
+      collection:
+        replication_factor: 1
+        write_consistency_factor: 1
+  persistence:
+    size: 1Gi

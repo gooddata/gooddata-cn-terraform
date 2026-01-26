@@ -133,12 +133,6 @@ variable "gdcn_orgs" {
   }
 }
 
-variable "gdcn_replica_count" {
-  description = "Replica count for GoodData.CN components (passed to the chart)."
-  type        = number
-  default     = 1
-}
-
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
@@ -179,12 +173,6 @@ variable "ingress_controller" {
   }
 }
 
-variable "ingress_nginx_replica_count" {
-  description = "Replica count for the ingress-nginx controller."
-  type        = number
-  default     = 1
-}
-
 variable "letsencrypt_email" {
   description = "Email address used for Let's Encrypt ACME registration"
   type        = string
@@ -202,22 +190,14 @@ variable "postgresql_storage_mb" {
   default     = 32768
 }
 
-variable "pulsar_bookkeeper_replica_count" {
-  description = "Replica count for Pulsar bookkeeper."
-  type        = number
-  default     = 1
-}
-
-variable "pulsar_broker_replica_count" {
-  description = "Replica count for Pulsar broker."
-  type        = number
-  default     = 1
-}
-
-variable "pulsar_zookeeper_replica_count" {
-  description = "Replica count for Pulsar zookeeper."
-  type        = number
-  default     = 1
+variable "size_profile" {
+  description = "Sizing profile for GoodData.CN and supporting services."
+  type        = string
+  default     = "prod-small"
+  validation {
+    condition     = contains(["dev", "prod-small"], var.size_profile)
+    error_message = "size_profile must be one of: dev, prod-small."
+  }
 }
 
 variable "wildcard_dns_provider" {

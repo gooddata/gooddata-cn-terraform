@@ -99,7 +99,6 @@ resource "helm_release" "gooddata_cn" {
 
   values = compact([
     templatefile("${path.module}/templates/gdcn-base.yaml.tftpl", {
-      gdcn_replica_count      = var.gdcn_replica_count
       encryption_secret_name  = kubernetes_secret.gdcn_encryption.metadata[0].name
       license_secret_name     = kubernetes_secret.gdcn_license.metadata[0].name
       org_domains             = local.org_domains
@@ -136,7 +135,7 @@ resource "helm_release" "gooddata_cn" {
       gdcn_service_account_name  = local.gdcn_service_account_name
       gdcn_irsa_role_arn         = var.gdcn_irsa_role_arn
     }) : null,
-    templatefile("${path.module}/templates/gdcn-size-tiny.yaml.tftpl", {})
+    templatefile("${path.module}/templates/gdcn-size-${var.size_profile}.yaml.tftpl", {})
   ])
 
   # Wait until all resources are ready before Terraform continues

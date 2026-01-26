@@ -79,8 +79,6 @@ variable "gdcn_orgs" {
   default = []
 }
 
-variable "gdcn_replica_count" { type = number }
-
 variable "helm_cert_manager_version" { type = string }
 
 variable "helm_gdcn_version" { type = string }
@@ -108,15 +106,7 @@ variable "ingress_eip_allocations" {
 
 variable "ingress_ip" { type = string }
 
-variable "ingress_nginx_replica_count" { type = number }
-
 variable "letsencrypt_email" { type = string }
-
-variable "pulsar_bookkeeper_replica_count" { type = number }
-
-variable "pulsar_broker_replica_count" { type = number }
-
-variable "pulsar_zookeeper_replica_count" { type = number }
 
 variable "registry_dockerio" { type = string }
 
@@ -138,5 +128,7 @@ variable "s3_quiver_cache_bucket_id" {
   type    = string
   default = ""
 }
+
+variable "size_profile" { type = string }
 
 variable "wildcard_dns_provider" { type = string }
