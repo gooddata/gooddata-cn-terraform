@@ -88,7 +88,16 @@ gdcn_orgs = [
 ]
 
 ###
-# Container image caching
+# Istio (optional)
+###
+# Istio ingress gateway
+#   - Exposes an Istio ingress gateway (NodePort) so an external load balancer can forward traffic.
+#     Note: the Istio `Gateway` resource is L7 config applied *on* the ingress gateway pods; it is not a cloud load balancer target by itself.
+#   - GoodData uses Istio Gateway + VirtualService for org routing (no Kubernetes Ingress objects).
+# enable_istio       = true
+
+###
+# Container image caching (optional)
 ###
 # Uncomment to enable image caching and avoid Docker Hub rate limits
 # enable_image_cache     = true
@@ -96,7 +105,7 @@ gdcn_orgs = [
 # dockerhub_access_token = "myaccesstoken"
 
 ###
-# EKS & infrastructure sizing
+# EKS & infrastructure sizing (optional)
 ###
 # eks_version                      = "1.33"
 # eks_node_types                   = ["m6i.xlarge"]

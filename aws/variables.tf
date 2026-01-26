@@ -118,6 +118,11 @@ variable "enable_image_cache" {
   default     = false
 }
 
+variable "enable_istio" {
+  description = "When true, deploy Istio and enable Istio Gateway + VirtualService routing."
+  type        = bool
+  default     = false
+}
 variable "gdcn_license_key" {
   description = "GoodData.CN license key (provided by your GoodData contact)"
   type        = string
@@ -201,6 +206,12 @@ variable "helm_ingress_nginx_version" {
   description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
   type        = string
   default     = "4.12.3"
+}
+
+variable "helm_istio_version" {
+  description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
+  type        = string
+  default     = "1.28.2"
 }
 
 variable "helm_metrics_server_version" {

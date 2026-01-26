@@ -7,7 +7,8 @@
 #   - a Kubernetes Secret (plaintext) so scripts can use it without prompting
 #
 # TLS behavior:
-# - When tls_mode = "cert-manager", spec.tls.* is set for cert-manager issuance
+# - enable_istio=true  -> spec.tls.secretName = alb-backend-tls
+# - tls_mode=cert-manager -> spec.tls.* set for cert-manager issuance
 ###
 
 locals {
@@ -23,13 +24,17 @@ locals {
 
   managed_orgs_by_id = {
     for org in local.orgs_trimmed : org.id => merge(org, {
-      tls = local.use_cert_manager ? {
+      tls = var.enable_istio ? {
         tls = {
-          secretName = "${org.id}-tls"
-          issuerName = "letsencrypt"
-          issuerType = "ClusterIssuer"
+          secretName = local.istio_backend_tls_secret_name
         }
-      } : {}
+        } : (local.use_cert_manager ? {
+          tls = {
+            secretName = "${org.id}-tls"
+            issuerName = "letsencrypt"
+            issuerType = "ClusterIssuer"
+          }
+      } : {})
     }) if org.id != ""
   }
 }

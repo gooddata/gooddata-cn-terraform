@@ -16,9 +16,7 @@ Terraform provisions:
   - **Managed Kubernetes cluster**
     - GoodData.CN
     - Apache Pulsar (for messaging)
-    - ingress-nginx (ingress)
-    - cert-manager (TLS)
-    - Autoscaling and metrics support
+    - Ingress controller
     - Other cloud-specific prerequisites
 
 ## Quickstart

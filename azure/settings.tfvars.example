@@ -43,6 +43,7 @@ size_profile = "prod-small"
 # Ingress
 ###
 # Azure uses ingress-nginx with a public IP.
+ingress_controller = "ingress-nginx"
 
 # When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
 # ingress_nginx_behind_l7 = true
