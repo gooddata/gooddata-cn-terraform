@@ -2,7 +2,7 @@
 # Deploy cluster-autoscaler to Kubernetes
 ###
 
-resource "kubernetes_namespace" "cluster_autoscaler" {
+resource "kubernetes_namespace_v1" "cluster_autoscaler" {
   metadata {
     name = "cluster-autoscaler"
   }
@@ -78,7 +78,7 @@ resource "helm_release" "cluster_autoscaler" {
   repository    = "https://kubernetes.github.io/autoscaler"
   chart         = "cluster-autoscaler"
   version       = var.helm_cluster_autoscaler_version
-  namespace     = kubernetes_namespace.cluster_autoscaler.metadata[0].name
+  namespace     = kubernetes_namespace_v1.cluster_autoscaler.metadata[0].name
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
@@ -103,6 +103,6 @@ EOF
   ]
 
   depends_on = [
-    kubernetes_namespace.cluster_autoscaler,
+    kubernetes_namespace_v1.cluster_autoscaler,
   ]
 }
