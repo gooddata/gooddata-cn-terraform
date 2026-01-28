@@ -6,7 +6,7 @@ locals {
   pulsar_namespace = "pulsar"
 }
 
-resource "kubernetes_namespace" "pulsar" {
+resource "kubernetes_namespace_v1" "pulsar" {
   metadata {
     name = local.pulsar_namespace
     labels = local.use_istio_gateway ? {
@@ -30,7 +30,7 @@ resource "kubectl_manifest" "peerauth_pulsar_strict" {
   YAML
 
   depends_on = [
-    kubernetes_namespace.pulsar,
+    kubernetes_namespace_v1.pulsar,
     helm_release.istiod,
   ]
 }
@@ -97,7 +97,7 @@ EOF
   ])
 
   depends_on = [
-    kubernetes_namespace.pulsar,
+    kubernetes_namespace_v1.pulsar,
     helm_release.istiod,
   ]
 }

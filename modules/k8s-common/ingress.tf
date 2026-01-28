@@ -71,7 +71,7 @@ locals {
   }
 }
 
-resource "kubernetes_namespace" "ingress" {
+resource "kubernetes_namespace_v1" "ingress" {
   count = local.use_ingress_nginx ? 1 : 0
 
   metadata {
@@ -85,7 +85,7 @@ resource "helm_release" "ingress_nginx" {
   name          = "ingress-nginx"
   repository    = "https://kubernetes.github.io/ingress-nginx"
   chart         = "ingress-nginx"
-  namespace     = kubernetes_namespace.ingress[count.index].metadata[0].name
+  namespace     = kubernetes_namespace_v1.ingress[count.index].metadata[0].name
   version       = var.helm_ingress_nginx_version
   wait          = true
   wait_for_jobs = true
@@ -94,7 +94,7 @@ resource "helm_release" "ingress_nginx" {
   values = [yamlencode(local.ingress_values)]
 
   depends_on = [
-    kubernetes_namespace.ingress
+    kubernetes_namespace_v1.ingress
   ]
 }
 

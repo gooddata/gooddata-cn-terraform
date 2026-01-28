@@ -2,7 +2,7 @@
 # Deploy AWS Load Balancer Controller to Kubernetes
 ###
 
-resource "kubernetes_namespace" "alb" {
+resource "kubernetes_namespace_v1" "alb" {
   metadata {
     name = "aws-load-balancer-controller"
   }
@@ -229,7 +229,7 @@ resource "aws_iam_role" "lb_controller" {
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": {
-          "${replace(var.eks_cluster_oidc_issuer_url, "https://", "")}:sub": "system:serviceaccount:${kubernetes_namespace.alb.metadata[0].name}:aws-load-balancer-controller"
+          "${replace(var.eks_cluster_oidc_issuer_url, "https://", "")}:sub": "system:serviceaccount:${kubernetes_namespace_v1.alb.metadata[0].name}:aws-load-balancer-controller"
         }
       }
     }
@@ -243,10 +243,10 @@ resource "aws_iam_role_policy_attachment" "lb_controller" {
   policy_arn = aws_iam_policy.lb_controller.arn
 }
 
-resource "kubernetes_service_account" "lb_controller" {
+resource "kubernetes_service_account_v1" "lb_controller" {
   metadata {
     name      = "aws-load-balancer-controller"
-    namespace = kubernetes_namespace.alb.metadata[0].name
+    namespace = kubernetes_namespace_v1.alb.metadata[0].name
     annotations = {
       "eks.amazonaws.com/role-arn" = aws_iam_role.lb_controller.arn
     }
@@ -261,7 +261,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   name          = "aws-load-balancer-controller"
   repository    = "https://aws.github.io/eks-charts"
   chart         = "aws-load-balancer-controller"
-  namespace     = kubernetes_namespace.alb.metadata[0].name
+  namespace     = kubernetes_namespace_v1.alb.metadata[0].name
   version       = var.helm_aws_lb_controller_version
   wait          = true
   wait_for_jobs = true
@@ -279,6 +279,6 @@ EOF
   ]
 
   depends_on = [
-    kubernetes_service_account.lb_controller,
+    kubernetes_service_account_v1.lb_controller,
   ]
 }

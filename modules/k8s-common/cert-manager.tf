@@ -9,7 +9,7 @@ locals {
   } : {}
 }
 
-resource "kubernetes_namespace" "cert-manager" {
+resource "kubernetes_namespace_v1" "cert-manager" {
   count = local.use_cert_manager ? 1 : 0
 
   metadata {
@@ -21,7 +21,7 @@ resource "helm_release" "cert-manager" {
   count = local.use_cert_manager ? 1 : 0
 
   name          = "cert-manager"
-  namespace     = kubernetes_namespace.cert-manager[0].metadata[0].name
+  namespace     = kubernetes_namespace_v1.cert-manager[0].metadata[0].name
   chart         = "cert-manager"
   repository    = "https://charts.jetstack.io"
   version       = var.helm_cert_manager_version
@@ -55,7 +55,7 @@ resource "helm_release" "cert-manager" {
     EOF
   ]
 
-  depends_on = [kubernetes_namespace.cert-manager]
+  depends_on = [kubernetes_namespace_v1.cert-manager]
 }
 
 resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
