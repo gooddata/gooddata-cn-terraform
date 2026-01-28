@@ -3,31 +3,15 @@
 ###
 
 locals {
-  use_ingress_nginx     = var.ingress_controller == "ingress-nginx"
-  wildcard_dns_provider = local.resolved_wildcard_dns_provider
-  base_domain = trimspace(var.base_domain) != "" ? trimspace(var.base_domain) : (
-    var.ingress_ip != "" && local.wildcard_dns_provider != "" ? "${var.deployment_name}.${var.ingress_ip}.${local.wildcard_dns_provider}" : ""
-  )
-  auth_domain = local.base_domain != "" ? "auth.${local.base_domain}" : (
-    var.ingress_ip != "" && local.wildcard_dns_provider != "" ? "auth.${var.ingress_ip}.${local.wildcard_dns_provider}" : ""
-  )
-  org_ids_raw = distinct(compact([for org in var.gdcn_orgs : trimspace(org.id)]))
-  org_ids     = local.org_ids_raw
-  org_domains = local.base_domain != "" ? [
-    for id in local.org_ids : "${id}.${local.base_domain}"
-    ] : var.ingress_ip != "" && local.wildcard_dns_provider != "" ? [
-    for id in local.org_ids : "${id}.${var.ingress_ip}.${local.wildcard_dns_provider}"
-  ] : []
-  ingress_annotation_defaults = local.use_ingress_nginx ? {
-    "cert-manager.io/cluster-issuer"              = "letsencrypt"
-    "nginx.ingress.kubernetes.io/proxy-body-size" = "200m"
-  } : {}
-  dex_annotation_defaults = local.use_ingress_nginx ? {
-    "cert-manager.io/cluster-issuer" = "letsencrypt"
-  } : {}
-  ingress_annotations     = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
-  dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
-  dex_tls_enabled         = local.use_ingress_nginx
+  auth_hostname = trimspace(var.auth_hostname)
+  org_ids       = distinct(compact([for org in var.gdcn_orgs : trimspace(org.id)]))
+  org_domains   = distinct(compact([for org in var.gdcn_orgs : trimspace(org.hostname)]))
+
+  # Ingress annotations
+  cert_manager_annotation = local.use_cert_manager ? { "cert-manager.io/cluster-issuer" = "letsencrypt" } : {}
+  nginx_annotation        = local.use_ingress_nginx ? { "nginx.ingress.kubernetes.io/proxy-body-size" = "200m" } : {}
+  ingress_annotations     = merge(local.cert_manager_annotation, local.nginx_annotation, var.ingress_annotations_override)
+  dex_ingress_annotations = merge(local.cert_manager_annotation, var.dex_ingress_annotations_override)
 }
 
 resource "kubernetes_namespace" "gdcn" {
@@ -44,15 +28,15 @@ data "external" "tinkey_keyset" {
     <<-EOT
       set -euo pipefail
 
-      # Get a unique **unused** filename
+      # Get a unique temp file path and clean it up on exit
       tmpfile="$(mktemp -u)"
+      trap 'rm -f "$tmpfile"' EXIT
 
       # Generate the keyset into that file
       tinkey create-keyset --key-template AES256_GCM --out "$tmpfile" >/dev/null 2>&1
 
       # Read it, base64-encode, and emit as JSON
       key_json="$(cat "$tmpfile")"
-      rm -f "$tmpfile"
 
       printf '{"keyset_b64":"%s"}' "$(printf '%s' "$key_json" | base64 -w0)"
     EOT
@@ -102,8 +86,7 @@ resource "helm_release" "gooddata_cn" {
       encryption_secret_name  = kubernetes_secret.gdcn_encryption.metadata[0].name
       license_secret_name     = kubernetes_secret.gdcn_license.metadata[0].name
       org_domains             = local.org_domains
-      auth_domain             = local.auth_domain
-      base_domain             = local.base_domain
+      auth_hostname           = local.auth_hostname
       db_hostname             = var.db_hostname
       db_username             = var.db_username
       db_password             = var.db_password
@@ -112,7 +95,7 @@ resource "helm_release" "gooddata_cn" {
       ingress_class_name      = local.resolved_ingress_class_name
       ingress_annotations     = local.ingress_annotations
       dex_ingress_annotations = local.dex_ingress_annotations
-      dex_tls_enabled         = local.dex_tls_enabled
+      dex_tls_enabled         = local.use_cert_manager
     }),
     var.enable_ai_features ? templatefile("${path.module}/templates/gdcn-ai-features.yaml.tftpl", {}) : null,
     var.enable_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
@@ -150,14 +133,9 @@ resource "helm_release" "gooddata_cn" {
   ]
 }
 
-output "base_domain" {
-  description = "Base domain used for constructing GoodData hostnames"
-  value       = local.base_domain
-}
-
-output "auth_domain" {
+output "auth_hostname" {
   description = "The hostname for GoodData.CN internal authentication (Dex) ingress"
-  value       = local.auth_domain
+  value       = local.auth_hostname
 }
 
 output "org_domains" {

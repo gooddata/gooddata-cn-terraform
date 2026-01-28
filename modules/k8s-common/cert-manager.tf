@@ -1,13 +1,9 @@
 ###
-# Deploy cert-manager to Kubernetes only when ingress-nginx is in use
+# Deploy cert-manager to Kubernetes when tls_mode is cert-manager
 ###
 
-locals {
-  deploy_cert_manager = var.ingress_controller == "ingress-nginx"
-}
-
 resource "kubernetes_namespace" "cert-manager" {
-  count = local.deploy_cert_manager ? 1 : 0
+  count = local.use_cert_manager ? 1 : 0
 
   metadata {
     name = "cert-manager"
@@ -15,7 +11,7 @@ resource "kubernetes_namespace" "cert-manager" {
 }
 
 resource "helm_release" "cert-manager" {
-  count = local.deploy_cert_manager ? 1 : 0
+  count = local.use_cert_manager ? 1 : 0
 
   name          = "cert-manager"
   namespace     = kubernetes_namespace.cert-manager[0].metadata[0].name
@@ -53,7 +49,7 @@ installCRDs: true
 }
 
 resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
-  count = local.deploy_cert_manager ? 1 : 0
+  count = local.use_cert_manager ? 1 : 0
 
   yaml_body = <<-YAML
     apiVersion: cert-manager.io/v1

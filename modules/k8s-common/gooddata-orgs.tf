@@ -7,27 +7,23 @@
 #   - a Kubernetes Secret (plaintext) so scripts can use it without prompting
 #
 # TLS behavior:
-# - ingress-nginx -> spec.tls.* set for cert-manager issuance
+# - When tls_mode = "cert-manager", spec.tls.* is set for cert-manager issuance
 ###
 
 locals {
-  org_hostname_suffix = local.base_domain != "" ? local.base_domain : (
-    var.ingress_ip != "" && local.wildcard_dns_provider != "" ? "${var.ingress_ip}.${local.wildcard_dns_provider}" : ""
-  )
-
   orgs_trimmed = [
     for org in var.gdcn_orgs : {
       id          = trimspace(org.id)
       name        = trimspace(org.name)
       admin_user  = trimspace(org.admin_user)
       admin_group = trimspace(org.admin_group)
+      hostname    = trimspace(org.hostname)
     }
   ]
 
   managed_orgs_by_id = {
     for org in local.orgs_trimmed : org.id => merge(org, {
-      hostname = local.org_hostname_suffix != "" ? "${org.id}.${local.org_hostname_suffix}" : ""
-      tls = local.use_ingress_nginx ? {
+      tls = local.use_cert_manager ? {
         tls = {
           secretName = "${org.id}-tls"
           issuerName = "letsencrypt"
@@ -166,7 +162,7 @@ resource "kubectl_manifest" "gdcn_organization" {
     }
     precondition {
       condition     = each.value.hostname != ""
-      error_message = "Organization '${each.key}' hostname could not be derived. Set base_domain or provide ingress_ip and wildcard_dns_provider."
+      error_message = "Organization '${each.key}' hostname must be provided in gdcn_orgs."
     }
   }
 

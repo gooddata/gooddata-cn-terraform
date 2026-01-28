@@ -1,18 +1,28 @@
 ###
 # AWS account & region
 ###
-aws_profile_name = "my-profile" # matches a profile in ~/.aws/config
-aws_region       = "eu-central-1"
+# AWS profile name from ~/.aws/config
+aws_profile_name = "my-profile"
+
+# Region to deploy resources to
+aws_region = "eu-central-1"
+
+# Additional tags to apply to all AWS resources
 # aws_additional_tags = {
 #   Environment = "dev"
 # }
 
 ###
-# Deployment configuration
+# GoodData.CN deployment configuration
 ###
-helm_gdcn_version  = "3.50.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
-gdcn_replica_count = 1
-deployment_name    = "gooddata-cn-poc"
+helm_gdcn_version = "3.52.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+deployment_name   = "gooddata-cn"
+
+# GoodData.CN license key
+gdcn_license_key = "key/asdf==" # provided by GoodData
+
+# Deploys and enables GoodData generative AI services
+# enable_ai_features = true
 
 # Size profile controls replicas/resources across services:
 # - dev: lowest footprint, not HA
@@ -21,59 +31,66 @@ deployment_name    = "gooddata-cn-poc"
 # volume sizes can't be automatically adjusted in-place.
 size_profile = "prod-small"
 
-# Deploys and enables GoodData generative AI services
-# enable_ai_features = true
+###
+# DNS
+###
+# "route53" - ExternalDNS component is installed and given permission to manage records in the specified Route53 zone.
+dns_provider    = "route53"
+route53_zone_id = "Z0123456789ABC"
+
+# "self-managed" - DNS records are managed manually (see guidance in Terraform output).
+# dns_provider = "self-managed"
+
+###
+# Ingress
+###
+# "alb" - AWS Application Load Balancer is used for ingress.
+ingress_controller = "alb"
+
+# "ingress-nginx" - NGINX ingress controller is used for ingress.
+# ingress_controller = "ingress-nginx"
+
+# When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
+# ingress_nginx_behind_l7 = true
+
+###
+# TLS
+###
+
+# "acm" - AWS ACM certificates are used for TLS termination (requires ingress_controller = "alb").
+# When dns_provider = "self-managed", create the validation DNS records shown in acm_validation_records
+# output after `terraform apply`. HTTPS will work once the certificate validates.
+tls_mode = "acm"
+
+# "cert-manager" - Let's Encrypt certificates are used for TLS termination (requires ingress_controller = "ingress-nginx").
+# tls_mode          = "cert-manager"
+# letsencrypt_email = "me@example.com"
+
+###
+# Organization configuration
+###
+# Authentication endpoint hostname
+auth_hostname = "auth.gooddata.example.com"
 
 # Configure one or more GoodData.CN organizations to be managed by Terraform.
 # - If gdcn_orgs is empty, Terraform will not create any Organization objects.
-# - Each org must include id, name, admin_user, and admin_group.
-# - Hostnames are always derived as: <id>.<base_domain>
+# - Each org must include id, name, admin_user, admin_group, and hostname.
+# - Hostnames are provided explicitly per org.
 #
-# gdcn_orgs = [
-#   {
-#     id          = "org"
-#     name        = "Test, Inc."
-#     admin_user  = "admin"
-#     admin_group = "adminGroup"
-#   },
-#   {
-#     id          = "demo"
-#     name        = "Demo, Inc."
-#     admin_user  = "admin"
-#     admin_group = "adminGroup"
-#   },
-# ]
+gdcn_orgs = [
+  {
+    id          = "main"
+    name        = "Main Organization"
+    admin_user  = "admin"
+    admin_group = "adminGroup"
+    hostname    = "gooddata.example.com"
+  }
+]
 
 ###
-# GoodData.CN license
+# Container image caching
 ###
-gdcn_license_key = "key/asdf==" # provided by GoodData
-
-###
-# Ingress and DNS (choose one configuration)
-###
-# -- Option A: ingress-nginx (default)
-#   - Deploys ingress-nginx + cert-manager.
-#   - Uses letsencrypt_email for Let's Encrypt TLS issuance.
-#   - Builds hostnames using wildcard_dns_provider (e.g., sslip.io, nip.io).
-ingress_controller    = "ingress-nginx"
-letsencrypt_email     = "me@example.com"
-wildcard_dns_provider = "sslip.io"
-
-# base_domain override (uncomment when you own DNS and want a fixed hostname)
-# base_domain = "gooddata-cn.example.com"
-
-# -- Option B: AWS ALB + Route53 (commented out)
-#   - Requires helm_gdcn_version >= 3.51.0.
-#   - Deploys AWS Load Balancer Controller, ExternalDNS, and an ACM wildcard cert.
-#   - Needs a Route53 hosted zone. Terraform publishes auth/org records automatically.
-# ingress_controller = "alb"
-# route53_zone_id    = "Z0123456789ABC"
-# base_domain        = "gooddata-cn.example.com"
-
-###
-# Container cache
-###
+# Uncomment to enable image caching and avoid Docker Hub rate limits
 # enable_image_cache     = true
 # dockerhub_username     = "myusername"
 # dockerhub_access_token = "myaccesstoken"
@@ -89,5 +106,5 @@ wildcard_dns_provider = "sslip.io"
 # eks_endpoint_private_access      = false
 
 # rds_instance_class      = "db.t4g.medium"
-# rds_deletion_protection = false # set this for easy teardown
-# rds_skip_final_snapshot = true  # set this for faster teardown
+# rds_deletion_protection = false
+# rds_skip_final_snapshot = true
