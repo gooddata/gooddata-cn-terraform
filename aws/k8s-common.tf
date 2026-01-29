@@ -81,7 +81,6 @@ module "k8s_common" {
   s3_datasource_fs_bucket_id = aws_s3_bucket.buckets["datasource_fs"].id
   s3_exports_bucket_id       = aws_s3_bucket.buckets["exports"].id
 
-  ingress_class_name_override      = local.use_alb ? "alb" : ""
   ingress_annotations_override     = local.alb_ingress_annotations
   dex_ingress_annotations_override = local.alb_dex_ingress_annotations
 
