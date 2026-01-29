@@ -42,29 +42,26 @@ route53_zone_id = "Z0123456789ABC"
 # dns_provider = "self-managed"
 
 ###
-# Ingress
+# Ingress + TLS
 ###
-# "alb" - AWS Application Load Balancer is used for ingress.
-ingress_controller = "alb"
 
-# "ingress-nginx" - NGINX ingress controller is used for ingress.
+# Option 1 — Application Load Balancer (alb) + AWS ACM certificates (acm)
+# - Terminates TLS at the AWS ALB using ACM certificates.
+# - Works with both dns_provider="route53" (Terraform manages ACM validation) and "self-managed" (you create validation records from outputs).
+# - Uses Kubernetes Ingress resources (ALB controller).
+ingress_controller = "alb"
+tls_mode           = "acm"
+
+# Option 2 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (cert-manager)
+# - Terminates TLS at ingress-nginx using cert-manager (Let's Encrypt).
+# - Requires a public HTTP endpoint for ACME HTTP-01 challenges (port 80) during issuance/renewal.
+# - Good fit when you want "standard" Kubernetes Ingress behavior.
 # ingress_controller = "ingress-nginx"
+# tls_mode           = "cert-manager"
+# letsencrypt_email  = "me@example.com"
 
 # When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
 # ingress_nginx_behind_l7 = true
-
-###
-# TLS
-###
-
-# "acm" - AWS ACM certificates are used for TLS termination (requires ingress_controller = "alb").
-# When dns_provider = "self-managed", create the validation DNS records shown in acm_validation_records
-# output after `terraform apply`. HTTPS will work once the certificate validates.
-tls_mode = "acm"
-
-# "cert-manager" - Let's Encrypt certificates are used for TLS termination (requires ingress_controller = "ingress-nginx").
-# tls_mode          = "cert-manager"
-# letsencrypt_email = "me@example.com"
 
 ###
 # Organization configuration
@@ -88,7 +85,7 @@ gdcn_orgs = [
 ]
 
 ###
-# Container image caching
+# Container image caching (optional)
 ###
 # Uncomment to enable image caching and avoid Docker Hub rate limits
 # enable_image_cache     = true
@@ -96,7 +93,7 @@ gdcn_orgs = [
 # dockerhub_access_token = "myaccesstoken"
 
 ###
-# EKS & infrastructure sizing
+# EKS & infrastructure sizing (optional)
 ###
 # eks_version                      = "1.33"
 # eks_node_types                   = ["m6i.xlarge"]

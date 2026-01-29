@@ -38,20 +38,19 @@ size_profile = "prod-small"
 ###
 # Azure DNS records must be managed externally.
 # Terraform outputs the public IP address and required DNS records.
+dns_provider = "self-managed"
 
 ###
-# Ingress
+# Ingress + TLS
 ###
-# Azure uses ingress-nginx with a public IP.
+
+# Option 1 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (cert-manager)
+ingress_controller = "ingress-nginx"
+tls_mode          = "cert-manager"
+letsencrypt_email = "me@example.com"
 
 # When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
 # ingress_nginx_behind_l7 = true
-
-###
-# TLS
-###
-# TLS is managed by cert-manager using Let's Encrypt certificates.
-letsencrypt_email = "me@example.com"
 
 ###
 # Organization configuration
