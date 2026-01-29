@@ -6,8 +6,10 @@
 #   - Organization.spec.adminUserToken (crypt hash, sha512-crypt)
 #   - a Kubernetes Secret (plaintext) so scripts can use it without prompting
 #
-# TLS behavior:
-# - When tls_mode = "cert-manager", spec.tls.* is set for cert-manager issuance
+# Organization TLS (spec.tls):
+# - cert-manager -> secretName = `${org.id}-tls` (+ issuer fields)
+# - istio        -> this module uses `istio.gateway.existingGateway`, so Organization.spec.tls
+#                  is ignored by the chart/controller.
 ###
 
 locals {
