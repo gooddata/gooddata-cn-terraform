@@ -72,6 +72,16 @@ variable "deployment_name" {
   }
 }
 
+variable "dns_provider" {
+  description = "DNS management mode on Azure. Currently only self-managed DNS is supported."
+  type        = string
+  default     = "self-managed"
+  validation {
+    condition     = var.dns_provider == "self-managed"
+    error_message = "dns_provider must be \"self-managed\" on Azure."
+  }
+}
+
 variable "dockerhub_access_token" {
   description = "Docker Hub access token (can be created in Settings > Personal Access Tokens)"
   type        = string
