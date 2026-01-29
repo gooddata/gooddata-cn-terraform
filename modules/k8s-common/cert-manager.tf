@@ -65,9 +65,13 @@ resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
         solvers:
           - http01:
               ingress:
-                class: ${local.resolved_ingress_class_name}
-                annotations:
-                  nginx.ingress.kubernetes.io/enable-validate-ingress: "false"
+                ingressClassName: ${local.resolved_ingress_class_name}
+                %{~if local.resolved_ingress_class_name == "nginx"~}
+                ingressTemplate:
+                  metadata:
+                    annotations:
+                      nginx.ingress.kubernetes.io/enable-validate-ingress: "false"
+                %{~endif~}
   YAML
 
   depends_on = [helm_release.cert-manager]
