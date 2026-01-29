@@ -87,6 +87,56 @@ resource "aws_acm_certificate_validation" "gdcn" {
   validation_record_fqdns = [for record in aws_route53_record.gdcn_acm_validation : record.fqdn]
 }
 
+data "external" "alb_wait" {
+  count = local.use_alb ? 1 : 0
+
+  program = [
+    "bash",
+    "-c",
+    <<-EOT
+      set -euo pipefail
+
+      if ! command -v aws >/dev/null 2>&1; then
+        echo "The aws CLI is required to wait for the ALB. Install awscli or disable ALB mode." >&2
+        exit 1
+      fi
+
+      lb_name="${local.alb_load_balancer_name}"
+      aws_region="${var.aws_region}"
+      aws_profile="${var.aws_profile_name}"
+
+      timeout_seconds=900
+      interval_seconds=10
+      end=$((SECONDS + timeout_seconds))
+
+      while true; do
+        if out="$(
+          aws elbv2 describe-load-balancers \
+            --names "$lb_name" \
+            --region "$aws_region" \
+            --profile "$aws_profile" \
+            --query 'LoadBalancers[0].{dns_name:DNSName,zone_id:CanonicalHostedZoneId,arn:LoadBalancerArn}' \
+            --output json 2>/dev/null
+        )"; then
+          echo "$out"
+          exit 0
+        fi
+
+        if [ "$SECONDS" -ge "$end" ]; then
+          echo "Timed out waiting for ALB '$lb_name' to exist." >&2
+          exit 1
+        fi
+
+        sleep "$interval_seconds"
+      done
+    EOT
+  ]
+
+  depends_on = [
+    module.k8s_common,
+  ]
+}
+
 # For self-managed DNS, force-detach the HTTPS listener before cert replacement.
 # This avoids blocking destroys of the old cert when the new cert is still pending.
 resource "null_resource" "detach_alb_https_listener" {
@@ -125,22 +175,7 @@ resource "null_resource" "detach_alb_https_listener" {
     EOT
   }
 
-  depends_on = [null_resource.wait_for_alb]
-}
-
-# Wait for the ALB to be created by the AWS Load Balancer Controller
-resource "null_resource" "wait_for_alb" {
-  count = local.use_alb ? 1 : 0
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      timeout 600 bash -c 'until aws elbv2 describe-load-balancers \
-        --names ${local.alb_load_balancer_name} --region ${var.aws_region} --profile ${var.aws_profile_name} 2>/dev/null; do sleep 10; done' \
-        || (echo "ERROR: ALB '${local.alb_load_balancer_name}' not created within 10 minutes. Check AWS LB Controller logs." && exit 1)
-    EOT
-  }
-
-  depends_on = [module.k8s_common]
+  depends_on = [data.external.alb_wait]
 }
 
 data "aws_lb" "gdcn" {
@@ -148,7 +183,14 @@ data "aws_lb" "gdcn" {
 
   name = local.alb_load_balancer_name
 
-  depends_on = [null_resource.wait_for_alb]
+  depends_on = [
+    module.k8s_common,
+    data.external.alb_wait,
+  ]
+
+  timeouts {
+    read = "10m"
+  }
 }
 
 # Query NLB DNS name directly from AWS (NLB name is deterministic)
