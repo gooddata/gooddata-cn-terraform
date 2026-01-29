@@ -1,0 +1,9 @@
+# Enable Istio support (Gateway + VirtualService)
+istio:
+  enabled: true
+  gateway:
+    enabled: true
+    existingGateway: "${existing_gateway}"
+
+# Required feature flag for Istio routing
+enableModernQuiverRouting: true

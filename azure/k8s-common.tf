@@ -38,6 +38,7 @@ module "k8s_common" {
 
   helm_cert_manager_version  = var.helm_cert_manager_version
   helm_gdcn_version          = var.helm_gdcn_version
+  helm_istio_version         = var.helm_istio_version
   helm_pulsar_version        = var.helm_pulsar_version
   helm_ingress_nginx_version = var.helm_ingress_nginx_version
 
@@ -102,6 +103,26 @@ data "external" "ingress_lb_ip" {
   depends_on = [module.k8s_common]
 }
 
+data "external" "istio_ingress_lb_ip" {
+  count = var.ingress_controller == "istio_gateway" ? 1 : 0
+
+  program = [
+    "bash", "-c",
+    <<-EOT
+      set -euo pipefail
+      result=$(az aks command invoke \
+        --resource-group "${azurerm_resource_group.main.name}" \
+        --name "${azurerm_kubernetes_cluster.main.name}" \
+        --command "kubectl get svc istio-ingress -n istio-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+        --query "logs" -o tsv 2>/dev/null || echo "")
+      ip=$(echo "$result" | tr -d '[:space:]')
+      printf '{"ip":"%s"}' "$ip"
+    EOT
+  ]
+
+  depends_on = [module.k8s_common]
+}
+
 output "manual_dns_records" {
   description = "DNS records to create for Azure ingress."
   value = var.ingress_controller == "ingress-nginx" ? [
@@ -110,5 +131,11 @@ output "manual_dns_records" {
       record_type = "A"
       value       = length(data.external.ingress_lb_ip) > 0 ? data.external.ingress_lb_ip[0].result.ip : ""
     }
-  ] : []
+    ] : (var.ingress_controller == "istio_gateway" ? [
+      for hostname in distinct(compact(concat([module.k8s_common.auth_hostname], module.k8s_common.org_domains))) : {
+        hostname    = hostname
+        record_type = "A"
+        value       = length(data.external.istio_ingress_lb_ip) > 0 ? data.external.istio_ingress_lb_ip[0].result.ip : ""
+      }
+  ] : [])
 }

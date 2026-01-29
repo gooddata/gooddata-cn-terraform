@@ -160,12 +160,36 @@ variable "helm_cert_manager_version" {
 variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy. https://artifacthub.io/packages/helm/gooddata-cn/gooddata-cn"
   type        = string
+
+  validation {
+    condition = (
+      var.ingress_controller != "istio_gateway" ? true : (
+        length(split(".", var.helm_gdcn_version)) >= 2 &&
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
+        can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
+        (
+          tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
+          (
+            tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
+            tonumber(split(".", var.helm_gdcn_version)[1]) >= 53
+          )
+        )
+      )
+    )
+    error_message = "ingress_controller=\"istio_gateway\" requires helm_gdcn_version >= 3.53.0."
+  }
 }
 
 variable "helm_ingress_nginx_version" {
   description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
   type        = string
   default     = "4.11.3"
+}
+
+variable "helm_istio_version" {
+  description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
+  type        = string
+  default     = "1.28.2"
 }
 
 variable "helm_metrics_server_version" {
@@ -181,13 +205,13 @@ variable "helm_pulsar_version" {
 }
 
 variable "ingress_controller" {
-  description = "Ingress controller to deploy. Azure currently supports ingress-nginx only."
+  description = "Ingress controller to deploy. Use ingress-nginx for Kubernetes Ingress, or istio_gateway to expose the Istio ingress gateway via LoadBalancer."
   type        = string
   default     = "ingress-nginx"
 
   validation {
-    condition     = var.ingress_controller == "ingress-nginx"
-    error_message = "Only ingress-nginx is supported on Azure deployments."
+    condition     = contains(["ingress-nginx", "istio_gateway"], var.ingress_controller)
+    error_message = "ingress_controller must be one of: \"ingress-nginx\", \"istio_gateway\"."
   }
 }
 
