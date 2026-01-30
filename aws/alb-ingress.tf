@@ -115,11 +115,13 @@ data "external" "alb_wait" {
             --names "$lb_name" \
             --region "$aws_region" \
             --profile "$aws_profile" \
-            --query 'LoadBalancers[0].{dns_name:DNSName,zone_id:CanonicalHostedZoneId,arn:LoadBalancerArn}' \
-            --output json 2>/dev/null
+            --query 'LoadBalancers[0].LoadBalancerArn' \
+            --output text 2>/dev/null
         )"; then
-          echo "$out"
-          exit 0
+          if [ -n "$out" ] && [ "$out" != "None" ]; then
+            printf '{"ready":"true"}'
+            exit 0
+          fi
         fi
 
         if [ "$SECONDS" -ge "$end" ]; then
