@@ -189,7 +189,7 @@ variable "helm_gdcn_version" {
         tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
         (
           tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
-          tonumber(split(".", var.helm_gdcn_version)[1]) >= 50
+          tonumber(split(".", var.helm_gdcn_version)[1]) >= 51
         )
       )
     )
