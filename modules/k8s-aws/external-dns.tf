@@ -3,7 +3,7 @@
 ###
 
 locals {
-  external_dns_enabled      = var.ingress_controller == "alb"
+  external_dns_enabled      = var.dns_provider == "route53"
   external_dns_namespace    = "external-dns"
   external_dns_txt_owner_id = trimspace(var.deployment_name)
 }
@@ -15,10 +15,7 @@ data "aws_route53_zone" "external_dns" {
 
 locals {
   external_dns_zone_name = local.external_dns_enabled && length(data.aws_route53_zone.external_dns) > 0 ? replace(data.aws_route53_zone.external_dns[0].name, "/\\.$/", "") : ""
-  external_dns_domains = local.external_dns_enabled ? distinct(compact([
-    trimspace(var.base_domain),
-    local.external_dns_zone_name
-  ])) : []
+  external_dns_domains   = local.external_dns_enabled && local.external_dns_zone_name != "" ? [local.external_dns_zone_name] : []
 }
 
 resource "kubernetes_namespace" "external_dns" {
@@ -125,7 +122,7 @@ resource "helm_release" "external_dns" {
     txtPrefix     = "gdcn-"
     domainFilters = local.external_dns_domains
     zoneIdFilters = trimspace(var.route53_zone_id) != "" ? [trimspace(var.route53_zone_id)] : []
-    sources       = ["ingress"]
+    sources       = var.ingress_controller == "istio_gateway" ? ["service"] : ["ingress"]
     serviceAccount = {
       create = false
       name   = kubernetes_service_account.external_dns[0].metadata[0].name

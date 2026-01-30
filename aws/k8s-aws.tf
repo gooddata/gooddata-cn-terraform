@@ -13,7 +13,7 @@ module "k8s_aws" {
   deployment_name    = var.deployment_name
   aws_region         = var.aws_region
   ingress_controller = var.ingress_controller
-  base_domain        = local.base_domain
+  dns_provider       = var.dns_provider
   route53_zone_id    = var.route53_zone_id
   size_profile       = var.size_profile
 
@@ -25,7 +25,6 @@ module "k8s_aws" {
   helm_external_dns_version       = var.helm_external_dns_version
 
   vpc_id                        = module.vpc.vpc_id
-  eip_allocations               = length(aws_eip.lb) > 0 ? join(",", aws_eip.lb[*].allocation_id) : ""
   eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
   eks_cluster_oidc_issuer_url   = module.eks.cluster_oidc_issuer_url
 

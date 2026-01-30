@@ -1,3 +1,12 @@
+variable "auth_hostname" {
+  description = "Hostname for the default GoodData identity provider (Dex) ingress."
+  type        = string
+  validation {
+    condition     = length(trimspace(var.auth_hostname)) > 0
+    error_message = "auth_hostname must be provided."
+  }
+}
+
 variable "aws_additional_tags" {
   description = "Map of additional tags to apply to all AWS resources"
   type        = map(string)
@@ -15,12 +24,6 @@ variable "aws_region" {
   default     = "us-east-2"
 }
 
-variable "base_domain" {
-  description = "Base domain used to construct GoodData hostnames. When empty, Terraform derives one from the ingress configuration."
-  type        = string
-  default     = ""
-}
-
 variable "deployment_name" {
   description = "Name prefix for all AWS resources."
   type        = string
@@ -28,6 +31,16 @@ variable "deployment_name" {
   validation {
     condition     = can(regex("^[a-z](?:[a-z0-9-]*[a-z0-9])?$", var.deployment_name))
     error_message = "deployment_name must be lowercase, start with a letter, contain only letters, numbers, and hyphens, and must not end with a hyphen."
+  }
+}
+
+variable "dns_provider" {
+  description = "DNS management mode on AWS. Use route53 to enable ExternalDNS, or self-managed to manage DNS yourself."
+  type        = string
+  default     = "self-managed"
+  validation {
+    condition     = contains(["route53", "self-managed"], var.dns_provider)
+    error_message = "dns_provider must be \"route53\" or \"self-managed\"."
   }
 }
 
@@ -51,18 +64,6 @@ variable "dockerhub_username" {
     condition     = var.enable_image_cache ? length(var.dockerhub_username) > 0 : true
     error_message = "dockerhub_username must be provided when enable_image_cache is true."
   }
-}
-
-variable "enable_ai_features" {
-  description = "Enable AI features in the gooddata-cn chart (GenAI service, semantic search, chat, metadata sync, and Qdrant)."
-  type        = bool
-  default     = true
-}
-
-variable "enable_image_cache" {
-  description = "Enable image caching (ECR pull-through cache). If false, images are pulled from upstream registries directly."
-  type        = bool
-  default     = false
 }
 
 variable "eks_endpoint_private_access" {
@@ -105,6 +106,18 @@ variable "eks_version" {
   default     = null
 }
 
+variable "enable_ai_features" {
+  description = "Enable AI features in the gooddata-cn chart (GenAI service, semantic search, chat, metadata sync, and Qdrant)."
+  type        = bool
+  default     = true
+}
+
+variable "enable_image_cache" {
+  description = "Enable image caching (ECR pull-through cache). If false, images are pulled from upstream registries directly."
+  type        = bool
+  default     = false
+}
+
 variable "gdcn_license_key" {
   description = "GoodData.CN license key (provided by your GoodData contact)"
   type        = string
@@ -116,6 +129,7 @@ variable "gdcn_orgs" {
   type = list(object({
     admin_group = string
     admin_user  = string
+    hostname    = string
     id          = string
     name        = string
   }))
@@ -123,17 +137,19 @@ variable "gdcn_orgs" {
 
   validation {
     condition = (
-      length(distinct([for org in var.gdcn_orgs : trimspace(org.id)])) == length(var.gdcn_orgs)
+      length(distinct([for org in var.gdcn_orgs : trimspace(org.id)])) == length(var.gdcn_orgs) &&
+      length(distinct([for org in var.gdcn_orgs : trimspace(org.hostname)])) == length(var.gdcn_orgs)
       ) && alltrue([
         for org in var.gdcn_orgs : (
           length(trimspace(org.id)) > 0 &&
           can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", trimspace(org.id))) &&
           length(trimspace(org.name)) > 0 &&
           length(trimspace(org.admin_user)) > 0 &&
-          length(trimspace(org.admin_group)) > 0
+          length(trimspace(org.admin_group)) > 0 &&
+          length(trimspace(org.hostname)) > 0
         )
     ])
-    error_message = "gdcn_orgs must have unique non-empty ids (lowercase DNS labels), and each org must set non-empty name, admin_user, and admin_group."
+    error_message = "gdcn_orgs must have unique non-empty ids (lowercase DNS labels) and hostnames, and each org must set non-empty name, admin_user, admin_group, and hostname."
   }
 }
 
@@ -165,19 +181,35 @@ variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy. https://artifacthub.io/packages/helm/gooddata-cn/gooddata-cn"
   type        = string
   validation {
-    condition = var.ingress_controller != "alb" ? true : (
-      length(split(".", var.helm_gdcn_version)) >= 2 &&
-      can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
-      can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
-      (
-        tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
+    condition = (
+      # ALB support requires GoodData chart features introduced in 3.51+
+      (var.ingress_controller != "alb" ? true : (
+        length(split(".", var.helm_gdcn_version)) >= 2 &&
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
+        can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
         (
-          tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
-          tonumber(split(".", var.helm_gdcn_version)[1]) >= 50
+          tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
+          (
+            tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
+            tonumber(split(".", var.helm_gdcn_version)[1]) >= 51
+          )
         )
-      )
+      )) &&
+      # Istio existingGateway support (incl Dex) requires GoodData chart features introduced in 3.53+
+      (var.ingress_controller != "istio_gateway" ? true : (
+        length(split(".", var.helm_gdcn_version)) >= 2 &&
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
+        can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
+        (
+          tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
+          (
+            tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
+            tonumber(split(".", var.helm_gdcn_version)[1]) >= 53
+          )
+        )
+      ))
     )
-    error_message = "ingress_controller = \"alb\" requires helm_gdcn_version >= 3.51.0."
+    error_message = "Invalid helm_gdcn_version for selected features. ingress_controller=\"alb\" requires helm_gdcn_version >= 3.51.0. ingress_controller=\"istio_gateway\" requires helm_gdcn_version >= 3.53.0."
   }
 }
 
@@ -185,6 +217,12 @@ variable "helm_ingress_nginx_version" {
   description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
   type        = string
   default     = "4.12.3"
+}
+
+variable "helm_istio_version" {
+  description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
+  type        = string
+  default     = "1.28.2"
 }
 
 variable "helm_metrics_server_version" {
@@ -200,29 +238,37 @@ variable "helm_pulsar_version" {
 }
 
 variable "ingress_controller" {
-  description = "Ingress controller used to expose GoodData.CN. Use ingress-nginx for wildcard DNS, alb for Route53-managed ALB."
+  description = "Ingress controller used to expose GoodData.CN. Use alb for AWS ALB, ingress-nginx for Kubernetes Ingress, or istio_gateway to expose the Istio ingress gateway via LoadBalancer."
   type        = string
-  default     = "ingress-nginx"
+  default     = "alb"
   validation {
-    condition     = contains(["ingress-nginx", "alb"], var.ingress_controller)
-    error_message = "ingress_controller must be either \"ingress-nginx\" or \"alb\"."
+    condition = (
+      contains(["ingress-nginx", "alb", "istio_gateway"], var.ingress_controller)
+    )
+    error_message = "ingress_controller must be one of: \"alb\", \"ingress-nginx\", \"istio_gateway\"."
   }
 }
 
+variable "ingress_nginx_behind_l7" {
+  description = "Whether ingress-nginx is running behind an L7 proxy/load balancer (enables use-forwarded-headers)."
+  type        = bool
+  default     = false
+}
+
 variable "letsencrypt_email" {
-  description = "Email address used for Let's Encrypt ACME registration (only required when ingress_controller = \"ingress-nginx\")"
+  description = "Email address used for Let's Encrypt ACME registration (only required when tls_mode = \"cert-manager\")"
   type        = string
   default     = ""
   validation {
-    condition     = var.ingress_controller != "ingress-nginx" ? true : length(trimspace(var.letsencrypt_email)) > 0
-    error_message = "letsencrypt_email must be provided when ingress_controller = \"ingress-nginx\"."
+    condition     = var.tls_mode != "cert-manager" ? true : length(trimspace(var.letsencrypt_email)) > 0
+    error_message = "letsencrypt_email must be provided when tls_mode is \"cert-manager\"."
   }
 }
 
 variable "rds_deletion_protection" {
   description = "Enable deletion protection on the RDS instance."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "rds_instance_class" {
@@ -234,16 +280,16 @@ variable "rds_instance_class" {
 variable "rds_skip_final_snapshot" {
   description = "Skip taking a final snapshot when destroying the RDS instance."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "route53_zone_id" {
-  description = "Route53 hosted zone ID that will contain GoodData.CN records when using the ALB ingress option."
+  description = "Route53 hosted zone ID used for DNS and ACM validation when dns_provider = \"route53\"."
   type        = string
   default     = ""
   validation {
-    condition     = var.ingress_controller != "alb" ? true : length(trimspace(var.route53_zone_id)) > 0
-    error_message = "route53_zone_id is required when ingress_controller is \"alb\"."
+    condition     = var.dns_provider != "route53" ? true : length(trimspace(var.route53_zone_id)) > 0
+    error_message = "route53_zone_id is required when dns_provider is \"route53\"."
   }
 }
 
@@ -257,8 +303,16 @@ variable "size_profile" {
   }
 }
 
-variable "wildcard_dns_provider" {
-  description = "Wildcard DNS service used when exposing GoodData.CN via ingress-nginx. [default: sslip.io]"
+variable "tls_mode" {
+  description = "TLS management mode. Use acm for ALB, cert-manager for ingress-nginx."
   type        = string
-  default     = "sslip.io"
+  default     = "acm"
+  validation {
+    condition = (
+      contains(["acm", "cert-manager"], var.tls_mode) &&
+      (var.tls_mode != "acm" ? true : var.ingress_controller == "alb") &&
+      (var.tls_mode != "cert-manager" ? true : contains(["ingress-nginx", "istio_gateway"], var.ingress_controller))
+    )
+    error_message = "tls_mode=\"acm\" requires ingress_controller=\"alb\"; tls_mode=\"cert-manager\" requires ingress_controller=\"ingress-nginx\" or \"istio_gateway\"."
+  }
 }
