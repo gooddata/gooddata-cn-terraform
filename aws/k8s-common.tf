@@ -32,8 +32,6 @@ locals {
     }, local.alb_tags_annotation != null ? {
     "alb.ingress.kubernetes.io/tags" = local.alb_tags_annotation
   } : {}) : {}
-  alb_ingress_annotations     = local.alb_shared_annotations
-  alb_dex_ingress_annotations = local.alb_shared_annotations
 }
 
 module "k8s_common" {
@@ -81,8 +79,8 @@ module "k8s_common" {
   s3_datasource_fs_bucket_id = aws_s3_bucket.buckets["datasource_fs"].id
   s3_exports_bucket_id       = aws_s3_bucket.buckets["exports"].id
 
-  ingress_annotations_override     = local.alb_ingress_annotations
-  dex_ingress_annotations_override = local.alb_dex_ingress_annotations
+  ingress_annotations_override     = local.alb_shared_annotations
+  dex_ingress_annotations_override = local.alb_shared_annotations
 
   depends_on = [
     module.eks,
