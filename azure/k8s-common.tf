@@ -102,13 +102,18 @@ data "external" "ingress_lb_ip" {
   depends_on = [module.k8s_common]
 }
 
+locals {
+  # May be empty early in provisioning.
+  ingress_lb_ip = length(data.external.ingress_lb_ip) > 0 ? trimspace(try(data.external.ingress_lb_ip[0].result.ip, "")) : ""
+}
+
 output "manual_dns_records" {
   description = "DNS records to create for Azure ingress."
-  value = var.ingress_controller == "ingress-nginx" ? [
+  value = var.ingress_controller == "ingress-nginx" && local.ingress_lb_ip != "" ? [
     for hostname in distinct(compact(concat([module.k8s_common.auth_hostname], module.k8s_common.org_domains))) : {
       hostname    = hostname
       record_type = "A"
-      value       = length(data.external.ingress_lb_ip) > 0 ? data.external.ingress_lb_ip[0].result.ip : ""
+      value       = local.ingress_lb_ip
     }
   ] : []
 }
