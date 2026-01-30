@@ -2,10 +2,11 @@ locals {
   gdcn_namespace            = "gooddata-cn"
   gdcn_service_account_name = "gooddata-cn"
 
-  # Reuse a single ingress class name throughout the module
-  resolved_ingress_class_name = trimspace(var.ingress_class_name_override) != "" ? trimspace(var.ingress_class_name_override) : "nginx"
+  use_alb           = var.ingress_controller == "alb"
+  use_ingress_nginx = var.ingress_controller == "ingress-nginx"
+  use_cert_manager  = var.tls_mode == "cert-manager"
 
-  # Normalize wildcard provider input to avoid trailing/leading spaces
-  resolved_wildcard_dns_provider = trimspace(var.wildcard_dns_provider)
+  # Reuse a single ingress class name throughout the module
+  resolved_ingress_class_name = trimspace(var.ingress_class_name_override) != "" ? trimspace(var.ingress_class_name_override) : (local.use_alb ? "alb" : "nginx")
 }
 
