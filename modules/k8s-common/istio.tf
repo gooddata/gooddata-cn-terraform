@@ -12,12 +12,6 @@ locals {
   istio_ingress_name  = "istio-ingress"
   istio_ingress_label = "ingressgateway"
 
-  # Deterministic AWS NLB name for the public Istio gateway Service.
-  # Used by AWS outputs to look up the NLB DNS name when dns_provider=self-managed.
-  aws_istio_nlb_base_name          = "${var.deployment_name}-istio"
-  aws_istio_nlb_name_sanitized     = replace(lower(local.aws_istio_nlb_base_name), "/[^a-z0-9-]/", "-")
-  aws_istio_nlb_load_balancer_name = var.cloud == "aws" && local.istio_enabled ? substr(local.aws_istio_nlb_name_sanitized, 0, min(length(local.aws_istio_nlb_name_sanitized), 32)) : ""
-
   # Hosts that must be accepted by the external Gateway.
   # auth_hostname is required by root module validation; org hostnames may be empty.
   istio_gateway_hosts = distinct(compact(concat(
@@ -25,84 +19,16 @@ locals {
     [for org in var.gdcn_orgs : trimspace(org.hostname)]
   )))
 
-  istio_gateway_server_http = {
-    port = {
-      name     = "http"
-      number   = 80
-      protocol = "HTTP"
-    }
-    hosts = local.istio_gateway_hosts
-  }
-
-  # Public TLS termination at the Istio Gateway (istio_gateway mode).
-  istio_gateway_server_https_public_tls = {
-    port = {
-      name     = "https"
-      number   = 443
-      protocol = "HTTPS"
-    }
-    hosts = local.istio_gateway_hosts
-    tls = {
-      credentialName = local.istio_public_tls_secret_name
-      mode           = "SIMPLE"
-    }
-  }
-
-  istio_gateway_servers = [
-    local.istio_gateway_server_https_public_tls,
-    local.istio_gateway_server_http,
-  ]
-
-  # Service shape for the Istio ingress gateway chart values.
-  # istio_gateway -> LoadBalancer (public LB directly to Istio ingress gateway)
-  istio_gateway_service_type = "LoadBalancer"
-
-  istio_gateway_service_ports = [
-    # Status port used by the gateway readiness endpoint.
-    # https://istio.io/latest/docs/ops/configuration/traffic-management/proxy-protocol/
-    {
-      name       = "status-port"
-      port       = 15021
-      targetPort = 15021
-      protocol   = "TCP"
-    },
-    {
-      name = "http2"
-      port = 80
-      # Istio gateway listens on 8080 for HTTP by default.
-      targetPort = 8080
-      protocol   = "TCP"
-    },
-    {
-      name = "https"
-      port = 443
-      # Istio gateway listens on 8443 for HTTPS by default.
-      targetPort = 8443
-      protocol   = "TCP"
-    }
-  ]
-
-  # Drop null keys (e.g. nodePort when ClusterIP) so chart schema validation passes.
-  istio_gateway_service_ports_for_values = [
-    for p in local.istio_gateway_service_ports : {
-      for k, v in p : k => v if v != null
-    }
-  ]
-
-  # Service annotations for public Istio ingress gateway.
-  istio_gateway_service_annotations = local.use_istio_gateway ? merge(
-    {
-      "external-dns.alpha.kubernetes.io/hostname" = join(",", local.istio_gateway_hosts)
-    },
-    var.cloud == "aws" ? {
-      "service.beta.kubernetes.io/aws-load-balancer-name"                              = local.aws_istio_nlb_load_balancer_name
-      "service.beta.kubernetes.io/aws-load-balancer-type"                              = "external"
-      "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"                   = "ip"
-      "service.beta.kubernetes.io/aws-load-balancer-scheme"                            = "internet-facing"
-      "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled" = "true"
-    } : {}
-  ) : {}
+  # Deterministic AWS NLB name for the public Istio gateway Service.
+  # Used by AWS outputs to look up the NLB DNS name when dns_provider=self-managed.
+  aws_istio_nlb_base_name          = "${var.deployment_name}-istio"
+  aws_istio_nlb_name_sanitized     = replace(lower(local.aws_istio_nlb_base_name), "/[^a-z0-9-]/", "-")
+  aws_istio_nlb_load_balancer_name = var.cloud == "aws" && local.istio_enabled ? substr(local.aws_istio_nlb_name_sanitized, 0, min(length(local.aws_istio_nlb_name_sanitized), 32)) : ""
 }
+
+###
+# Istio Installation (base → istiod → ingress gateway)
+###
 
 resource "kubernetes_namespace" "istio_system" {
   count = local.istio_enabled ? 1 : 0
@@ -135,16 +61,16 @@ resource "helm_release" "istiod" {
   version    = var.helm_istio_version
   namespace  = kubernetes_namespace.istio_system[0].metadata[0].name
 
-  values = [<<-EOF
-    meshConfig:
-      accessLogFile: /dev/stdout
-    pilot:
-      env:
+  values = [yamlencode({
+    meshConfig = { accessLogFile = "/dev/stdout" }
+    pilot = {
+      env = {
         # Enable reconciliation of Kubernetes Ingress resources (needed for cert-manager HTTP-01
         # when we use ingress class "istio").
-        PILOT_ENABLE_K8S_INGRESS: "true"
-    EOF
-  ]
+        PILOT_ENABLE_K8S_INGRESS = "true"
+      }
+    }
+  })]
 
   wait          = true
   wait_for_jobs = true
@@ -152,53 +78,6 @@ resource "helm_release" "istiod" {
 
   depends_on = [
     helm_release.istio_base,
-  ]
-}
-
-###
-# Kubernetes IngressClass for Istio (used by cert-manager HTTP-01 solver)
-###
-resource "kubectl_manifest" "ingressclass_istio" {
-  count = local.use_istio_gateway && local.use_cert_manager ? 1 : 0
-
-  yaml_body = <<-YAML
-    apiVersion: networking.k8s.io/v1
-    kind: IngressClass
-    metadata:
-      name: istio
-    spec:
-      controller: istio.io/ingress-controller
-  YAML
-
-  depends_on = [
-    helm_release.istiod,
-  ]
-}
-
-###
-# Enforce STRICT mTLS within workload namespaces
-###
-
-# Default PeerAuthentication in the GoodData.CN namespace.
-# This enforces mTLS for all inbound traffic to workloads in the namespace.
-resource "kubectl_manifest" "peerauth_gdcn_strict" {
-  count = local.istio_enabled ? 1 : 0
-
-  yaml_body = <<-YAML
-    apiVersion: security.istio.io/v1beta1
-    kind: PeerAuthentication
-    metadata:
-      name: default
-      namespace: ${local.gdcn_namespace}
-    spec:
-      mtls:
-        mode: STRICT
-  YAML
-
-  depends_on = [
-    kubernetes_namespace.gdcn,
-    helm_release.istio_base,
-    helm_release.istiod,
   ]
 }
 
@@ -217,9 +96,22 @@ resource "helm_release" "istio_ingress_gateway" {
       istio = local.istio_ingress_label
     }
     service = {
-      type        = local.istio_gateway_service_type
-      ports       = local.istio_gateway_service_ports_for_values
-      annotations = local.istio_gateway_service_annotations
+      type = "LoadBalancer"
+      ports = [
+        { name = "status-port", port = 15021, targetPort = 15021, protocol = "TCP" },
+        { name = "http2", port = 80, targetPort = 8080, protocol = "TCP" },
+        { name = "https", port = 443, targetPort = 8443, protocol = "TCP" },
+      ]
+      annotations = merge(
+        { "external-dns.alpha.kubernetes.io/hostname" = join(",", local.istio_gateway_hosts) },
+        var.cloud == "aws" ? {
+          "service.beta.kubernetes.io/aws-load-balancer-name"                              = local.aws_istio_nlb_load_balancer_name
+          "service.beta.kubernetes.io/aws-load-balancer-type"                              = "external"
+          "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"                   = "ip"
+          "service.beta.kubernetes.io/aws-load-balancer-scheme"                            = "internet-facing"
+          "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled" = "true"
+        } : {}
+      )
     }
   })]
 
@@ -233,8 +125,44 @@ resource "helm_release" "istio_ingress_gateway" {
 }
 
 ###
-# Public TLS certificate for istio_gateway mode (cert-manager / Let's Encrypt)
+# Istio Configuration (IngressClass, mTLS, TLS Certificate, Gateway)
 ###
+
+# IngressClass for cert-manager HTTP-01 solver
+resource "kubectl_manifest" "ingressclass_istio" {
+  count = local.use_istio_gateway && local.use_cert_manager ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "networking.k8s.io/v1"
+    kind       = "IngressClass"
+    metadata   = { name = "istio" }
+    spec       = { controller = "istio.io/ingress-controller" }
+  })
+
+  depends_on = [
+    helm_release.istiod,
+  ]
+}
+
+# Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
+resource "kubectl_manifest" "peerauth_gdcn_strict" {
+  count = local.istio_enabled ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "security.istio.io/v1beta1"
+    kind       = "PeerAuthentication"
+    metadata   = { name = "default", namespace = local.gdcn_namespace }
+    spec       = { mtls = { mode = "STRICT" } }
+  })
+
+  depends_on = [
+    kubernetes_namespace.gdcn,
+    helm_release.istio_base,
+    helm_release.istiod,
+  ]
+}
+
+# Public TLS certificate (cert-manager / Let's Encrypt)
 resource "kubectl_manifest" "istio_public_tls_certificate" {
   count = local.use_istio_gateway && local.use_cert_manager ? 1 : 0
 
@@ -261,14 +189,10 @@ resource "kubectl_manifest" "istio_public_tls_certificate" {
   ]
 }
 
-###
 # Terraform-managed Istio Gateway used by the GoodData.CN chart.
-#
 # We set `istio.gateway.existingGateway` in `gdcn-istio.yaml.tftpl`, so the
-# chart (and organization-controller) will NOT create/manage Gateway resources
+# chart (and organization-controller) won't create/manage Gateway resources
 # and will reference this Gateway from its VirtualServices (including Dex).
-###
-
 resource "kubectl_manifest" "istio_public_gateway" {
   count = local.istio_enabled ? 1 : 0
 
@@ -280,10 +204,20 @@ resource "kubectl_manifest" "istio_public_gateway" {
       namespace = local.istio_ingress_ns
     }
     spec = {
-      selector = {
-        istio = local.istio_ingress_label
-      }
-      servers = local.istio_gateway_servers
+      selector = { istio = local.istio_ingress_label }
+      servers = [
+        # HTTPS with TLS termination at Istio Gateway
+        {
+          port  = { name = "https", number = 443, protocol = "HTTPS" }
+          hosts = local.istio_gateway_hosts
+          tls   = { credentialName = local.istio_public_tls_secret_name, mode = "SIMPLE" }
+        },
+        # HTTP (typically for redirects to HTTPS)
+        {
+          port  = { name = "http", number = 80, protocol = "HTTP" }
+          hosts = local.istio_gateway_hosts
+        },
+      ]
     }
   })
 
