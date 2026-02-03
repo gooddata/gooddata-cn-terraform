@@ -16,3 +16,8 @@ redis-ha:
     repository: ${registry_dockerio}/library/redis
   exporter:
     image: ${registry_quayio}/oliver006/redis_exporter
+
+# Configure Qdrant images to use the cache
+qdrant:
+  image:
+    repository: ${registry_dockerio}/qdrant/qdrant

@@ -61,16 +61,22 @@ resource "helm_release" "istiod" {
   version    = var.helm_istio_version
   namespace  = kubernetes_namespace.istio_system[0].metadata[0].name
 
-  values = [yamlencode({
-    meshConfig = { accessLogFile = "/dev/stdout" }
-    pilot = {
-      env = {
-        # Enable reconciliation of Kubernetes Ingress resources (needed for cert-manager HTTP-01
-        # when we use ingress class "istio").
-        PILOT_ENABLE_K8S_INGRESS = "true"
+  values = [yamlencode(merge(
+    {
+      meshConfig = { accessLogFile = "/dev/stdout" }
+      pilot = {
+        env = {
+          # Enable reconciliation of Kubernetes Ingress resources (needed for cert-manager HTTP-01
+          # when we use ingress class "istio").
+          PILOT_ENABLE_K8S_INGRESS = "true"
+        }
       }
-    }
-  })]
+    },
+    # Route Istio images through the pull-through cache when enabled
+    var.enable_image_cache ? {
+      global = { hub = "${var.registry_dockerio}/istio" }
+    } : {}
+  ))]
 
   wait          = true
   wait_for_jobs = true
