@@ -5,6 +5,11 @@ replicaCount: 1
 redis-ha:
   replicas: 1
   hardAntiAffinity: false
+  redis:
+    config:
+      min-replicas-to-write: 0
+  sentinel:
+    quorum: 1
   persistentVolume:
     size: 1Gi
 
