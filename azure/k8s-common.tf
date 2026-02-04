@@ -25,10 +25,10 @@ module "k8s_common" {
   cloud              = "azure"
   ingress_controller = var.ingress_controller
 
-  base_domain           = var.base_domain
-  ingress_ip            = azurerm_public_ip.ingress.ip_address
-  letsencrypt_email     = var.letsencrypt_email
-  wildcard_dns_provider = var.wildcard_dns_provider
+  letsencrypt_email       = var.letsencrypt_email
+  auth_hostname           = var.auth_hostname
+  tls_mode                = var.tls_mode
+  ingress_nginx_behind_l7 = var.ingress_nginx_behind_l7
 
   enable_ai_features = var.enable_ai_features
   enable_image_cache = var.enable_image_cache
@@ -51,8 +51,6 @@ module "k8s_common" {
   azure_quiver_container        = azurerm_storage_container.containers["quiver-cache"].name
   azure_datasource_fs_container = azurerm_storage_container.containers["quiver-datasource-fs"].name
   azure_uami_client_id          = azurerm_user_assigned_identity.gdcn.client_id
-  azure_resource_group_name     = azurerm_resource_group.main.name
-  azure_ingress_pip_name        = azurerm_public_ip.ingress.name
 
   depends_on = [
     azurerm_kubernetes_cluster.main,
@@ -67,14 +65,9 @@ module "k8s_common" {
   ]
 }
 
-output "base_domain" {
-  description = "Base domain used for GoodData hostnames"
-  value       = module.k8s_common.base_domain
-}
-
-output "auth_domain" {
+output "auth_hostname" {
   description = "The hostname for Dex authentication ingress"
-  value       = module.k8s_common.auth_domain
+  value       = module.k8s_common.auth_hostname
 }
 
 output "org_domains" {
@@ -87,3 +80,40 @@ output "org_ids" {
   value       = module.k8s_common.org_ids
 }
 
+# Query the ingress-nginx LoadBalancer IP via Azure CLI (no local kubectl needed)
+data "external" "ingress_lb_ip" {
+  count = var.ingress_controller == "ingress-nginx" ? 1 : 0
+
+  program = [
+    "bash", "-c",
+    <<-EOT
+      set -euo pipefail
+      result=$(az aks command invoke \
+        --resource-group "${azurerm_resource_group.main.name}" \
+        --name "${azurerm_kubernetes_cluster.main.name}" \
+        --command "kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+        --query "logs" -o tsv 2>/dev/null || echo "")
+      # Clean up any whitespace/newlines
+      ip=$(echo "$result" | tr -d '[:space:]')
+      printf '{"ip":"%s"}' "$ip"
+    EOT
+  ]
+
+  depends_on = [module.k8s_common]
+}
+
+locals {
+  # May be empty early in provisioning.
+  ingress_lb_ip = length(data.external.ingress_lb_ip) > 0 ? trimspace(try(data.external.ingress_lb_ip[0].result.ip, "")) : ""
+}
+
+output "manual_dns_records" {
+  description = "DNS records to create for Azure ingress."
+  value = var.ingress_controller == "ingress-nginx" && local.ingress_lb_ip != "" ? [
+    for hostname in distinct(compact(concat([module.k8s_common.auth_hostname], module.k8s_common.org_domains))) : {
+      hostname    = hostname
+      record_type = "A"
+      value       = local.ingress_lb_ip
+    }
+  ] : []
+}

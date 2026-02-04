@@ -1,3 +1,5 @@
+variable "auth_hostname" { type = string }
+
 variable "aws_region" {
   type    = string
   default = ""
@@ -13,17 +15,7 @@ variable "azure_exports_container" {
   default = ""
 }
 
-variable "azure_ingress_pip_name" {
-  type    = string
-  default = ""
-}
-
 variable "azure_quiver_container" {
-  type    = string
-  default = ""
-}
-
-variable "azure_resource_group_name" {
   type    = string
   default = ""
 }
@@ -34,11 +26,6 @@ variable "azure_storage_account_name" {
 }
 
 variable "azure_uami_client_id" {
-  type    = string
-  default = ""
-}
-
-variable "base_domain" {
   type    = string
   default = ""
 }
@@ -73,10 +60,10 @@ variable "gdcn_orgs" {
   type = list(object({
     admin_group = string
     admin_user  = string
+    hostname    = string
     id          = string
     name        = string
   }))
-  default = []
 }
 
 variable "helm_cert_manager_version" { type = string }
@@ -99,12 +86,8 @@ variable "ingress_class_name_override" {
 
 variable "ingress_controller" { type = string }
 
-variable "ingress_eip_allocations" {
-  type    = string
-  default = ""
-}
 
-variable "ingress_ip" { type = string }
+variable "ingress_nginx_behind_l7" { type = bool }
 
 variable "letsencrypt_email" { type = string }
 
@@ -131,4 +114,4 @@ variable "s3_quiver_cache_bucket_id" {
 
 variable "size_profile" { type = string }
 
-variable "wildcard_dns_provider" { type = string }
+variable "tls_mode" { type = string }

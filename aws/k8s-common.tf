@@ -6,15 +6,20 @@ locals {
   gdcn_namespace            = "gooddata-cn"
   gdcn_service_account_name = "gooddata-cn"
   use_alb                   = var.ingress_controller == "alb"
-  ingress_eips              = aws_eip.lb
-  ingress_ip                = local.use_alb || length(local.ingress_eips) == 0 ? "" : local.ingress_eips[0].public_ip
-  ingress_eip_allocations   = local.use_alb || length(local.ingress_eips) == 0 ? "" : join(",", local.ingress_eips[*].allocation_id)
+  use_ingress_nginx         = var.ingress_controller == "ingress-nginx"
+  nlb_load_balancer_name    = local.use_ingress_nginx ? "${var.deployment_name}-ingress" : ""
   alb_base_name             = "${var.deployment_name}-gdcn"
   alb_name_sanitized        = replace(lower(local.alb_base_name), "/[^a-z0-9-]/", "-")
   alb_load_balancer_name    = local.use_alb ? substr(local.alb_name_sanitized, 0, min(length(local.alb_name_sanitized), 32)) : ""
-  alb_certificate_arn       = local.use_alb && length(aws_acm_certificate_validation.gdcn) > 0 ? aws_acm_certificate_validation.gdcn[0].certificate_arn : ""
-  alb_tag_pairs             = [for k, v in var.aws_additional_tags : "${k}=${v}"]
-  alb_tags_annotation       = local.use_alb && length(local.alb_tag_pairs) > 0 ? join(",", local.alb_tag_pairs) : null
+  # When Route53: use validated cert ARN; when self-managed: use cert ARN directly (pending until user validates).
+  # For self-managed DNS rotations, HTTPS may be temporarily removed while the old cert is detached.
+  alb_certificate_arn = local.use_alb && var.tls_mode == "acm" ? (
+    length(aws_acm_certificate_validation.gdcn) > 0 ? aws_acm_certificate_validation.gdcn[0].certificate_arn : (
+      length(aws_acm_certificate.gdcn) > 0 ? aws_acm_certificate.gdcn[0].arn : ""
+    )
+  ) : ""
+  alb_tag_pairs       = [for k, v in var.aws_additional_tags : "${k}=${v}"]
+  alb_tags_annotation = local.use_alb && length(local.alb_tag_pairs) > 0 ? join(",", local.alb_tag_pairs) : null
   alb_shared_annotations = local.use_alb ? merge({
     "alb.ingress.kubernetes.io/load-balancer-name"       = local.alb_load_balancer_name
     "alb.ingress.kubernetes.io/group.name"               = local.alb_load_balancer_name
@@ -27,8 +32,6 @@ locals {
     }, local.alb_tags_annotation != null ? {
     "alb.ingress.kubernetes.io/tags" = local.alb_tags_annotation
   } : {}) : {}
-  alb_ingress_annotations     = local.alb_shared_annotations
-  alb_dex_ingress_annotations = local.alb_shared_annotations
 }
 
 module "k8s_common" {
@@ -50,10 +53,10 @@ module "k8s_common" {
   ingress_controller = var.ingress_controller
   gdcn_irsa_role_arn = aws_iam_role.gdcn_irsa.arn
 
-  base_domain           = local.base_domain
-  ingress_ip            = local.ingress_ip
-  letsencrypt_email     = var.letsencrypt_email
-  wildcard_dns_provider = var.wildcard_dns_provider
+  letsencrypt_email       = var.letsencrypt_email
+  auth_hostname           = var.auth_hostname
+  tls_mode                = var.tls_mode
+  ingress_nginx_behind_l7 = var.ingress_nginx_behind_l7
 
   enable_ai_features = var.enable_ai_features
   enable_image_cache = var.enable_image_cache
@@ -72,20 +75,19 @@ module "k8s_common" {
 
   # AWS-specific storage configuration
   aws_region                 = var.aws_region
-  ingress_eip_allocations    = local.ingress_eip_allocations
   s3_quiver_cache_bucket_id  = aws_s3_bucket.buckets["quiver_cache"].id
   s3_datasource_fs_bucket_id = aws_s3_bucket.buckets["datasource_fs"].id
   s3_exports_bucket_id       = aws_s3_bucket.buckets["exports"].id
 
-  ingress_class_name_override      = local.use_alb ? "alb" : ""
-  ingress_annotations_override     = local.alb_ingress_annotations
-  dex_ingress_annotations_override = local.alb_dex_ingress_annotations
+  ingress_annotations_override     = local.alb_shared_annotations
+  dex_ingress_annotations_override = local.alb_shared_annotations
 
   depends_on = [
     module.eks,
     module.k8s_aws,
     aws_security_group_rule.rds_postgres_ingress_from_nodes,
     aws_acm_certificate_validation.gdcn,
+    aws_acm_certificate.gdcn,
     aws_ecr_pull_through_cache_rule.dockerio,
     aws_ecr_pull_through_cache_rule.quayio,
     aws_ecr_pull_through_cache_rule.k8sio,
