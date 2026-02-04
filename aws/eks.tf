@@ -38,15 +38,15 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
 
-  cluster_name                         = var.deployment_name
-  cluster_version                      = var.eks_version
-  cluster_endpoint_public_access       = var.eks_endpoint_public_access
-  cluster_endpoint_private_access      = var.eks_endpoint_private_access
-  cluster_endpoint_public_access_cidrs = var.eks_endpoint_public_access_cidrs
+  name                         = var.deployment_name
+  kubernetes_version           = var.eks_version
+  endpoint_public_access       = var.eks_endpoint_public_access
+  endpoint_private_access      = var.eks_endpoint_private_access
+  endpoint_public_access_cidrs = var.eks_endpoint_public_access_cidrs
 
   tags = local.common_tags
 
-  cluster_addons = {
+  addons = {
     coredns                = {}
     eks-pod-identity-agent = {}
     kube-proxy             = {}
