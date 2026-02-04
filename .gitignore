@@ -1,6 +1,9 @@
 # Local .terraform directories
 .terraform/
 
+# Dependency lock files (users regenerate via terraform init)
+.terraform.lock.hcl
+
 # .tfstate files
 *.tfstate
 *.tfstate.*
