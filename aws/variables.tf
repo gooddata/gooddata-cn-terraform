@@ -181,19 +181,35 @@ variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy. https://artifacthub.io/packages/helm/gooddata-cn/gooddata-cn"
   type        = string
   validation {
-    condition = var.ingress_controller != "alb" ? true : (
-      length(split(".", var.helm_gdcn_version)) >= 2 &&
-      can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
-      can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
-      (
-        tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
+    condition = (
+      # ALB support requires GoodData chart features introduced in 3.51+
+      (var.ingress_controller != "alb" ? true : (
+        length(split(".", var.helm_gdcn_version)) >= 2 &&
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
+        can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
         (
-          tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
-          tonumber(split(".", var.helm_gdcn_version)[1]) >= 51
+          tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
+          (
+            tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
+            tonumber(split(".", var.helm_gdcn_version)[1]) >= 51
+          )
         )
-      )
+      )) &&
+      # Istio existingGateway support (incl Dex) requires GoodData chart features introduced in 3.53+
+      (var.ingress_controller != "istio_gateway" ? true : (
+        length(split(".", var.helm_gdcn_version)) >= 2 &&
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
+        can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
+        (
+          tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
+          (
+            tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
+            tonumber(split(".", var.helm_gdcn_version)[1]) >= 53
+          )
+        )
+      ))
     )
-    error_message = "ingress_controller = \"alb\" requires helm_gdcn_version >= 3.51.0."
+    error_message = "Invalid helm_gdcn_version for selected features. ingress_controller=\"alb\" requires helm_gdcn_version >= 3.51.0. ingress_controller=\"istio_gateway\" requires helm_gdcn_version >= 3.53.0."
   }
 }
 
@@ -201,6 +217,12 @@ variable "helm_ingress_nginx_version" {
   description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
   type        = string
   default     = "4.12.3"
+}
+
+variable "helm_istio_version" {
+  description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
+  type        = string
+  default     = "1.28.2"
 }
 
 variable "helm_metrics_server_version" {
@@ -216,12 +238,14 @@ variable "helm_pulsar_version" {
 }
 
 variable "ingress_controller" {
-  description = "Ingress controller used to expose GoodData.CN. Use ingress-nginx for self-managed ingress or alb for AWS ALB."
+  description = "Ingress controller used to expose GoodData.CN. Use alb for AWS ALB, ingress-nginx for Kubernetes Ingress, or istio_gateway to expose the Istio ingress gateway via LoadBalancer."
   type        = string
   default     = "alb"
   validation {
-    condition     = contains(["ingress-nginx", "alb"], var.ingress_controller)
-    error_message = "ingress_controller must be either \"ingress-nginx\" or \"alb\"."
+    condition = (
+      contains(["ingress-nginx", "alb", "istio_gateway"], var.ingress_controller)
+    )
+    error_message = "ingress_controller must be one of: \"alb\", \"ingress-nginx\", \"istio_gateway\"."
   }
 }
 
@@ -287,8 +311,8 @@ variable "tls_mode" {
     condition = (
       contains(["acm", "cert-manager"], var.tls_mode) &&
       (var.tls_mode != "acm" ? true : var.ingress_controller == "alb") &&
-      (var.tls_mode != "cert-manager" ? true : var.ingress_controller == "ingress-nginx")
+      (var.tls_mode != "cert-manager" ? true : contains(["ingress-nginx", "istio_gateway"], var.ingress_controller))
     )
-    error_message = "tls_mode=\"acm\" requires ingress_controller=\"alb\"; tls_mode=\"cert-manager\" requires ingress_controller=\"ingress-nginx\"."
+    error_message = "tls_mode=\"acm\" requires ingress_controller=\"alb\"; tls_mode=\"cert-manager\" requires ingress_controller=\"ingress-nginx\" or \"istio_gateway\"."
   }
 }

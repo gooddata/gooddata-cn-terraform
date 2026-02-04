@@ -63,6 +63,14 @@ tls_mode           = "acm"
 # When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
 # ingress_nginx_behind_l7 = true
 
+# Option 3 — Istio Gateway + Let's Encrypt certificates (cert-manager)
+# - Installs Istio and exposes the Istio ingress gateway as a public LoadBalancer Service (AWS NLB).
+# - Terminates TLS at the Istio Gateway using cert-manager (Let's Encrypt).
+# - Uses Istio Gateway + VirtualService for north-south routing; no Kubernetes Ingress for GoodData routing.
+# ingress_controller = "istio_gateway"
+# tls_mode           = "cert-manager"
+# letsencrypt_email  = "me@example.com"
+
 ###
 # Organization configuration
 ###

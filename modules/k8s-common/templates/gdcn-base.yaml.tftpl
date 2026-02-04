@@ -61,7 +61,7 @@ dex:
 %{ endif }
 %{ if dex_tls_enabled }
     tls:
-      authSecretName: gooddata-cn-auth-tls
+      authSecretName: ${dex_tls_secret_name}
 %{ endif }
 
 service:

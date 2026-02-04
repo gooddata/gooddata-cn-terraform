@@ -52,6 +52,11 @@ letsencrypt_email = "me@example.com"
 # When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
 # ingress_nginx_behind_l7 = true
 
+# Option 2 — Istio Gateway + Let's Encrypt certificates (cert-manager)
+# ingress_controller = "istio_gateway"
+# tls_mode           = "cert-manager"
+# letsencrypt_email  = "me@example.com"
+
 ###
 # Organization configuration
 ###
@@ -74,7 +79,7 @@ gdcn_orgs = [
 ]
 
 ###
-# Container image caching
+# Container image caching (optional)
 ###
 # Uncomment to enable image caching and avoid Docker Hub rate limits
 # enable_image_cache     = true
@@ -82,7 +87,7 @@ gdcn_orgs = [
 # dockerhub_access_token = "myaccesstoken"
 
 ###
-# AKS & infrastructure sizing
+# AKS & infrastructure sizing (optional)
 ###
 # aks_version                         = "1.30"
 # aks_node_vm_size                    = "Standard_D4as_v6"

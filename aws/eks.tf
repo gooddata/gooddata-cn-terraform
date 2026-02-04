@@ -90,6 +90,25 @@ module "eks" {
     }
   }
 
+  node_security_group_additional_rules = var.ingress_controller == "istio_gateway" ? {
+    istio_xds = {
+      description                   = "Istio XDS (istiod) to workloads"
+      protocol                      = "tcp"
+      from_port                     = 15012
+      to_port                       = 15012
+      type                          = "ingress"
+      source_cluster_security_group = true
+    }
+    istio_webhook = {
+      description                   = "Istio webhook/istiod"
+      protocol                      = "tcp"
+      from_port                     = 15017
+      to_port                       = 15017
+      type                          = "ingress"
+      source_cluster_security_group = true
+    }
+  } : {}
+
   depends_on = [
     module.vpc
   ]

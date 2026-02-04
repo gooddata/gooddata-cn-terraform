@@ -122,7 +122,7 @@ resource "helm_release" "external_dns" {
     txtPrefix     = "gdcn-"
     domainFilters = local.external_dns_domains
     zoneIdFilters = trimspace(var.route53_zone_id) != "" ? [trimspace(var.route53_zone_id)] : []
-    sources       = ["ingress"]
+    sources       = var.ingress_controller == "istio_gateway" ? ["service"] : ["ingress"]
     serviceAccount = {
       create = false
       name   = kubernetes_service_account.external_dns[0].metadata[0].name

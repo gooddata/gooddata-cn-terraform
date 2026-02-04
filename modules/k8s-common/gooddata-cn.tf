@@ -6,17 +6,24 @@ locals {
   auth_hostname = trimspace(var.auth_hostname)
   org_ids       = distinct(compact([for org in var.gdcn_orgs : trimspace(org.id)]))
   org_domains   = distinct(compact([for org in var.gdcn_orgs : trimspace(org.hostname)]))
-
-  # Ingress annotations
-  cert_manager_annotation = local.use_cert_manager ? { "cert-manager.io/cluster-issuer" = "letsencrypt" } : {}
-  nginx_annotation        = local.use_ingress_nginx ? { "nginx.ingress.kubernetes.io/proxy-body-size" = "200m" } : {}
-  ingress_annotations     = merge(local.cert_manager_annotation, local.nginx_annotation, var.ingress_annotations_override)
-  dex_ingress_annotations = merge(local.cert_manager_annotation, var.dex_ingress_annotations_override)
+  ingress_annotation_defaults = local.use_ingress_nginx ? {
+    "cert-manager.io/cluster-issuer"              = "letsencrypt"
+    "nginx.ingress.kubernetes.io/proxy-body-size" = "200m"
+  } : {}
+  dex_annotation_defaults = local.use_ingress_nginx ? {
+    "cert-manager.io/cluster-issuer" = "letsencrypt"
+  } : {}
+  ingress_annotations     = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
+  dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
+  dex_tls_enabled         = local.use_cert_manager
 }
 
 resource "kubernetes_namespace" "gdcn" {
   metadata {
     name = local.gdcn_namespace
+    labels = local.use_istio_gateway ? {
+      "istio-injection" = "enabled"
+    } : null
   }
 }
 
@@ -95,8 +102,12 @@ resource "helm_release" "gooddata_cn" {
       ingress_class_name      = local.resolved_ingress_class_name
       ingress_annotations     = local.ingress_annotations
       dex_ingress_annotations = local.dex_ingress_annotations
-      dex_tls_enabled         = local.use_cert_manager
+      dex_tls_enabled         = local.dex_tls_enabled
+      dex_tls_secret_name     = "gooddata-cn-auth-tls"
     }),
+    local.use_istio_gateway ? templatefile("${path.module}/templates/gdcn-istio.yaml.tftpl", {
+      existing_gateway = "istio-ingress/${local.istio_public_gateway_name}"
+    }) : null,
     var.enable_ai_features ? templatefile("${path.module}/templates/gdcn-ai-features.yaml.tftpl", {}) : null,
     var.enable_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
       registry_dockerio = var.registry_dockerio,
@@ -130,6 +141,8 @@ resource "helm_release" "gooddata_cn" {
     kubernetes_namespace.gdcn,
     helm_release.pulsar,
     kubectl_manifest.letsencrypt_cluster_issuer,
+    helm_release.istio_ingress_gateway,
+    kubectl_manifest.istio_public_gateway,
   ]
 }
 

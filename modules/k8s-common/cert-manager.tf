@@ -2,6 +2,13 @@
 # Deploy cert-manager to Kubernetes when tls_mode is cert-manager
 ###
 
+locals {
+  cert_manager_http01_ingress_class = local.use_istio_gateway ? "istio" : local.resolved_ingress_class_name
+  cert_manager_http01_ingress_annotations = local.cert_manager_http01_ingress_class == "nginx" ? {
+    "nginx.ingress.kubernetes.io/enable-validate-ingress" = "false"
+  } : {}
+}
+
 resource "kubernetes_namespace" "cert-manager" {
   count = local.use_cert_manager ? 1 : 0
 
@@ -21,28 +28,31 @@ resource "helm_release" "cert-manager" {
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
-  values = [<<EOF
-image:
-  repository: ${var.registry_quayio}/jetstack/cert-manager-controller
+  values = [<<-EOF
+    installCRDs: true
+    serviceAccount:
+      create: true
+      name: cert-manager
 
-webhook:
-  image:
-    repository: ${var.registry_quayio}/jetstack/cert-manager-webhook
+    image:
+      repository: ${var.registry_quayio}/jetstack/cert-manager-controller
 
-cainjector:
-  image:
-    repository: ${var.registry_quayio}/jetstack/cert-manager-cainjector
+    webhook:
+      image:
+        repository: ${var.registry_quayio}/jetstack/cert-manager-webhook
 
-acmesolver:
-  image:
-    repository: ${var.registry_quayio}/jetstack/cert-manager-acmesolver
+    cainjector:
+      image:
+        repository: ${var.registry_quayio}/jetstack/cert-manager-cainjector
 
-startupapicheck:
-  image:
-    repository: ${var.registry_quayio}/jetstack/cert-manager-startupapicheck
+    acmesolver:
+      image:
+        repository: ${var.registry_quayio}/jetstack/cert-manager-acmesolver
 
-installCRDs: true
-  EOF
+    startupapicheck:
+      image:
+        repository: ${var.registry_quayio}/jetstack/cert-manager-startupapicheck
+    EOF
   ]
 
   depends_on = [kubernetes_namespace.cert-manager]
@@ -65,8 +75,8 @@ resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
         solvers:
           - http01:
               ingress:
-                ingressClassName: ${local.resolved_ingress_class_name}
-                %{~if local.resolved_ingress_class_name == "nginx"~}
+                ingressClassName: ${local.cert_manager_http01_ingress_class}
+                %{~if local.cert_manager_http01_ingress_class == "nginx"~}
                 ingressTemplate:
                   metadata:
                     annotations:
@@ -75,4 +85,5 @@ resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
   YAML
 
   depends_on = [helm_release.cert-manager]
+
 }
