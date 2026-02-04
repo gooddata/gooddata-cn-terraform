@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/azuread"
       version = ">= 2.0"
     }
+    azapi = {
+      source  = "azure/azapi"
+      version = ">= 2.0"
+    }
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = ">= 2.27"
@@ -21,8 +25,8 @@ terraform {
       version = ">= 3.0.0"
     }
     kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = ">= 1.19.0"
+      source  = "alekc/kubectl"
+      version = ">= 2.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -52,6 +56,11 @@ provider "azurerm" {
 
 provider "azuread" {
   tenant_id = var.azure_tenant_id
+}
+
+provider "azapi" {
+  subscription_id = var.azure_subscription_id
+  tenant_id       = var.azure_tenant_id
 }
 
 # Data source to get the current client configuration

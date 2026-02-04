@@ -9,8 +9,8 @@ terraform {
       version = ">= 3.0.0"
     }
     kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = ">= 1.19.0"
+      source  = "alekc/kubectl"
+      version = ">= 2.0"
     }
     random = {
       source  = "hashicorp/random"

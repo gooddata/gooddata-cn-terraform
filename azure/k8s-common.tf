@@ -53,10 +53,17 @@ module "k8s_common" {
   azure_datasource_fs_container = azurerm_storage_container.containers["quiver-datasource-fs"].name
   azure_uami_client_id          = azurerm_user_assigned_identity.gdcn.client_id
 
+  # Karpenter/NAP configuration
+  karpenter_sku_families = var.karpenter_sku_families
+
   depends_on = [
     azurerm_kubernetes_cluster.main,
     azurerm_role_assignment.gdcn_blob_contrib,
+    azurerm_role_assignment.acr_credential_set_secrets_user,
+    azurerm_role_assignment.aks_acr_pull,
+    azurerm_user_assigned_identity.gdcn,
     azurerm_federated_identity_credential.gdcn,
+    azapi_update_resource.aks_nap,
   ]
 }
 

@@ -4,22 +4,10 @@ variable "aks_api_server_authorized_ip_ranges" {
   default     = []
 }
 
-variable "aks_max_nodes" {
-  description = "Maximum number of AKS worker nodes"
-  type        = number
-  default     = 10
-}
-
-variable "aks_min_nodes" {
-  description = "Minimum number of AKS worker nodes"
-  type        = number
-  default     = 2
-}
-
-variable "aks_node_vm_size" {
-  description = "VM size for AKS worker nodes. E.g. Standard_D4as_v6, Standard_D4pd_v6"
-  type        = string
-  default     = "Standard_D4as_v6"
+variable "karpenter_sku_families" {
+  description = "List of Azure VM SKU families that NAP/Karpenter can provision. E.g. D (general purpose), E (memory optimized), F (compute optimized)"
+  type        = list(string)
+  default     = ["D"]
 }
 
 variable "aks_version" {

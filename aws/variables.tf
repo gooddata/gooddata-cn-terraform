@@ -88,18 +88,6 @@ variable "eks_endpoint_public_access_cidrs" {
   }
 }
 
-variable "eks_max_nodes" {
-  description = "Maximum number of EKS worker nodes"
-  type        = number
-  default     = 10
-}
-
-variable "eks_node_types" {
-  description = "List of EC2 instance types for EKS worker nodes"
-  type        = list(string)
-  default     = ["m6i.xlarge"]
-}
-
 variable "eks_version" {
   description = "Version of EKS to deploy."
   type        = string
@@ -165,10 +153,16 @@ variable "helm_cert_manager_version" {
   default     = "v1.18.2"
 }
 
-variable "helm_cluster_autoscaler_version" {
-  description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
+variable "helm_karpenter_version" {
+  description = "Version of the Karpenter Helm chart to deploy. https://gallery.ecr.aws/karpenter/karpenter"
   type        = string
-  default     = "9.46.6"
+  default     = "1.1.1"
+}
+
+variable "karpenter_cpu_limit" {
+  description = "Maximum total CPU cores that Karpenter can provision across all nodes"
+  type        = number
+  default     = 1000
 }
 
 variable "helm_external_dns_version" {

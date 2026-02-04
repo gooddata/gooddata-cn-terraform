@@ -111,3 +111,9 @@ variable "s3_quiver_cache_bucket_id" {
 variable "size_profile" { type = string }
 
 variable "tls_mode" { type = string }
+
+variable "karpenter_sku_families" {
+  description = "List of Azure VM SKU families that NAP/Karpenter can provision (Azure only)"
+  type        = list(string)
+  default     = ["D"]
+}

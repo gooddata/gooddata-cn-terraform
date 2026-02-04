@@ -28,12 +28,6 @@ resource "aws_iam_policy" "ecr_pull_through_cache_min" {
   })
 }
 
-locals {
-  ecr_pull_through_cache_policy = var.enable_image_cache && length(aws_iam_policy.ecr_pull_through_cache_min) > 0 ? {
-    ECRPullThroughCacheMin = aws_iam_policy.ecr_pull_through_cache_min[0].arn
-  } : {}
-}
-
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
@@ -47,7 +41,12 @@ module "eks" {
   tags = local.common_tags
 
   cluster_addons = {
-    coredns                = {}
+    coredns = {
+      # Configure CoreDNS to run on Fargate
+      configuration_values = jsonencode({
+        computeType = "Fargate"
+      })
+    }
     eks-pod-identity-agent = {}
     kube-proxy             = {}
     vpc-cni                = {}
@@ -60,34 +59,39 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  eks_managed_node_groups = {
-    nodes = {
-      ami_type                   = "BOTTLEROCKET_x86_64"
-      instance_types             = var.eks_node_types
-      use_custom_launch_template = false
-      disk_size                  = 100
-
-      # Tags required by cluster-autoscaler autodiscovery and IAM conditions
-      tags = merge(
-        local.common_tags,
+  # Fargate profiles for Karpenter and CoreDNS (bootstrap components)
+  # All other workloads will run on Karpenter-provisioned EC2 nodes
+  fargate_profiles = {
+    karpenter = {
+      name = "karpenter"
+      selectors = [
         {
-          "k8s.io/cluster-autoscaler/enabled"                = "true"
-          "k8s.io/cluster-autoscaler/${var.deployment_name}" = "owned"
+          namespace = "kube-system"
+          labels = {
+            "app.kubernetes.io/name" = "karpenter"
+          }
         }
-      )
-
-      iam_role_additional_policies = merge({
-        AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-        AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
-      }, local.ecr_pull_through_cache_policy)
-
-      min_size = 1
-      max_size = var.eks_max_nodes
-
-      # This value is ignored after the initial creation
-      # https://github.com/bryantbiggs/eks-desired-size-hack
-      desired_size = 2
+      ]
     }
+    coredns = {
+      name = "coredns"
+      selectors = [
+        {
+          namespace = "kube-system"
+          labels = {
+            "k8s-app" = "kube-dns"
+          }
+        }
+      ]
+    }
+  }
+
+  # Create node security group for Karpenter-provisioned nodes
+  create_node_security_group = true
+
+  # Tag node security group for Karpenter discovery
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = var.deployment_name
   }
 
   node_security_group_additional_rules = var.ingress_controller == "istio_gateway" ? {
@@ -114,4 +118,9 @@ module "eks" {
 output "eks_cluster_name" {
   description = "Name of the EKS cluster"
   value       = module.eks.cluster_name
+}
+
+output "eks_cluster_endpoint" {
+  description = "Endpoint for EKS control plane"
+  value       = module.eks.cluster_endpoint
 }

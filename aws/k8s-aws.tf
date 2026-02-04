@@ -8,6 +8,7 @@ module "k8s_aws" {
   providers = {
     kubernetes = kubernetes
     helm       = helm
+    kubectl    = kubectl
   }
 
   deployment_name    = var.deployment_name
@@ -19,12 +20,23 @@ module "k8s_aws" {
 
   registry_k8sio = local.registry_k8sio
 
-  helm_cluster_autoscaler_version = var.helm_cluster_autoscaler_version
-  helm_aws_lb_controller_version  = var.helm_aws_lb_controller_version
-  helm_metrics_server_version     = var.helm_metrics_server_version
-  helm_external_dns_version       = var.helm_external_dns_version
+  helm_karpenter_version         = var.helm_karpenter_version
+  helm_aws_lb_controller_version = var.helm_aws_lb_controller_version
+  helm_metrics_server_version    = var.helm_metrics_server_version
+  helm_external_dns_version      = var.helm_external_dns_version
+
+  karpenter_cpu_limit = var.karpenter_cpu_limit
 
   vpc_id                        = module.vpc.vpc_id
+  eks_cluster_endpoint          = module.eks.cluster_endpoint
   eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
   eks_cluster_oidc_issuer_url   = module.eks.cluster_oidc_issuer_url
+
+  # ECR pull-through cache policy for Karpenter nodes (if enabled)
+  ecr_pull_through_cache_policy_arn = var.enable_image_cache ? aws_iam_policy.ecr_pull_through_cache_min[0].arn : ""
+
+  depends_on = [
+    module.eks,
+    aws_ecr_pull_through_cache_rule.k8sio,
+  ]
 }
