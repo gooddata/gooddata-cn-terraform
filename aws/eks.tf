@@ -108,10 +108,6 @@ module "eks" {
       source_cluster_security_group = true
     }
   } : {}
-
-  depends_on = [
-    module.vpc
-  ]
 }
 
 # Outputs
