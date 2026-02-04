@@ -34,7 +34,7 @@ size_profile = "prod-small"
 ###
 # DNS
 ###
-# "route53" - ExternalDNS component is installed and given permission to manage records in the specified Route53 zone.
+# "route53" - ExternalDNS component is installed and given permission to manage records in the specified Route53 zone (Hosted zone ID).
 dns_provider    = "route53"
 route53_zone_id = "Z0123456789ABC"
 
