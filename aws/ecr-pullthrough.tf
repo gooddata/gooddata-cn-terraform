@@ -11,7 +11,7 @@ locals {
   registry_dockerio = var.enable_image_cache ? format(
     "%s.dkr.ecr.%s.amazonaws.com/%s",
     data.aws_caller_identity.current.account_id,
-    data.aws_region.current.name,
+    data.aws_region.current.id,
     aws_ecr_pull_through_cache_rule.dockerio[0].ecr_repository_prefix
   ) : local.upstream_registry_dockerio
 
@@ -19,7 +19,7 @@ locals {
   registry_quayio = var.enable_image_cache ? format(
     "%s.dkr.ecr.%s.amazonaws.com/%s",
     data.aws_caller_identity.current.account_id,
-    data.aws_region.current.name,
+    data.aws_region.current.id,
     aws_ecr_pull_through_cache_rule.quayio[0].ecr_repository_prefix
   ) : local.upstream_registry_quayio
 
@@ -27,7 +27,7 @@ locals {
   registry_k8sio = var.enable_image_cache ? format(
     "%s.dkr.ecr.%s.amazonaws.com/%s",
     data.aws_caller_identity.current.account_id,
-    data.aws_region.current.name,
+    data.aws_region.current.id,
     aws_ecr_pull_through_cache_rule.k8sio[0].ecr_repository_prefix
   ) : local.upstream_registry_k8sio
 }
