@@ -50,6 +50,22 @@
       "registryUrlTemplate": "https://charts.gooddata.com/"
     },
     {
+      "fileMatch": ["^aws/settings\\.tfvars\\.example$"],
+      "matchStrings": [
+        "#\\s*eks_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "endoflife-date",
+      "depNameTemplate": "amazon-eks"
+    },
+    {
+      "fileMatch": ["^azure/settings\\.tfvars\\.example$"],
+      "matchStrings": [
+        "#\\s*aks_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "endoflife-date",
+      "depNameTemplate": "azure-kubernetes-service"
+    },
+    {
       "fileMatch": ["^[^/]+/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"helm_aws_lb_controller_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""

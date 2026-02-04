@@ -17,7 +17,7 @@ azure_location = "East US"
 ###
 # GoodData.CN deployment configuration
 ###
-helm_gdcn_version = "3.52.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+helm_gdcn_version = "3.54.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
 deployment_name   = "gooddata-cn"
 
 # GoodData.CN license key
@@ -89,7 +89,7 @@ gdcn_orgs = [
 ###
 # AKS & infrastructure sizing (optional)
 ###
-# aks_version                         = "1.30"
+# aks_version                         = "1.33"
 # aks_node_vm_size                    = "Standard_D4as_v6"
 # aks_min_nodes                       = 2
 # aks_max_nodes                       = 10
