@@ -64,7 +64,8 @@ module "rds_postgresql" {
 
   # Database name & credentials
   username                    = local.db_username
-  password                    = local.db_password
+  password_wo                 = local.db_password
+  password_wo_version         = 1
   manage_master_user_password = false
 
   # Networking
