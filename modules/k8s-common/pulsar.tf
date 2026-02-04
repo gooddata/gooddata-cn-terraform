@@ -31,7 +31,6 @@ resource "kubectl_manifest" "peerauth_pulsar_strict" {
 
   depends_on = [
     kubernetes_namespace.pulsar,
-    helm_release.istio_base,
     helm_release.istiod,
   ]
 }
@@ -99,6 +98,6 @@ EOF
 
   depends_on = [
     kubernetes_namespace.pulsar,
-    helm_release.istio_ingress_gateway,
+    helm_release.istiod,
   ]
 }

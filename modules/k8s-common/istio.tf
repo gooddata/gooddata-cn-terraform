@@ -157,7 +157,6 @@ resource "kubectl_manifest" "peerauth_gdcn_strict" {
 
   depends_on = [
     kubernetes_namespace.gdcn,
-    helm_release.istio_base,
     helm_release.istiod,
   ]
 }
@@ -223,7 +222,6 @@ resource "kubectl_manifest" "istio_public_gateway" {
 
   depends_on = [
     helm_release.istio_ingress_gateway,
-    helm_release.istiod,
   ]
 
   lifecycle {
