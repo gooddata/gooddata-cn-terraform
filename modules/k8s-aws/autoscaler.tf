@@ -102,7 +102,4 @@ cloudProvider: aws
 EOF
   ]
 
-  depends_on = [
-    kubernetes_namespace.cluster_autoscaler,
-  ]
 }

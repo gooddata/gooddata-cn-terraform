@@ -98,8 +98,7 @@ resource "kubernetes_service_account" "external_dns" {
   }
 
   depends_on = [
-    kubernetes_namespace.external_dns,
-    aws_iam_role_policy_attachment.external_dns
+    aws_iam_role_policy_attachment.external_dns,
   ]
 }
 
@@ -132,8 +131,5 @@ resource "helm_release" "external_dns" {
     ] : []
   })]
 
-  depends_on = [
-    kubernetes_service_account.external_dns
-  ]
 }
 
