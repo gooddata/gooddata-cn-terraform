@@ -31,45 +31,43 @@ resource "aws_iam_role" "cluster_autoscaler" {
 }
 
 resource "aws_iam_role_policy" "cluster_autoscaler" {
-  name   = "${var.deployment_name}-cluster-autoscaler-policy"
-  role   = aws_iam_role.cluster_autoscaler.id
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "autoscaling:SetDesiredCapacity",
-        "autoscaling:TerminateInstanceInAutoScalingGroup"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "aws:ResourceTag/k8s.io/cluster-autoscaler/enabled": "true",
-          "aws:ResourceTag/k8s.io/cluster-autoscaler/${var.deployment_name}": "owned"
+  name = "${var.deployment_name}-cluster-autoscaler-policy"
+  role = aws_iam_role.cluster_autoscaler.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/k8s.io/cluster-autoscaler/enabled"                = "true"
+            "aws:ResourceTag/k8s.io/cluster-autoscaler/${var.deployment_name}" = "owned"
+          }
         }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:DescribeAutoScalingInstances",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:DescribeScalingActivities",
+          "autoscaling:DescribeTags",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeLaunchTemplateVersions",
+          "ec2:GetInstanceTypesFromInstanceRequirements",
+          "eks:DescribeNodegroup"
+        ]
+        Resource = "*"
       }
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "autoscaling:DescribeAutoScalingGroups",
-        "autoscaling:DescribeAutoScalingInstances",
-        "autoscaling:DescribeLaunchConfigurations",
-        "autoscaling:DescribeScalingActivities",
-        "autoscaling:DescribeTags",
-        "ec2:DescribeImages",
-        "ec2:DescribeInstanceTypes",
-        "ec2:DescribeLaunchTemplateVersions",
-        "ec2:GetInstanceTypesFromInstanceRequirements",
-        "eks:DescribeNodegroup"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-EOF
+    ]
+  })
 }
 
 # Install Cluster Autoscaler via Helm
@@ -83,24 +81,18 @@ resource "helm_release" "cluster_autoscaler" {
   wait_for_jobs = true
   timeout       = 1800
 
-  # Values to configure Cluster Autoscaler
-  values = [<<-EOF
-image:
-  repository: ${var.registry_k8sio}/autoscaling/cluster-autoscaler
-
-rbac:
-  serviceAccount:
-    annotations:
-      eks.amazonaws.com/role-arn: ${aws_iam_role.cluster_autoscaler.arn}
-serviceAccount:
-  create: true
-  name: cluster-autoscaler
-autoDiscovery:
-  clusterName: ${var.deployment_name}
-awsRegion: ${var.aws_region}
-cloudProvider: aws
-EOF
-  ]
+  values = [yamlencode({
+    image = { repository = "${var.registry_k8sio}/autoscaling/cluster-autoscaler" }
+    rbac = {
+      serviceAccount = {
+        annotations = { "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler.arn }
+      }
+    }
+    serviceAccount = { create = true, name = "cluster-autoscaler" }
+    autoDiscovery  = { clusterName = var.deployment_name }
+    awsRegion      = var.aws_region
+    cloudProvider  = "aws"
+  })]
 
   depends_on = [
     kubernetes_namespace.cluster_autoscaler,
