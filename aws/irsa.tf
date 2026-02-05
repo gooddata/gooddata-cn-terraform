@@ -27,10 +27,6 @@ resource "aws_iam_role" "gdcn_irsa" {
   assume_role_policy = data.aws_iam_policy_document.gdcn_irsa_assume_role.json
 
   tags = local.common_tags
-
-  depends_on = [
-    module.eks
-  ]
 }
 
 resource "aws_iam_role_policy_attachment" "gdcn_irsa_s3_access" {

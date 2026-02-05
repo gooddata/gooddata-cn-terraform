@@ -140,6 +140,7 @@ resource "helm_release" "gooddata_cn" {
   depends_on = [
     kubernetes_namespace.gdcn,
     helm_release.pulsar,
+    helm_release.ingress_nginx,
     kubectl_manifest.letsencrypt_cluster_issuer,
     helm_release.istio_ingress_gateway,
     kubectl_manifest.istio_public_gateway,

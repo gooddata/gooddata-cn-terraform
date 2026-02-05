@@ -23,8 +23,4 @@ resource "azurerm_federated_identity_credential" "gdcn" {
   audience            = ["api://AzureADTokenExchange"]
   issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
   subject             = "system:serviceaccount:${local.gdcn_namespace}:${local.gdcn_service_account_name}"
-
-  depends_on = [
-    azurerm_kubernetes_cluster.main
-  ]
 }

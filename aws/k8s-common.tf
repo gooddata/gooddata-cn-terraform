@@ -86,13 +86,6 @@ module "k8s_common" {
   depends_on = [
     module.eks,
     module.k8s_aws,
-    aws_security_group_rule.rds_postgres_ingress_from_nodes,
-    aws_acm_certificate_validation.gdcn,
-    aws_acm_certificate.gdcn,
-    aws_ecr_pull_through_cache_rule.dockerio,
-    aws_ecr_pull_through_cache_rule.quayio,
-    aws_ecr_pull_through_cache_rule.k8sio,
     aws_iam_role_policy_attachment.gdcn_irsa_s3_access,
-    aws_secretsmanager_secret_version.dockerio,
   ]
 }

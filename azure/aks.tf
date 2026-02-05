@@ -70,15 +70,6 @@ resource "azurerm_kubernetes_cluster" "main" {
 
 
   tags = local.common_tags
-
-  depends_on = [
-    azurerm_subnet.aks,
-    azurerm_container_registry.main,
-    azurerm_container_registry_cache_rule.dockerio,
-    azurerm_container_registry_cache_rule.quayio,
-    azurerm_container_registry_cache_rule.k8sio,
-    azurerm_container_registry_credential_set.dockerio
-  ]
 }
 
 # Grant AKS cluster permissions to manage the resource group

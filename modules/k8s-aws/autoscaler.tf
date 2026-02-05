@@ -94,7 +94,4 @@ resource "helm_release" "cluster_autoscaler" {
     cloudProvider  = "aws"
   })]
 
-  depends_on = [
-    kubernetes_namespace.cluster_autoscaler,
-  ]
 }

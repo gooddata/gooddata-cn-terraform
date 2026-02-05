@@ -26,10 +26,6 @@ resource "aws_security_group" "rds" {
   vpc_id      = module.vpc.vpc_id
 
   tags = local.common_tags
-
-  depends_on = [
-    module.vpc
-  ]
 }
 
 # Allow inbound PostgreSQL traffic from EKS node security group
@@ -42,11 +38,6 @@ resource "aws_security_group_rule" "rds_postgres_ingress_from_nodes" {
   source_security_group_id = module.eks.cluster_primary_security_group_id
   security_group_id        = aws_security_group.rds.id
   description              = "Allow PostgreSQL access from the EKS cluster primary security group"
-
-  depends_on = [
-    module.eks,
-    aws_security_group.rds
-  ]
 }
 
 module "rds_postgresql" {
@@ -79,9 +70,4 @@ module "rds_postgresql" {
   deletion_protection = var.rds_deletion_protection
 
   tags = local.common_tags
-
-  depends_on = [
-    module.vpc,
-    aws_security_group.rds,
-  ]
 }

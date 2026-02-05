@@ -253,9 +253,7 @@ resource "kubernetes_service_account" "lb_controller" {
   }
 
   depends_on = [
-    aws_iam_policy.lb_controller,
-    aws_iam_role.lb_controller,
-    aws_iam_role_policy_attachment.lb_controller
+    aws_iam_role_policy_attachment.lb_controller,
   ]
 }
 
@@ -281,7 +279,6 @@ EOF
   ]
 
   depends_on = [
-    kubernetes_namespace.alb,
     kubernetes_service_account.lb_controller,
   ]
 }
