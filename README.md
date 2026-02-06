@@ -59,24 +59,7 @@ Terraform provisions:
 
 1. Run Terraform: `terraform apply -var-file=settings.tfvars`
 
-1. Once everything has been deployed, configure kubectl.
-    - For AWS:
-
-        ```
-        aws eks update-kubeconfig \
-            --name   "$(terraform output -raw eks_cluster_name)" \
-            --region "$(terraform output -raw aws_region)" \
-            --profile "$(terraform output -raw aws_profile_name)"
-        ```
-
-    - For Azure:
-
-        ```
-        az aks get-credentials \
-            --resource-group "$(terraform output -raw azure_resource_group_name)" \
-            --name "$(terraform output -raw aks_cluster_name)" \
-            --overwrite-existing
-        ```
+1. Once everything has been deployed, configure kubectl: `../scripts/configure-kubectl.sh`
 
 1. If you set `gdcn_orgs`, Terraform already created the organizations. Otherwise, you can create those manually now.
 
