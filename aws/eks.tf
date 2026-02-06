@@ -50,8 +50,10 @@ module "eks" {
     coredns                = {}
     eks-pod-identity-agent = {}
     kube-proxy             = {}
-    vpc-cni                = {}
-    aws-ebs-csi-driver     = {}
+    vpc-cni = {
+      before_compute = true
+    }
+    aws-ebs-csi-driver = {}
   }
 
   # Adds the current caller identity as an administrator via cluster access entry
@@ -62,6 +64,7 @@ module "eks" {
 
   eks_managed_node_groups = {
     nodes = {
+      create                     = true
       ami_type                   = "BOTTLEROCKET_x86_64"
       instance_types             = var.eks_node_types
       use_custom_launch_template = false
