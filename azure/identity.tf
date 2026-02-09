@@ -22,5 +22,5 @@ resource "azurerm_federated_identity_credential" "gdcn" {
   parent_id           = azurerm_user_assigned_identity.gdcn.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject             = "system:serviceaccount:${local.gdcn_namespace}:${local.gdcn_service_account_name}"
+  subject             = "system:serviceaccount:${var.gdcn_namespace}:gooddata-cn"
 }

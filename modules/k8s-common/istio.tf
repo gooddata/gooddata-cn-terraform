@@ -157,7 +157,7 @@ resource "kubectl_manifest" "peerauth_gdcn_strict" {
   yaml_body = yamlencode({
     apiVersion = "security.istio.io/v1beta1"
     kind       = "PeerAuthentication"
-    metadata   = { name = "default", namespace = local.gdcn_namespace }
+    metadata   = { name = "default", namespace = var.gdcn_namespace }
     spec       = { mtls = { mode = "STRICT" } }
   })
 
@@ -181,7 +181,7 @@ resource "kubectl_manifest" "istio_public_tls_certificate" {
     spec = {
       secretName = local.istio_public_tls_secret_name
       issuerRef = {
-        name = "letsencrypt"
+        name = var.tls_mode
         kind = "ClusterIssuer"
       }
       dnsNames = local.istio_gateway_hosts
@@ -190,6 +190,7 @@ resource "kubectl_manifest" "istio_public_tls_certificate" {
 
   depends_on = [
     kubectl_manifest.letsencrypt_cluster_issuer,
+    kubectl_manifest.selfsigned_cluster_issuer,
     helm_release.istio_ingress_gateway,
   ]
 }

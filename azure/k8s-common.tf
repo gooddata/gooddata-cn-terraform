@@ -2,11 +2,6 @@
 # Deploy all common Kubernetes resources
 ###
 
-locals {
-  gdcn_namespace            = "gooddata-cn"
-  gdcn_service_account_name = "gooddata-cn"
-}
-
 module "k8s_common" {
   source = "../modules/k8s-common"
 
@@ -19,6 +14,7 @@ module "k8s_common" {
   }
 
   deployment_name    = var.deployment_name
+  gdcn_namespace     = var.gdcn_namespace
   gdcn_license_key   = var.gdcn_license_key
   gdcn_orgs          = var.gdcn_orgs
   size_profile       = var.size_profile

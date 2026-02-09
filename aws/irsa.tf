@@ -16,7 +16,7 @@ data "aws_iam_policy_document" "gdcn_irsa_assume_role" {
       test     = "StringEquals"
       variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
       values = [
-        "system:serviceaccount:${local.gdcn_namespace}:${local.gdcn_service_account_name}"
+        "system:serviceaccount:${var.gdcn_namespace}:gooddata-cn"
       ]
     }
   }

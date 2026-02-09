@@ -6,13 +6,19 @@ locals {
   auth_hostname = trimspace(var.auth_hostname)
   org_ids       = distinct(compact([for org in var.gdcn_orgs : trimspace(org.id)]))
   org_domains   = distinct(compact([for org in var.gdcn_orgs : trimspace(org.hostname)]))
-  ingress_annotation_defaults = local.use_ingress_nginx ? {
-    "cert-manager.io/cluster-issuer"              = "letsencrypt"
-    "nginx.ingress.kubernetes.io/proxy-body-size" = "200m"
-  } : {}
-  dex_annotation_defaults = local.use_ingress_nginx ? {
-    "cert-manager.io/cluster-issuer" = "letsencrypt"
-  } : {}
+  ingress_annotation_defaults = local.use_ingress_nginx ? merge(
+    {
+      "nginx.ingress.kubernetes.io/proxy-body-size" = "200m"
+    },
+    local.use_cert_manager ? {
+      "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
+    } : {}
+  ) : {}
+  dex_annotation_defaults = local.use_ingress_nginx ? (
+    local.use_cert_manager ? {
+      "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
+    } : {}
+  ) : {}
   ingress_annotations     = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
@@ -20,7 +26,7 @@ locals {
 
 resource "kubernetes_namespace_v1" "gdcn" {
   metadata {
-    name = local.gdcn_namespace
+    name = var.gdcn_namespace
     labels = local.use_istio_gateway ? {
       "istio-injection" = "enabled"
     } : null
@@ -66,6 +72,10 @@ resource "kubernetes_secret_v1" "gdcn_encryption" {
     # resource manually.
     ignore_changes = [data]
   }
+
+  depends_on = [
+    kubernetes_namespace.gdcn,
+  ]
 }
 
 # Create license secret
@@ -78,6 +88,10 @@ resource "kubernetes_secret_v1" "gdcn_license" {
   data = {
     license = var.gdcn_license_key
   }
+
+  depends_on = [
+    kubernetes_namespace.gdcn,
+  ]
 }
 
 # Install GoodData.CN
@@ -129,6 +143,15 @@ resource "helm_release" "gooddata_cn" {
       gdcn_service_account_name  = local.gdcn_service_account_name
       gdcn_irsa_role_arn         = var.gdcn_irsa_role_arn
     }) : null,
+    var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local.yaml.tftpl", {
+      s3_endpoint_override    = var.local_s3_endpoint_override
+      s3_region               = var.local_s3_region
+      s3_access_key           = var.local_s3_access_key
+      s3_secret_key           = var.local_s3_secret_key
+      s3_exports_bucket       = var.local_s3_exports_bucket
+      s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
+      s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
+    }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.size_profile}.yaml.tftpl", {})
   ])
 
@@ -142,6 +165,7 @@ resource "helm_release" "gooddata_cn" {
     helm_release.pulsar,
     helm_release.ingress_nginx,
     kubectl_manifest.letsencrypt_cluster_issuer,
+    kubectl_manifest.selfsigned_cluster_issuer,
     helm_release.istio_ingress_gateway,
     kubectl_manifest.istio_public_gateway,
   ]
