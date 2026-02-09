@@ -89,7 +89,7 @@ gdcn_orgs = [
 ###
 # AKS & infrastructure sizing (optional)
 ###
-# aks_version                         = "1.33"
+# aks_version                         = "1.34"
 # aks_node_vm_size                    = "Standard_D4as_v6"
 # aks_min_nodes                       = 2
 # aks_max_nodes                       = 10
