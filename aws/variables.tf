@@ -216,7 +216,7 @@ variable "helm_gdcn_version" {
 variable "helm_ingress_nginx_version" {
   description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
   type        = string
-  default     = "4.12.3"
+  default     = "4.14.3"
 }
 
 variable "helm_istio_version" {
