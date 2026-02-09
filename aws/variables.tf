@@ -174,7 +174,7 @@ variable "helm_cluster_autoscaler_version" {
 variable "helm_external_dns_version" {
   description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
   type        = string
-  default     = "1.15.1"
+  default     = "1.20.0"
 }
 
 variable "helm_gdcn_version" {
