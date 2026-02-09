@@ -154,7 +154,7 @@ variable "gdcn_orgs" {
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
-  default     = "v1.18.2"
+  default     = "v1.19.3"
 }
 
 variable "helm_gdcn_version" {
