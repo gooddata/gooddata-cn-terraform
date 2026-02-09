@@ -7,9 +7,12 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 require_command jq "jq CLI not found; install it to run this script."
 
+CURL_TLS_ARGS=()
+CURL_CONNECT_ARGS=()
+
 curl_json() {
   local response status body
-  response=$(curl --silent --show-error --write-out "\n%{http_code}" "$@")
+  response=$(curl --silent --show-error --write-out "\n%{http_code}" "${CURL_TLS_ARGS[@]}" "${CURL_CONNECT_ARGS[@]}" "$@")
   status=${response##*$'\n'}
   body=${response%$'\n'*}
 
@@ -265,6 +268,13 @@ add_user_to_admin_group() {
 # Ask the user for info
 load_tf_outputs
 require_tf_context "$(basename "$0")"
+
+TLS_MODE=$(tf_output_value "tls_mode")
+if [[ "${TLS_MODE}" == "selfsigned" ]]; then
+  echo ">> Detected tls_mode=selfsigned; using curl --insecure for local dev."
+  CURL_TLS_ARGS=(--insecure)
+fi
+
 SUPPORTED_ORG_IDS=("org")
 SUPPORTED_ORG_HOSTS=()
 declare -A ORG_ID_TO_HOST=()
@@ -327,6 +337,17 @@ GDCN_ORG_HOSTNAME="${ORG_ID_TO_HOST[${GDCN_ORG_ID}]:-}"
 if [[ -z "${GDCN_ORG_HOSTNAME}" ]]; then
   warn "Terraform outputs missing or incomplete; unable to auto-detect hostname for '${GDCN_ORG_ID}'."
   GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization domain (e.g. example.com): " "GoodData.CN organization domain is required")
+fi
+
+# If we're running inside a devcontainer, "localhost" refers to the container.
+# For local k3d (Docker-outside-of-Docker), the ingress port is on the Docker host.
+# Important: keep the URL hostname as-is so Ingress host routing works, but
+# connect to host.docker.internal underneath.
+if is_inside_container && [[ "${GDCN_ORG_HOSTNAME}" == "localhost" || "${GDCN_ORG_HOSTNAME}" == *.localhost ]]; then
+  if command_exists getent && getent hosts host.docker.internal >/dev/null 2>&1; then
+    echo ">> Detected container environment; connecting via host.docker.internal (preserving Host=${GDCN_ORG_HOSTNAME})."
+    CURL_CONNECT_ARGS=(--connect-to "${GDCN_ORG_HOSTNAME}:443:host.docker.internal:443")
+  fi
 fi
 
 # Admin credentials

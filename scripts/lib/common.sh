@@ -17,6 +17,39 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+is_inside_container() {
+  # Heuristics:
+  # - /.dockerenv exists in many Docker/Dev Container environments
+  # - /proc/1/cgroup often contains container markers
+  if [[ -f "/.dockerenv" ]]; then
+    return 0
+  fi
+
+  if [[ -r "/proc/1/cgroup" ]] && grep -qaE '(docker|containerd|kubepods)' "/proc/1/cgroup"; then
+    return 0
+  fi
+
+  return 1
+}
+
+rewrite_localhost_for_container() {
+  # When running inside a container but talking to services exposed on the Docker
+  # host (e.g., k3d publishes 443 on the host), "localhost" won't work.
+  # In that case, prefer host.docker.internal when it resolves.
+  local hostname="${1:-}"
+
+  if is_inside_container; then
+    if [[ "${hostname}" == "localhost" || "${hostname}" == *.localhost ]]; then
+      if command_exists getent && getent hosts host.docker.internal >/dev/null 2>&1; then
+        printf '%s' "${hostname/localhost/host.docker.internal}"
+        return 0
+      fi
+    fi
+  fi
+
+  printf '%s' "${hostname}"
+}
+
 require_command() {
   local binary="$1"
   local message="${2:-}"
@@ -66,7 +99,7 @@ require_tf_context() {
   local dir_name has_context=1
   dir_name=$(basename "$(pwd)")
 
-  if [[ "${dir_name}" != "aws" && "${dir_name}" != "azure" ]]; then
+  if [[ "${dir_name}" != "aws" && "${dir_name}" != "azure" && "${dir_name}" != "local" ]]; then
     has_context=0
   elif ! has_tf_outputs; then
     has_context=0
@@ -79,6 +112,8 @@ require_tf_context() {
 >>   cd aws   && ../scripts/${script_name}
 >>   # or
 >>   cd azure && ../scripts/${script_name}
+>>   # or
+>>   cd local && ../scripts/${script_name}
 >> Proceeding without Terraform outputs; you'll need to enter values manually.
 EOF
   fi

@@ -40,6 +40,11 @@ variable "db_username" { type = string }
 
 variable "deployment_name" { type = string }
 
+variable "gdcn_namespace" {
+  type    = string
+  default = "gooddata-cn"
+}
+
 variable "dex_ingress_annotations_override" {
   type    = map(string)
   default = {}
@@ -106,6 +111,50 @@ variable "s3_exports_bucket_id" {
 variable "s3_quiver_cache_bucket_id" {
   type    = string
   default = ""
+}
+
+variable "local_s3_endpoint_override" {
+  description = "S3 endpoint override URL (with scheme) for local S3-compatible storage (e.g. MinIO)."
+  type        = string
+  default     = ""
+}
+
+variable "local_s3_region" {
+  description = "S3 region value for local S3-compatible storage."
+  type        = string
+  default     = ""
+}
+
+variable "local_s3_access_key" {
+  description = "S3 access key for local S3-compatible storage."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "local_s3_secret_key" {
+  description = "S3 secret key for local S3-compatible storage."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "local_s3_exports_bucket" {
+  description = "Bucket name used for exports in local S3-compatible storage."
+  type        = string
+  default     = ""
+}
+
+variable "local_s3_datasource_fs_bucket" {
+  description = "Bucket name used for Quiver datasource FS (CSV uploads) in local S3-compatible storage."
+  type        = string
+  default     = ""
+}
+
+variable "local_s3_quiver_cache_bucket" {
+  description = "Bucket name used for Quiver durable cache in local S3-compatible storage."
+  type        = string
+  default     = ""
 }
 
 variable "size_profile" { type = string }
