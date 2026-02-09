@@ -156,7 +156,7 @@ variable "gdcn_orgs" {
 variable "helm_aws_lb_controller_version" {
   description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string
-  default     = "1.13.3"
+  default     = "1.17.1"
 }
 
 variable "helm_cert_manager_version" {
