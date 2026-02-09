@@ -162,7 +162,7 @@ variable "helm_aws_lb_controller_version" {
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
-  default     = "v1.18.2"
+  default     = "v1.19.3"
 }
 
 variable "helm_cluster_autoscaler_version" {
