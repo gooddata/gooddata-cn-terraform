@@ -42,7 +42,7 @@ resource "aws_security_group_rule" "rds_postgres_ingress_from_nodes" {
 
 module "rds_postgresql" {
   source  = "terraform-aws-modules/rds/aws"
-  version = "~> 6.0"
+  version = "~> 7.0"
 
   # Identifier & engine
   identifier        = var.deployment_name
@@ -55,7 +55,8 @@ module "rds_postgresql" {
 
   # Database name & credentials
   username                    = local.db_username
-  password                    = local.db_password
+  password_wo                 = local.db_password
+  password_wo_version         = 1
   manage_master_user_password = false
 
   # Networking
