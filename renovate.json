@@ -2,5 +2,111 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>gooddata/.github:renovate-config"
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_cert_manager_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "cert-manager",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_metrics_server_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "metrics-server",
+      "registryUrlTemplate": "https://kubernetes-sigs.github.io/metrics-server/"
+    },
+    {
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_pulsar_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "pulsar",
+      "registryUrlTemplate": "https://pulsar.apache.org/charts"
+    },
+    {
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_ingress_nginx_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "ingress-nginx",
+      "registryUrlTemplate": "https://kubernetes.github.io/ingress-nginx"
+    },
+    {
+      "fileMatch": ["^[^/]+/settings\\.tfvars\\.example$"],
+      "matchStrings": [
+        "helm_gdcn_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "gooddata-cn",
+      "registryUrlTemplate": "https://charts.gooddata.com/"
+    },
+    {
+      "fileMatch": ["^aws/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"eks_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "endoflife-date",
+      "depNameTemplate": "amazon-eks"
+    },
+    {
+      "fileMatch": ["^aws/settings\\.tfvars\\.example$"],
+      "matchStrings": [
+        "#\\s*eks_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "endoflife-date",
+      "depNameTemplate": "amazon-eks"
+    },
+    {
+      "fileMatch": ["^azure/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"aks_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "endoflife-date",
+      "depNameTemplate": "azure-kubernetes-service"
+    },
+    {
+      "fileMatch": ["^azure/settings\\.tfvars\\.example$"],
+      "matchStrings": [
+        "#\\s*aks_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "endoflife-date",
+      "depNameTemplate": "azure-kubernetes-service"
+    },
+    {
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_aws_lb_controller_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "aws-load-balancer-controller",
+      "registryUrlTemplate": "https://aws.github.io/eks-charts"
+    },
+    {
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_cluster_autoscaler_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "cluster-autoscaler",
+      "registryUrlTemplate": "https://kubernetes.github.io/autoscaler"
+    },
+    {
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_external_dns_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "external-dns",
+      "registryUrlTemplate": "https://kubernetes-sigs.github.io/external-dns/"
+    }
   ]
 }

@@ -103,7 +103,7 @@ variable "eks_node_types" {
 variable "eks_version" {
   description = "Version of EKS to deploy."
   type        = string
-  default     = null
+  default     = "1.35"
 }
 
 variable "enable_ai_features" {
