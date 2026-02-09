@@ -52,23 +52,23 @@ route53_zone_id = "Z0123456789ABC"
 ingress_controller = "alb"
 tls_mode           = "acm"
 
-# Option 2 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (cert-manager)
+# Option 2 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (letsencrypt)
 # - Terminates TLS at ingress-nginx using cert-manager (Let's Encrypt).
 # - Requires a public HTTP endpoint for ACME HTTP-01 challenges (port 80) during issuance/renewal.
 # - Good fit when you want "standard" Kubernetes Ingress behavior.
 # ingress_controller = "ingress-nginx"
-# tls_mode           = "cert-manager"
+# tls_mode           = "letsencrypt"
 # letsencrypt_email  = "me@example.com"
 
 # When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
 # ingress_nginx_behind_l7 = true
 
-# Option 3 — Istio Gateway + Let's Encrypt certificates (cert-manager)
+# Option 3 — Istio Gateway + Let's Encrypt certificates (letsencrypt)
 # - Installs Istio and exposes the Istio ingress gateway as a public LoadBalancer Service (AWS NLB).
 # - Terminates TLS at the Istio Gateway using cert-manager (Let's Encrypt).
 # - Uses Istio Gateway + VirtualService for north-south routing; no Kubernetes Ingress for GoodData routing.
 # ingress_controller = "istio_gateway"
-# tls_mode           = "cert-manager"
+# tls_mode           = "letsencrypt"
 # letsencrypt_email  = "me@example.com"
 
 ###

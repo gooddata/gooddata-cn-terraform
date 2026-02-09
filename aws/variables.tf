@@ -256,12 +256,12 @@ variable "ingress_nginx_behind_l7" {
 }
 
 variable "letsencrypt_email" {
-  description = "Email address used for Let's Encrypt ACME registration (only required when tls_mode = \"cert-manager\")"
+  description = "Email address used for Let's Encrypt ACME registration (only required when tls_mode = \"letsencrypt\")"
   type        = string
   default     = ""
   validation {
-    condition     = var.tls_mode != "cert-manager" ? true : length(trimspace(var.letsencrypt_email)) > 0
-    error_message = "letsencrypt_email must be provided when tls_mode is \"cert-manager\"."
+    condition     = var.tls_mode != "letsencrypt" ? true : length(trimspace(var.letsencrypt_email)) > 0
+    error_message = "letsencrypt_email must be provided when tls_mode is \"letsencrypt\"."
   }
 }
 
@@ -304,15 +304,15 @@ variable "size_profile" {
 }
 
 variable "tls_mode" {
-  description = "TLS management mode. Use acm for ALB, cert-manager for ingress-nginx."
+  description = "TLS management mode. Use acm for ALB, letsencrypt for ingress-nginx."
   type        = string
   default     = "acm"
   validation {
     condition = (
-      contains(["acm", "cert-manager"], var.tls_mode) &&
+      contains(["acm", "letsencrypt"], var.tls_mode) &&
       (var.tls_mode != "acm" ? true : var.ingress_controller == "alb") &&
-      (var.tls_mode != "cert-manager" ? true : contains(["ingress-nginx", "istio_gateway"], var.ingress_controller))
+      (var.tls_mode != "letsencrypt" ? true : contains(["ingress-nginx", "istio_gateway"], var.ingress_controller))
     )
-    error_message = "tls_mode=\"acm\" requires ingress_controller=\"alb\"; tls_mode=\"cert-manager\" requires ingress_controller=\"ingress-nginx\" or \"istio_gateway\"."
+    error_message = "tls_mode=\"acm\" requires ingress_controller=\"alb\"; tls_mode=\"letsencrypt\" requires ingress_controller=\"ingress-nginx\" or \"istio_gateway\"."
   }
 }
