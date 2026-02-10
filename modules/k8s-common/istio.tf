@@ -30,7 +30,7 @@ locals {
 # Istio Installation (base → istiod → ingress gateway)
 ###
 
-resource "kubernetes_namespace" "istio_system" {
+resource "kubernetes_namespace_v1" "istio_system" {
   count = local.istio_enabled ? 1 : 0
 
   metadata {
@@ -45,7 +45,7 @@ resource "helm_release" "istio_base" {
   repository = local.istio_chart_repo
   chart      = "base"
   version    = var.helm_istio_version
-  namespace  = kubernetes_namespace.istio_system[0].metadata[0].name
+  namespace  = kubernetes_namespace_v1.istio_system[0].metadata[0].name
 
   wait          = true
   wait_for_jobs = true
@@ -59,7 +59,7 @@ resource "helm_release" "istiod" {
   repository = local.istio_chart_repo
   chart      = "istiod"
   version    = var.helm_istio_version
-  namespace  = kubernetes_namespace.istio_system[0].metadata[0].name
+  namespace  = kubernetes_namespace_v1.istio_system[0].metadata[0].name
 
   values = [yamlencode(merge(
     {
@@ -162,7 +162,7 @@ resource "kubectl_manifest" "peerauth_gdcn_strict" {
   })
 
   depends_on = [
-    kubernetes_namespace.gdcn,
+    kubernetes_namespace_v1.gdcn,
     helm_release.istiod,
   ]
 }

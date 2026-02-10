@@ -18,7 +18,7 @@ locals {
   external_dns_domains   = local.external_dns_enabled && local.external_dns_zone_name != "" ? [local.external_dns_zone_name] : []
 }
 
-resource "kubernetes_namespace" "external_dns" {
+resource "kubernetes_namespace_v1" "external_dns" {
   count = local.external_dns_enabled ? 1 : 0
 
   metadata {
@@ -86,12 +86,12 @@ resource "aws_iam_role_policy_attachment" "external_dns" {
   policy_arn = aws_iam_policy.external_dns[0].arn
 }
 
-resource "kubernetes_service_account" "external_dns" {
+resource "kubernetes_service_account_v1" "external_dns" {
   count = local.external_dns_enabled ? 1 : 0
 
   metadata {
     name      = "external-dns"
-    namespace = kubernetes_namespace.external_dns[0].metadata[0].name
+    namespace = kubernetes_namespace_v1.external_dns[0].metadata[0].name
     annotations = {
       "eks.amazonaws.com/role-arn" = aws_iam_role.external_dns[0].arn
     }
@@ -108,7 +108,7 @@ resource "helm_release" "external_dns" {
   repository    = "https://kubernetes-sigs.github.io/external-dns/"
   chart         = "external-dns"
   version       = var.helm_external_dns_version
-  namespace     = kubernetes_namespace.external_dns[0].metadata[0].name
+  namespace     = kubernetes_namespace_v1.external_dns[0].metadata[0].name
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
@@ -124,12 +124,11 @@ resource "helm_release" "external_dns" {
     sources       = var.ingress_controller == "istio_gateway" ? ["service"] : ["ingress"]
     serviceAccount = {
       create = false
-      name   = kubernetes_service_account.external_dns[0].metadata[0].name
+      name   = kubernetes_service_account_v1.external_dns[0].metadata[0].name
     }
     extraArgs = var.ingress_controller == "alb" ? [
       "--aws-prefer-cname"
     ] : []
   })]
-
 }
 
