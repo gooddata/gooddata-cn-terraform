@@ -27,4 +27,6 @@ module "k8s_aws" {
   vpc_id                        = module.vpc.vpc_id
   eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
   eks_cluster_oidc_issuer_url   = module.eks.cluster_oidc_issuer_url
+
+  depends_on = [module.vpc]
 }

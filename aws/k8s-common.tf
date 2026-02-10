@@ -85,6 +85,7 @@ module "k8s_common" {
 
   depends_on = [
     module.eks,
+    module.vpc,
     module.k8s_aws,
     aws_iam_role_policy_attachment.gdcn_irsa_s3_access,
   ]
