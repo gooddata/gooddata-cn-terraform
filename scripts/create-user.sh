@@ -136,6 +136,13 @@ extract_auth_id() {
   jq -r '.authenticationId // .data.attributes.authenticationId // empty'
 }
 
+build_api_token_id() {
+  local ts random_suffix
+  ts=$(date +%s)
+  random_suffix=$(printf '%04d' "$((RANDOM % 10000))")
+  printf 'cli-%s-%s' "${ts}" "${random_suffix}"
+}
+
 create_user() {
   local payload full http_status dex_response existing existing_status existing_body local_auth_id
 
@@ -265,6 +272,37 @@ add_user_to_admin_group() {
     -d "${payload}" >/dev/null
 }
 
+generate_user_bearer_token() {
+  local token_id payload full http_status response bearer_token
+
+  token_id=$(build_api_token_id)
+  payload=$(jq -n \
+    --arg id "${token_id}" \
+    '{
+      data: {
+        id: $id,
+        type: "apiToken"
+      }
+    }')
+
+  printf '\n>> Generating API bearer token...\n' >&2
+  full=$(curl_json -X POST "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_USER_ID_PATH}/apiTokens" \
+    -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
+    -H "Content-Type: application/vnd.gooddata.api+json" \
+    -d "${payload}") || true
+  http_status=${full##*$'\n'}
+  response=$(printf '%s\n' "${full}" | sed '$d')
+
+  if [[ ! "${http_status}" =~ ^2 ]]; then
+    die "Failed to generate API token for ${GDCN_USER_EMAIL} (HTTP ${http_status}). Response:\n${response}"
+  fi
+
+  bearer_token=$(printf '%s\n' "${response}" | jq -r '.data.attributes.bearerToken // empty')
+  [[ -n "${bearer_token}" ]] || die "API token creation succeeded, but response is missing data.attributes.bearerToken:\n${response}"
+
+  printf '%s\n' "${bearer_token}"
+}
+
 # Ask the user for info
 load_tf_outputs
 require_tf_context "$(basename "$0")"
@@ -391,6 +429,7 @@ GDCN_BOOT_TOKEN=$(printf '%s' "${GDCN_BOOT_TOKEN_RAW}" | base64 | tr -d '\n')
 DISPLAY_NAME="${GDCN_USER_FIRSTNAME} ${GDCN_USER_LASTNAME}"
 
 dex_auth_id=""
+GDCN_USER_BEARER_TOKEN=""
 
 # Create the user in Dex
 create_user
@@ -404,4 +443,8 @@ if [[ "${GDCN_PROMOTE_TO_ADMIN}" == "yes" ]]; then
   echo -e "\n>> User ${GDCN_USER_EMAIL} now has admin privileges via group ${GDCN_ADMIN_GROUP_ID}."
 fi
 
+GDCN_USER_BEARER_TOKEN=$(generate_user_bearer_token)
+
 echo -e "\n>> User is ready. Log in at https://${GDCN_ORG_HOSTNAME} with ${GDCN_USER_EMAIL}."
+echo ">> API bearer token (save it now, this is the only time it will be shown):"
+echo "${GDCN_USER_BEARER_TOKEN}"
