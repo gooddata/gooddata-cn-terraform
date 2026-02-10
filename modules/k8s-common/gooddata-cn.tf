@@ -18,7 +18,7 @@ locals {
   dex_tls_enabled         = local.use_cert_manager
 }
 
-resource "kubernetes_namespace" "gdcn" {
+resource "kubernetes_namespace_v1" "gdcn" {
   metadata {
     name = local.gdcn_namespace
     labels = local.use_istio_gateway ? {
@@ -50,10 +50,10 @@ data "external" "tinkey_keyset" {
   ]
 }
 
-resource "kubernetes_secret" "gdcn_encryption" {
+resource "kubernetes_secret_v1" "gdcn_encryption" {
   metadata {
     name      = "gdcn-encryption"
-    namespace = kubernetes_namespace.gdcn.metadata[0].name
+    namespace = kubernetes_namespace_v1.gdcn.metadata[0].name
   }
 
   data = {
@@ -69,10 +69,10 @@ resource "kubernetes_secret" "gdcn_encryption" {
 }
 
 # Create license secret
-resource "kubernetes_secret" "gdcn_license" {
+resource "kubernetes_secret_v1" "gdcn_license" {
   metadata {
     name      = "gdcn-license"
-    namespace = kubernetes_namespace.gdcn.metadata[0].name
+    namespace = kubernetes_namespace_v1.gdcn.metadata[0].name
   }
 
   data = {
@@ -86,12 +86,12 @@ resource "helm_release" "gooddata_cn" {
   repository = "https://charts.gooddata.com/"
   chart      = "gooddata-cn"
   version    = var.helm_gdcn_version
-  namespace  = kubernetes_namespace.gdcn.metadata[0].name
+  namespace  = kubernetes_namespace_v1.gdcn.metadata[0].name
 
   values = compact([
     templatefile("${path.module}/templates/gdcn-base.yaml.tftpl", {
-      encryption_secret_name  = kubernetes_secret.gdcn_encryption.metadata[0].name
-      license_secret_name     = kubernetes_secret.gdcn_license.metadata[0].name
+      encryption_secret_name  = kubernetes_secret_v1.gdcn_encryption.metadata[0].name
+      license_secret_name     = kubernetes_secret_v1.gdcn_license.metadata[0].name
       org_domains             = local.org_domains
       auth_hostname           = local.auth_hostname
       db_hostname             = var.db_hostname
@@ -138,7 +138,7 @@ resource "helm_release" "gooddata_cn" {
   timeout       = 1800
 
   depends_on = [
-    kubernetes_namespace.gdcn,
+    kubernetes_namespace_v1.gdcn,
     helm_release.pulsar,
     helm_release.ingress_nginx,
     kubectl_manifest.letsencrypt_cluster_issuer,

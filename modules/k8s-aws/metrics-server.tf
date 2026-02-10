@@ -2,7 +2,7 @@
 # Deploy metrics-server to Kubernetes
 ###
 
-resource "kubernetes_namespace" "metrics-server" {
+resource "kubernetes_namespace_v1" "metrics-server" {
   metadata {
     name = "metrics-server"
   }
@@ -10,7 +10,7 @@ resource "kubernetes_namespace" "metrics-server" {
 
 resource "helm_release" "metrics-server" {
   name          = "metrics-server"
-  namespace     = kubernetes_namespace.metrics-server.metadata[0].name
+  namespace     = kubernetes_namespace_v1.metrics-server.metadata[0].name
   chart         = "metrics-server"
   repository    = "https://kubernetes-sigs.github.io/metrics-server/"
   version       = var.helm_metrics_server_version

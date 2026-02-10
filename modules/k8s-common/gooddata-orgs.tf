@@ -107,12 +107,12 @@ data "external" "gdcn_org_admin_user_token_hash" {
   }
 }
 
-resource "kubernetes_secret" "gdcn_org_admin" {
+resource "kubernetes_secret_v1" "gdcn_org_admin" {
   for_each = local.managed_orgs_by_id
 
   metadata {
     name      = "gdcn-org-admin-${each.key}"
-    namespace = kubernetes_namespace.gdcn.metadata[0].name
+    namespace = kubernetes_namespace_v1.gdcn.metadata[0].name
   }
 
   type = "Opaque"
@@ -125,7 +125,7 @@ resource "kubernetes_secret" "gdcn_org_admin" {
   }
 
   depends_on = [
-    kubernetes_namespace.gdcn,
+    kubernetes_namespace_v1.gdcn,
   ]
 }
 
@@ -137,7 +137,7 @@ resource "kubectl_manifest" "gdcn_organization" {
     kind       = "Organization"
     metadata = {
       name      = "${each.key}-org"
-      namespace = kubernetes_namespace.gdcn.metadata[0].name
+      namespace = kubernetes_namespace_v1.gdcn.metadata[0].name
     }
     spec = merge({
       id             = each.key
@@ -170,7 +170,7 @@ resource "kubectl_manifest" "gdcn_organization" {
 
   depends_on = [
     helm_release.gooddata_cn,
-    kubernetes_secret.gdcn_org_admin,
+    kubernetes_secret_v1.gdcn_org_admin,
   ]
 }
 
