@@ -222,12 +222,12 @@ variable "ingress_nginx_behind_l7" {
 }
 
 variable "letsencrypt_email" {
-  description = "Email address used for Let's Encrypt ACME registration (only required when tls_mode = \"cert-manager\")"
+  description = "Email address used for Let's Encrypt ACME registration (only required when tls_mode = \"letsencrypt\")"
   type        = string
   default     = ""
   validation {
-    condition     = var.tls_mode != "cert-manager" ? true : length(trimspace(var.letsencrypt_email)) > 0
-    error_message = "letsencrypt_email must be provided when tls_mode is \"cert-manager\"."
+    condition     = var.tls_mode != "letsencrypt" ? true : length(trimspace(var.letsencrypt_email)) > 0
+    error_message = "letsencrypt_email must be provided when tls_mode is \"letsencrypt\"."
   }
 }
 
@@ -254,11 +254,11 @@ variable "size_profile" {
 }
 
 variable "tls_mode" {
-  description = "TLS management mode. Use cert-manager for Let's Encrypt certificates."
+  description = "TLS management mode. Use letsencrypt for Let's Encrypt certificates."
   type        = string
-  default     = "cert-manager"
+  default     = "letsencrypt"
   validation {
-    condition     = var.tls_mode == "cert-manager"
-    error_message = "tls_mode must be \"cert-manager\" on Azure."
+    condition     = var.tls_mode == "letsencrypt"
+    error_message = "tls_mode must be \"letsencrypt\" on Azure."
   }
 }

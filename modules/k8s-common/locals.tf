@@ -6,7 +6,7 @@ locals {
 
   use_alb           = var.ingress_controller == "alb"
   use_ingress_nginx = var.ingress_controller == "ingress-nginx"
-  use_cert_manager  = var.tls_mode == "cert-manager"
+  use_cert_manager  = var.tls_mode == "letsencrypt"
   use_istio_gateway = var.ingress_controller == "istio_gateway"
 
   # Reuse a single ingress class name throughout the module

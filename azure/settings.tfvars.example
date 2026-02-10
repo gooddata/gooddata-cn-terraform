@@ -44,17 +44,17 @@ dns_provider = "self-managed"
 # Ingress + TLS
 ###
 
-# Option 1 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (cert-manager)
+# Option 1 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (letsencrypt)
 ingress_controller = "ingress-nginx"
-tls_mode          = "cert-manager"
+tls_mode          = "letsencrypt"
 letsencrypt_email = "me@example.com"
 
 # When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
 # ingress_nginx_behind_l7 = true
 
-# Option 2 — Istio Gateway + Let's Encrypt certificates (cert-manager)
+# Option 2 — Istio Gateway + Let's Encrypt certificates (letsencrypt)
 # ingress_controller = "istio_gateway"
-# tls_mode           = "cert-manager"
+# tls_mode           = "letsencrypt"
 # letsencrypt_email  = "me@example.com"
 
 ###
