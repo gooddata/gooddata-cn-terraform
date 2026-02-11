@@ -74,7 +74,7 @@ resource "kubernetes_secret_v1" "gdcn_encryption" {
   }
 
   depends_on = [
-    kubernetes_namespace.gdcn,
+    kubernetes_namespace_v1.gdcn,
   ]
 }
 
@@ -90,7 +90,7 @@ resource "kubernetes_secret_v1" "gdcn_license" {
   }
 
   depends_on = [
-    kubernetes_namespace.gdcn,
+    kubernetes_namespace_v1.gdcn,
   ]
 }
 
