@@ -8,7 +8,7 @@ K3D_VERSION="$(curl -sS https://api.github.com/repos/k3d-io/k3d/releases/latest 
 
 # Install Java and vim
 sudo apt-get update
-sudo apt-get install -y openjdk-17-jre-headless vim jq unzip
+sudo apt-get install -y openjdk-21-jre-headless vim jq unzip
 
 # Install Tinkey
 sudo curl -fsSL -o /tmp/tinkey.tgz https://storage.googleapis.com/tinkey/tinkey-${TINKEY_VERSION}.tar.gz
