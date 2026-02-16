@@ -171,6 +171,55 @@ resource "helm_release" "gooddata_cn" {
   ]
 }
 
+resource "kubectl_manifest" "export_builder_localhost_forwarder" {
+  count = var.cloud == "local" && local.use_ingress_nginx ? 1 : 0
+
+  server_side_apply = true
+  force_conflicts   = true
+
+  yaml_body = <<-YAML
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: gooddata-cn-export-builder
+      namespace: ${kubernetes_namespace_v1.gdcn.metadata[0].name}
+    spec:
+      template:
+        spec:
+          containers:
+            - name: localhost-forwarder
+              image: docker.io/alpine/socat:1.8.0.3
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  socat TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork TCP4:ingress-nginx-controller.ingress-nginx.svc.cluster.local:443 &
+                  socat TCP6-LISTEN:443,bind=[::1],reuseaddr,fork TCP4:ingress-nginx-controller.ingress-nginx.svc.cluster.local:443 &
+                  wait
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: false
+                runAsUser: 0
+                capabilities:
+                  drop:
+                    - ALL
+                  add:
+                    - NET_BIND_SERVICE
+              resources:
+                limits:
+                  cpu: 50m
+                  memory: 64Mi
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+  YAML
+
+  depends_on = [
+    helm_release.gooddata_cn,
+  ]
+}
+
 output "auth_hostname" {
   description = "The hostname for GoodData.CN internal authentication (Dex) ingress"
   value       = local.auth_hostname

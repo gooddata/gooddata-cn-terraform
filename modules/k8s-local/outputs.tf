@@ -1,11 +1,11 @@
 output "postgres_namespace" {
   description = "Namespace used for the in-cluster PostgreSQL (CloudNativePG) resources."
-  value       = kubernetes_namespace.postgres.metadata[0].name
+  value       = kubernetes_namespace_v1.postgres.metadata[0].name
 }
 
 output "minio_namespace" {
   description = "Namespace used for MinIO resources."
-  value       = kubernetes_namespace.minio.metadata[0].name
+  value       = kubernetes_namespace_v1.minio.metadata[0].name
 }
 
 output "minio_s3_endpoint" {
@@ -13,7 +13,7 @@ output "minio_s3_endpoint" {
   value = format(
     "http://%s.%s.svc.cluster.local:%s",
     var.minio_release_name,
-    kubernetes_namespace.minio.metadata[0].name,
+    kubernetes_namespace_v1.minio.metadata[0].name,
     "9000",
   )
 }
@@ -45,7 +45,7 @@ output "minio_gdcn_access_key" {
 
 output "minio_gdcn_secret_key" {
   description = "Secret key for the dedicated GoodData.CN MinIO user."
-  value       = kubernetes_secret.minio_gdcn_user.data["secretKey"]
+  value       = kubernetes_secret_v1.minio_gdcn_user.data["secretKey"]
   sensitive   = true
 }
 
