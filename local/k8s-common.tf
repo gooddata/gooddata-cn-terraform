@@ -86,7 +86,7 @@ module "k8s_common" {
   local_s3_datasource_fs_bucket = module.k8s_local.minio_bucket_datasource_fs
   local_s3_quiver_cache_bucket  = module.k8s_local.minio_bucket_quiver_cache
 
-  # Local DB provisioned in-cluster by modules/k8s-common (only when cloud=local)
+  # Local DB provisioned in-cluster by modules/k8s-local
   db_hostname = local.local_db_hostname
   db_username = local.local_db_username
   db_password = random_password.local_postgres_password.result

@@ -34,7 +34,10 @@ variable "cloud" { type = string }
 
 variable "db_hostname" { type = string }
 
-variable "db_password" { type = string }
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
 
 variable "db_username" { type = string }
 
@@ -59,7 +62,10 @@ variable "gdcn_irsa_role_arn" {
   default = ""
 }
 
-variable "gdcn_license_key" { type = string }
+variable "gdcn_license_key" {
+  type      = string
+  sensitive = true
+}
 
 variable "gdcn_orgs" {
   type = list(object({
