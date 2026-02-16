@@ -188,7 +188,7 @@ resource "kubectl_manifest" "export_builder_localhost_forwarder" {
         spec:
           containers:
             - name: localhost-forwarder
-              image: docker.io/alpine/socat:1.8.0.3
+              image: ${var.registry_dockerio}/alpine/socat:1.8.0.3
               imagePullPolicy: IfNotPresent
               command:
                 - /bin/sh
@@ -225,6 +225,11 @@ output "auth_hostname" {
   value       = local.auth_hostname
 }
 
+output "ingress_class_name" {
+  description = "Ingress class name applied to GoodData.CN ingress resources"
+  value       = local.resolved_ingress_class_name
+}
+
 output "org_domains" {
   description = "All GoodData.CN organization hostnames derived from gdcn_orgs"
   value       = local.org_domains
@@ -233,9 +238,4 @@ output "org_domains" {
 output "org_ids" {
   description = "List of organization IDs/DNS labels allowed by this deployment"
   value       = local.org_ids
-}
-
-output "ingress_class_name" {
-  description = "Ingress class name applied to GoodData.CN ingress resources"
-  value       = local.resolved_ingress_class_name
 }
