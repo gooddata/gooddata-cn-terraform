@@ -16,7 +16,8 @@ locals {
   # auth_hostname is required by root module validation; org hostnames may be empty.
   istio_gateway_hosts = distinct(compact(concat(
     [trimspace(var.auth_hostname)],
-    [for org in var.gdcn_orgs : trimspace(org.hostname)]
+    [for org in var.gdcn_orgs : trimspace(org.hostname)],
+    var.enable_observability ? [trimspace(var.observability_hostname)] : []
   )))
 
   # Deterministic AWS NLB name for the public Istio gateway Service.

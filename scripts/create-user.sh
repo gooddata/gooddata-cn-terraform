@@ -16,19 +16,9 @@ curl_json() {
   status=${response##*$'\n'}
   body=${response%$'\n'*}
 
-  echo -e ">> HTTP status: ${status}" >&2
-  if [[ "${status}" != "200" && "${status}" != "201" && "${status}" != "204" ]]; then
-    echo "${body}" >&2
-  fi
-
   printf '%s\n%s\n' "${body}" "${status}"
 
   [[ "${status}" =~ ^2 ]]
-}
-
-die() {
-  echo -e "\n\n>> ERROR: $*" >&2
-  exit 1
 }
 
 try_load_admin_credentials_from_secret() {
@@ -58,7 +48,7 @@ try_load_admin_credentials_from_secret() {
 
   GDCN_ADMIN_USER="${admin_user}"
   GDCN_ADMIN_PASSWORD="${admin_password}"
-  echo ">> Using admin credentials from Kubernetes Secret ${namespace}/${secret_name}"
+  echo "Using admin credentials from Kubernetes Secret ${namespace}/${secret_name}"
   return 0
 }
 
@@ -69,71 +59,188 @@ sanitize_user_id() {
   printf '%s' "${value}"
 }
 
-prompt_required() {
-  local prompt="$1"
-  local error="$2"
-  local default="${3:-}"
-  local value
-  while true; do
-    read -ep "${prompt}" value
-    if [[ -z "${value}" && -n "${default}" ]]; then
-      value="${default}"
-    fi
-    if [[ -n "${value}" ]]; then
-      printf '%s\n' "${value}"
-      return 0
-    fi
-    echo -e "\n\n>> ERROR: ${error}\n\n" >&2
-  done
-}
-
-prompt_password() {
-  local prompt="$1"
-  local error="$2"
-  local value
-  while true; do
-    read -resp "${prompt}" value
-    echo >&2
-    if [[ -n "${value}" ]]; then
-      printf '%s\n' "${value}"
-      return 0
-    fi
-    echo -e "\n\n>> ERROR: ${error}\n\n" >&2
-  done
-}
-
-prompt_yes_no() {
-  local prompt="$1"
-  local default="${2:-n}"
-  local answer normalized
-  while true; do
-    read -ep "${prompt}" answer
-    if [[ -z "${answer}" ]]; then
-      answer="${default}"
-    fi
-    normalized=$(printf '%s' "${answer}" | tr '[:upper:]' '[:lower:]')
-    case "${normalized}" in
-      y|yes)
-        printf 'yes\n'
-        return 0
-        ;;
-      n|no)
-        printf 'no\n'
-        return 0
-        ;;
-      *)
-        echo -e "\n\n>> ERROR: Please answer yes or no.\n\n" >&2
-        ;;
-    esac
-  done
-}
-
-urlencode() {
-  jq -rn --arg v "${1}" '$v|@uri'
-}
-
 extract_auth_id() {
   jq -r '.authenticationId // .data.attributes.authenticationId // empty'
+}
+
+extract_display_name() {
+  jq -r '.displayName // .data.attributes.displayName // empty'
+}
+
+is_auth_endpoint_retryable_status() {
+  local status="${1:-}"
+  case "${status}" in
+    401|429|5*|000) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+extract_idp_user_info_by_email() {
+  local body="${1}"
+  local email="${2}"
+
+  printf '%s' "${body}" | jq -r --arg email "${email}" '
+    def authId(o): (o.authenticationId // o.id // o.attributes?.authenticationId // o.attributes?.id // o.data?.attributes?.authenticationId // o.data?.id // empty);
+    def displayName(o): (o.displayName // o.attributes?.displayName // o.data?.attributes?.displayName // empty);
+    def emailValue(o): (o.email // o.attributes?.email // o.data?.attributes?.email // empty);
+    def emit(o): "\((authId(o)))\t\((displayName(o)))";
+    def byEmail(stream): ([stream | select((emailValue(.) | ascii_downcase) == ($email | ascii_downcase) and (authId(.) | length) > 0) | emit(.)])[0] // empty;
+
+    if type == "object" then
+      if (authId(.) | length) > 0 and ((emailValue(.) | length) == 0 or (emailValue(.) | ascii_downcase) == ($email | ascii_downcase)) then
+        emit(.)
+      elif (.data | type) == "array" then
+        byEmail(.data[]?)
+      elif (.users | type) == "array" then
+        byEmail(.users[]?)
+      elif (.items | type) == "array" then
+        byEmail(.items[]?)
+      elif (.results | type) == "array" then
+        byEmail(.results[]?)
+      else
+        empty
+      end
+    elif type == "array" then
+      byEmail(.[]?)
+    else
+      empty
+    end
+  ' 2>/dev/null || true
+}
+
+lookup_idp_user_by_email() {
+  local encoded_email paths path full http_status response user_info parsed_auth_id parsed_display_name found_auth_without_display retry_attempt
+  local max_attempts_per_path retry_sleep_seconds
+  found_auth_without_display="false"
+  max_attempts_per_path=24
+  retry_sleep_seconds=5
+
+  encoded_email=$(urlencode "${GDCN_USER_EMAIL}")
+  paths=(
+    "/api/v1/auth/users/${encoded_email}"
+    "/api/v1/auth/users?email=${encoded_email}"
+    "/api/v1/auth/users"
+  )
+
+  for path in "${paths[@]}"; do
+    retry_attempt=1
+    while true; do
+      full=$(curl_json -X GET "https://${GDCN_ORG_HOSTNAME}${path}" \
+        -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
+        -H "Content-type: application/json") || true
+      http_status=${full##*$'\n'}
+      response=$(printf '%s\n' "${full}" | sed '$d')
+
+      case "${http_status}" in
+        2*)
+          user_info=$(extract_idp_user_info_by_email "${response}" "${GDCN_USER_EMAIL}")
+          if [[ -z "${user_info}" ]]; then
+            break
+          fi
+          parsed_auth_id=${user_info%%$'\t'*}
+          parsed_display_name=${user_info#*$'\t'}
+          if [[ -n "${parsed_auth_id}" ]]; then
+            dex_auth_id="${parsed_auth_id}"
+            IDP_DISPLAY_NAME=$(trim "${parsed_display_name}")
+            [[ -n "${IDP_DISPLAY_NAME}" ]] || IDP_DISPLAY_NAME=$(printf '%s\n' "${response}" | extract_display_name)
+            IDP_DISPLAY_NAME=$(trim "${IDP_DISPLAY_NAME}")
+            if [[ -z "${IDP_DISPLAY_NAME}" ]]; then
+              found_auth_without_display="true"
+              break
+            fi
+            return 0
+          fi
+          break
+          ;;
+        400|404)
+          break
+          ;;
+        *)
+          if is_auth_endpoint_retryable_status "${http_status}"; then
+            if (( retry_attempt >= max_attempts_per_path )); then
+              die "Auth endpoint remained unavailable at ${path} after ${max_attempts_per_path} attempts (last HTTP ${http_status}) while checking existing users."
+            fi
+            echo -e "Auth endpoint not ready (HTTP ${http_status}), retrying in ${retry_sleep_seconds}s (${retry_attempt}/${max_attempts_per_path})..."
+            retry_attempt=$((retry_attempt + 1))
+            sleep "${retry_sleep_seconds}"
+            continue
+          fi
+          die "Failed to query existing Dex user (HTTP ${http_status}) on ${path}. Response:\n${response}"
+          ;;
+      esac
+    done
+  done
+
+  if [[ "${found_auth_without_display}" == "true" ]]; then
+    die "Dex user exists for ${GDCN_USER_EMAIL}, but displayName could not be retrieved from IdP."
+  fi
+
+  return 1
+}
+
+resolve_existing_dex_user() {
+  local dex_response="${1}"
+  reuse_existing_user_auth_id "${dex_response}"
+  lookup_idp_user_by_email || die "Dex user exists but failed to retrieve displayName for ${GDCN_USER_EMAIL}. Please ensure the IdP user is queryable."
+}
+
+derive_org_names_from_display_name() {
+  local normalized first_name last_name
+
+  normalized=$(trim "${1:-}")
+  if [[ -z "${normalized}" ]]; then
+    normalized="${GDCN_USER_EMAIL%@*}"
+  fi
+  normalized=$(printf '%s' "${normalized}" | tr -s ' ')
+  normalized=$(trim "${normalized}")
+
+  first_name="${normalized%% *}"
+  if [[ "${normalized}" == *" "* ]]; then
+    last_name=$(trim "${normalized#* }")
+  else
+    last_name=""
+  fi
+
+  [[ -n "${first_name}" ]] || first_name="user"
+  [[ -n "${last_name}" ]] || last_name="user"
+
+  IDP_DISPLAY_NAME="${normalized}"
+  GDCN_USER_FIRSTNAME="${first_name}"
+  GDCN_USER_LASTNAME="${last_name}"
+}
+
+dex_response_indicates_existing_user() {
+  local response="${1}"
+  local detail
+
+  detail=$(printf '%s' "${response}" | jq -r '[(.detail // empty), (.message // empty), (.title // empty), (.error // empty), (.error_description // empty)] | join(" ")' 2>/dev/null || true)
+  if [[ -z "${detail}" ]]; then
+    detail="${response}"
+  fi
+
+  detail=$(printf '%s' "${detail}" | tr '[:upper:]' '[:lower:]')
+  [[ "${detail}" == *"user already exists"* ]]
+}
+
+reuse_existing_user_auth_id() {
+  local dex_response="${1}"
+  local existing existing_status existing_body local_auth_id
+
+  local_auth_id=$(printf '%s\n' "${dex_response}" | extract_auth_id)
+  if [[ -z "${local_auth_id}" ]]; then
+    existing=$(curl_json -X GET "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_USER_ID_PATH}" \
+      -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
+      -H "Content-Type: application/vnd.gooddata.api+json") || true
+    existing_status=${existing##*$'\n'}
+    existing_body=$(printf '%s\n' "${existing}" | sed '$d')
+    if [[ "${existing_status}" =~ ^2 ]]; then
+      local_auth_id=$(printf '%s\n' "${existing_body}" | extract_auth_id)
+    fi
+  fi
+
+  [[ -n "${local_auth_id}" ]] || die "Dex user already exists but authenticationId is unknown. Delete the Dex user or retrieve the authenticationId manually before retrying.\nResponse:\n${dex_response}"
+  echo -e "\nDex user already exists. Reusing authenticationId."
+  dex_auth_id="${local_auth_id}"
 }
 
 build_api_token_id() {
@@ -144,7 +251,7 @@ build_api_token_id() {
 }
 
 create_user() {
-  local payload full http_status dex_response existing existing_status existing_body local_auth_id
+  local payload full http_status dex_response local_auth_id
 
   payload=$(jq -n \
     --arg email "${GDCN_USER_EMAIL}" \
@@ -152,7 +259,7 @@ create_user() {
     --arg displayName "${DISPLAY_NAME}" \
     '{email: $email, password: $password, displayName: $displayName}')
 
-  printf '\n\n>> Creating user...\n'
+  printf '\nCreating user...\n'
   for _ in {1..200}; do
     full=$(curl_json -X POST "https://${GDCN_ORG_HOSTNAME}/api/v1/auth/users" \
       -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
@@ -165,33 +272,26 @@ create_user() {
       local_auth_id=$(printf '%s\n' "${dex_response}" | extract_auth_id)
       [[ -n "${local_auth_id}" ]] || die "Dex response missing authenticationId:\n${dex_response}"
       dex_auth_id="${local_auth_id}"
+      IDP_DISPLAY_NAME=$(printf '%s\n' "${dex_response}" | extract_display_name)
+      IDP_DISPLAY_NAME=$(trim "${IDP_DISPLAY_NAME}")
+      [[ -n "${IDP_DISPLAY_NAME}" ]] || IDP_DISPLAY_NAME="${DISPLAY_NAME}"
       return 0
     fi
 
     case "${http_status}" in
       409)
-        local_auth_id=$(printf '%s\n' "${dex_response}" | extract_auth_id)
-        if [[ -z "${local_auth_id}" ]]; then
-          existing=$(curl_json -X GET "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_USER_ID_PATH}" \
-            -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
-            -H "Content-Type: application/vnd.gooddata.api+json") || true
-          existing_status=${existing##*$'\n'}
-          existing_body=$(printf '%s\n' "${existing}" | sed '$d')
-          if [[ "${existing_status}" =~ ^2 ]]; then
-            local_auth_id=$(printf '%s\n' "${existing_body}" | extract_auth_id)
-          fi
-        fi
-        [[ -n "${local_auth_id}" ]] || die "Dex user already exists but authenticationId is unknown. Delete the Dex user or retrieve the authenticationId manually before retrying.\nResponse:\n${dex_response}"
-        echo -e "\n>> Dex user already exists. Reusing authenticationId."
-        dex_auth_id="${local_auth_id}"
+        resolve_existing_dex_user "${dex_response}"
         return 0
         ;;
-      401)
-        echo -e "\n\n>> Auth endpoint not ready (HTTP ${http_status}). Retrying in 5s...\n\n"
-        sleep 5
+      400)
+        if dex_response_indicates_existing_user "${dex_response}"; then
+          resolve_existing_dex_user "${dex_response}"
+          return 0
+        fi
+        die "Received ${http_status} error from auth endpoint. Response:\n${dex_response}"
         ;;
-      429|5*|000)
-        echo -e "\n\n>> Auth endpoint not ready (HTTP ${http_status}). Retrying in 5s...\n\n"
+      401|429|5*|000)
+        echo -e "Auth endpoint not ready (HTTP ${http_status}), retrying in 5s..."
         sleep 5
         ;;
       4*)
@@ -204,6 +304,41 @@ create_user() {
   done
 
   die "Failed to create Dex user after multiple attempts"
+}
+
+prompt_new_user_profile() {
+  GDCN_USER_FIRSTNAME=$(trim "$(prompt_required ">> First name: " "First name cannot be empty")")
+  if [[ -z "${GDCN_USER_FIRSTNAME}" ]]; then
+    die "First name cannot be empty"
+  fi
+  GDCN_USER_LASTNAME=$(trim "$(prompt_required ">> Last name: " "Last name cannot be empty")")
+  if [[ -z "${GDCN_USER_LASTNAME}" ]]; then
+    die "Last name cannot be empty"
+  fi
+  GDCN_USER_PASSWORD=$(prompt_password ">> Password: " "Password is required")
+}
+
+prompt_admin_assignment() {
+  GDCN_PROMOTE_TO_ADMIN=$(prompt_yes_no ">> Make this user an admin? [y/N]: " "n")
+  if [[ "${GDCN_PROMOTE_TO_ADMIN}" == "yes" ]]; then
+    GDCN_ADMIN_GROUP_ID=$(prompt_required ">> Admin group ID [default: adminGroup]: " "Admin group ID is required" "adminGroup")
+    GDCN_ADMIN_GROUP_ID=$(trim "${GDCN_ADMIN_GROUP_ID}")
+    if [[ -z "${GDCN_ADMIN_GROUP_ID}" ]]; then
+      die "Admin group ID cannot be empty"
+    fi
+  fi
+}
+
+resolve_idp_identity_for_email() {
+  if lookup_idp_user_by_email; then
+    echo -e "\nDex user ${GDCN_USER_EMAIL} already exists. Using IdP displayName and skipping first/last/password prompts."
+    return 0
+  fi
+
+  prompt_new_user_profile
+  DISPLAY_NAME="${GDCN_USER_FIRSTNAME} ${GDCN_USER_LASTNAME}"
+  IDP_DISPLAY_NAME="${DISPLAY_NAME}"
+  create_user
 }
 
 configure_user() {
@@ -228,7 +363,7 @@ configure_user() {
       }
     }')
 
-  printf '\n>> Configuring user...\n'
+  printf '\nConfiguring user...\n'
   full=$(curl_json -X POST "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users" \
     -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
     -H "Content-Type: application/vnd.gooddata.api+json" \
@@ -241,7 +376,7 @@ configure_user() {
   fi
 
   if [[ "${http_status}" == "409" ]]; then
-    echo -e "\n>> User already exists. Updating attributes..."
+    echo -e "\nUser already exists. Updating attributes..."
     curl_json -X PATCH "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_USER_ID_PATH}" \
       -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
       -H "Content-Type: application/vnd.gooddata.api+json" \
@@ -255,7 +390,7 @@ configure_user() {
 add_user_to_admin_group() {
   local payload
 
-  printf '\n>> Adding %s to admin group %s via user management action...\n' "${GDCN_USER_ID}" "${GDCN_ADMIN_GROUP_ID}"
+  printf '\nAdding %s to admin group %s...\n' "${GDCN_USER_ID}" "${GDCN_ADMIN_GROUP_ID}"
   payload=$(jq -n \
     --arg id "${GDCN_USER_ID}" \
     '{
@@ -285,7 +420,7 @@ generate_user_bearer_token() {
       }
     }')
 
-  printf '\n>> Generating API bearer token...\n' >&2
+  printf '\nGenerating API bearer token...\n' >&2
   full=$(curl_json -X POST "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_USER_ID_PATH}/apiTokens" \
     -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
     -H "Content-Type: application/vnd.gooddata.api+json" \
@@ -309,7 +444,7 @@ require_tf_context "$(basename "$0")"
 
 TLS_MODE=$(tf_output_value "tls_mode")
 if [[ "${TLS_MODE}" == "selfsigned" ]]; then
-  echo ">> Detected tls_mode=selfsigned; using curl --insecure for local dev."
+  echo "Using self-signed TLS (curl --insecure)."
   CURL_TLS_ARGS=(--insecure)
 fi
 
@@ -347,14 +482,14 @@ ORG_ID_PROMPT_CHOICES=$(join_by ", " "${SUPPORTED_ORG_IDS[@]}")
 
 echo
 while true; do
-  read -ep ">> GoodData.CN organization ID for the new user [one of: ${ORG_ID_PROMPT_CHOICES}]: " GDCN_ORG_ID
+  read -ep ">> Organization ID [one of: ${ORG_ID_PROMPT_CHOICES}]: " GDCN_ORG_ID
   GDCN_ORG_ID=$(trim "${GDCN_ORG_ID}")
   if [[ -z "${GDCN_ORG_ID}" ]]; then
-    echo -e "\n\n>> ERROR: Organization ID is required\n\n" >&2
+    echo -e "\nError: Organization ID is required.\n" >&2
     continue
   fi
   if [[ ! "${GDCN_ORG_ID}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
-    echo -e "\n\n>> ERROR: Organization ID '${GDCN_ORG_ID}' must be lowercase alphanumeric (hyphens allowed inside).\n\n" >&2
+    echo -e "\nError: Organization ID '${GDCN_ORG_ID}' must be lowercase alphanumeric (hyphens allowed inside).\n" >&2
     continue
   fi
   is_supported="false"
@@ -365,7 +500,7 @@ while true; do
     fi
   done
   if [[ "${is_supported}" != "true" ]]; then
-    echo -e "\n\n>> ERROR: '${GDCN_ORG_ID}' is not in the allowed list: ${ORG_ID_PROMPT_CHOICES}\n\n" >&2
+    echo -e "\nError: '${GDCN_ORG_ID}' is not in the allowed list: ${ORG_ID_PROMPT_CHOICES}.\n" >&2
     continue
   fi
   break
@@ -374,7 +509,7 @@ done
 GDCN_ORG_HOSTNAME="${ORG_ID_TO_HOST[${GDCN_ORG_ID}]:-}"
 if [[ -z "${GDCN_ORG_HOSTNAME}" ]]; then
   warn "Terraform outputs missing or incomplete; unable to auto-detect hostname for '${GDCN_ORG_ID}'."
-  GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization domain (e.g. example.com): " "GoodData.CN organization domain is required")
+  GDCN_ORG_HOSTNAME=$(prompt_required ">> Organization domain (e.g. example.com): " "Organization domain is required")
 fi
 
 # If we're running inside a devcontainer, "localhost" refers to the container.
@@ -383,7 +518,7 @@ fi
 # connect to host.docker.internal underneath.
 if is_inside_container && [[ "${GDCN_ORG_HOSTNAME}" == "localhost" || "${GDCN_ORG_HOSTNAME}" == *.localhost ]]; then
   if command_exists getent && getent hosts host.docker.internal >/dev/null 2>&1; then
-    echo ">> Detected container environment; connecting via host.docker.internal (preserving Host=${GDCN_ORG_HOSTNAME})."
+    echo "Container detected, routing via host.docker.internal."
     CURL_CONNECT_ARGS=(--connect-to "${GDCN_ORG_HOSTNAME}:443:host.docker.internal:443")
   fi
 fi
@@ -394,45 +529,30 @@ fi
 # - Finally, prompt interactively as a fallback
 GDCN_NAMESPACE=${GDCN_NAMESPACE:-gooddata-cn}
 if [[ -n "${GDCN_ADMIN_USER:-}" && -n "${GDCN_ADMIN_PASSWORD:-}" ]]; then
-  echo ">> Using admin credentials from environment variables."
+  echo "Using admin credentials from environment variables."
 elif ! try_load_admin_credentials_from_secret "${GDCN_NAMESPACE}" "${GDCN_ORG_ID}"; then
-  GDCN_ADMIN_USER=$(prompt_required ">> GoodData.CN EXISTING ADMIN username [default: admin]: " "GoodData.CN admin username is required" "admin")
-  GDCN_ADMIN_PASSWORD=$(prompt_password ">> GoodData.CN EXISTING ADMIN password: " "GoodData.CN admin password is required")
+  GDCN_ADMIN_USER=$(prompt_required ">> Admin username [default: admin]: " "Admin username is required" "admin")
+  GDCN_ADMIN_PASSWORD=$(prompt_password ">> Admin password: " "Admin password is required")
 fi
 
-GDCN_USER_FIRSTNAME=$(trim "$(prompt_required ">> New GoodData.CN user first name: " "First name cannot be empty")")
-if [[ -z "${GDCN_USER_FIRSTNAME}" ]]; then
-  die "First name cannot be empty"
-fi
-GDCN_USER_LASTNAME=$(trim "$(prompt_required ">> New GoodData.CN user last name: " "Last name cannot be empty")")
-if [[ -z "${GDCN_USER_LASTNAME}" ]]; then
-  die "Last name cannot be empty"
-fi
-GDCN_USER_EMAIL=$(prompt_required ">> New GoodData.CN user email: " "GoodData.CN user email is required")
+GDCN_BOOT_TOKEN_RAW="${GDCN_ADMIN_USER}:bootstrap:${GDCN_ADMIN_PASSWORD}"
+GDCN_BOOT_TOKEN=$(printf '%s' "${GDCN_BOOT_TOKEN_RAW}" | base64 | tr -d '\n')
+
+GDCN_USER_EMAIL=$(prompt_required ">> Email: " "Email is required")
 GDCN_USER_ID=$(sanitize_user_id "${GDCN_USER_EMAIL}")
 if [[ -z "${GDCN_USER_ID}" ]]; then
   die "Failed to derive a valid user identifier from ${GDCN_USER_EMAIL}"
 fi
 GDCN_USER_ID_PATH=$(urlencode "${GDCN_USER_ID}")
-GDCN_USER_PASSWORD=$(prompt_password ">> New GoodData.CN user password: " "New GoodData.CN user password is required")
-GDCN_PROMOTE_TO_ADMIN=$(prompt_yes_no ">> Give this user admin privileges to GoodData.CN? [y/N]: " "n")
-if [[ "${GDCN_PROMOTE_TO_ADMIN}" == "yes" ]]; then
-  GDCN_ADMIN_GROUP_ID=$(prompt_required ">> GoodData.CN admin group ID [default: adminGroup]: " "Admin group ID is required" "adminGroup")
-  GDCN_ADMIN_GROUP_ID=$(trim "${GDCN_ADMIN_GROUP_ID}")
-  if [[ -z "${GDCN_ADMIN_GROUP_ID}" ]]; then
-    die "Admin group ID cannot be empty"
-  fi
-fi
 
-GDCN_BOOT_TOKEN_RAW="${GDCN_ADMIN_USER}:bootstrap:${GDCN_ADMIN_PASSWORD}"
-GDCN_BOOT_TOKEN=$(printf '%s' "${GDCN_BOOT_TOKEN_RAW}" | base64 | tr -d '\n')
-DISPLAY_NAME="${GDCN_USER_FIRSTNAME} ${GDCN_USER_LASTNAME}"
-
+IDP_DISPLAY_NAME=""
 dex_auth_id=""
 GDCN_USER_BEARER_TOKEN=""
 
-# Create the user in Dex
-create_user
+resolve_idp_identity_for_email
+
+derive_org_names_from_display_name "${IDP_DISPLAY_NAME}"
+prompt_admin_assignment
 
 # Configure the user in GoodData.CN
 configure_user
@@ -440,11 +560,11 @@ configure_user
 if [[ "${GDCN_PROMOTE_TO_ADMIN}" == "yes" ]]; then
   # Add the user to the admin group
   add_user_to_admin_group
-  echo -e "\n>> User ${GDCN_USER_EMAIL} now has admin privileges via group ${GDCN_ADMIN_GROUP_ID}."
+  echo -e "\nUser ${GDCN_USER_EMAIL} is now an admin (group: ${GDCN_ADMIN_GROUP_ID})."
 fi
 
 GDCN_USER_BEARER_TOKEN=$(generate_user_bearer_token)
 
-echo -e "\n>> User is ready. Log in at https://${GDCN_ORG_HOSTNAME} with ${GDCN_USER_EMAIL}."
-echo ">> API bearer token (save it now, this is the only time it will be shown):"
+echo -e "\nDone! Log in at https://${GDCN_ORG_HOSTNAME} with ${GDCN_USER_EMAIL}."
+echo -e "\nAPI bearer token (save it now -- this is the only time it will be shown):"
 echo "${GDCN_USER_BEARER_TOKEN}"

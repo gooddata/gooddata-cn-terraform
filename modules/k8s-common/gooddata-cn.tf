@@ -160,6 +160,9 @@ resource "helm_release" "gooddata_cn" {
       gdcn_service_account_name  = local.gdcn_service_account_name
       gdcn_irsa_role_arn         = var.gdcn_irsa_role_arn
     }) : null,
+    var.enable_observability ? templatefile("${path.module}/templates/gdcn-observability.yaml.tftpl", {
+      observability_namespace = kubernetes_namespace_v1.observability[0].metadata[0].name
+    }) : null,
     var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local.yaml.tftpl", {
       s3_endpoint_override    = var.local_s3_endpoint_override
       s3_region               = var.local_s3_region
@@ -188,6 +191,10 @@ resource "helm_release" "gooddata_cn" {
   ]
 }
 
+# Server-side-apply patch onto the gooddata-cn-export-builder Deployment
+# created by the GoodData.CN Helm chart. Injects a socat sidecar that
+# forwards localhost:443 to ingress-nginx, so export-builder can reach
+# the ingress endpoint via 127.0.0.1:443 inside k3d.
 resource "kubectl_manifest" "export_builder_localhost_forwarder" {
   count = var.cloud == "local" && local.use_ingress_nginx ? 1 : 0
 

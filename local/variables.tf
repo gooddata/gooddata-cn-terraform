@@ -38,6 +38,12 @@ variable "enable_ai_features" {
   default     = true
 }
 
+variable "enable_observability" {
+  description = "Enable observability stack (Prometheus, Loki, Tempo, Grafana)"
+  type        = bool
+  default     = false
+}
+
 variable "gdcn_license_key" {
   description = "GoodData.CN license key (provided by your GoodData contact)."
   type        = string
@@ -113,6 +119,12 @@ variable "helm_gdcn_version" {
   }
 }
 
+variable "helm_grafana_version" {
+  description = "Version of the grafana Helm chart to deploy."
+  type        = string
+  default     = "8.10.0"
+}
+
 variable "helm_ingress_nginx_version" {
   description = "Version of the ingress-nginx Helm chart to deploy."
   type        = string
@@ -125,10 +137,34 @@ variable "helm_istio_version" {
   default     = "1.28.2"
 }
 
+variable "helm_loki_version" {
+  description = "Version of the loki Helm chart to deploy."
+  type        = string
+  default     = "6.30.1"
+}
+
+variable "helm_prometheus_version" {
+  description = "Version of the prometheus Helm chart to deploy."
+  type        = string
+  default     = "27.39.0"
+}
+
+variable "helm_promtail_version" {
+  description = "Version of the promtail Helm chart to deploy."
+  type        = string
+  default     = "6.17.0"
+}
+
 variable "helm_pulsar_version" {
   description = "Version of the pulsar Helm chart to deploy."
   type        = string
   default     = "3.9.0"
+}
+
+variable "helm_tempo_version" {
+  description = "Version of the tempo Helm chart to deploy."
+  type        = string
+  default     = "1.23.2"
 }
 
 variable "ingress_controller" {
@@ -179,6 +215,17 @@ variable "kubeconfig_path" {
   default     = "~/.kube/config"
 }
 
+variable "observability_hostname" {
+  description = "Hostname for Grafana"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_observability ? length(trimspace(var.observability_hostname)) > 0 : true
+    error_message = "observability_hostname must be provided when enable_observability is true."
+  }
+}
+
 variable "registry_dockerio" {
   description = "Container registry hostname used for images normally pulled from docker.io."
   type        = string
@@ -216,4 +263,3 @@ variable "tls_mode" {
     error_message = "tls_mode must be \"selfsigned\" for local installs."
   }
 }
-

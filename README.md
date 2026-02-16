@@ -81,6 +81,8 @@ Terraform provisions:
     - To use an external OIDC provider (recommended for anything beyond local testing), follow the [Set Up Authentication guide](https://www.gooddata.com/docs/cloud-native/latest/manage-organization/set-up-authentication/).
     - For quick testing with the default IdP (Dex), create one or more users by staying in the provider directory (`aws`, `azure`, or `local`) and running `../scripts/create-user.sh`. If Terraform created the organization, the script will automatically read the admin credentials from the Secret `gooddata-cn/gdcn-org-admin-<org_id>`.
 
+1. **(Optional)** If you enabled the observability stack (`enable_observability = true`), create Grafana users by running `../scripts/create-grafana-user.sh` from your provider directory. The script creates a Grafana user and optionally promotes them to admin. It automatically reads the Grafana admin credentials from the Kubernetes secret.
+
 1. Finally, open your GoodData.CN URL and log in.
     - For cloud deployments: open `https://<gdcn_org_hostname>` (exact address in Terraform output).
    - For local deployments: open `https://localhost` (you will see a browser warning because the certificate is self-signed).

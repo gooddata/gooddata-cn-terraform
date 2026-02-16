@@ -85,6 +85,13 @@ gdcn_orgs = [
 ]
 
 ###
+# Observability stack configuration (optional)
+###
+# Uncomment to enable the observability stack
+# enable_observability = true
+# observability_hostname = "analytics.gooddata.example.com"
+
+###
 # Container image caching (optional)
 ###
 # Uncomment to enable image caching and avoid Docker Hub rate limits

@@ -71,6 +71,13 @@ gdcn_orgs = [
 ]
 
 ###
+# Observability stack configuration (optional)
+###
+# Uncomment to enable the observability stack
+# enable_observability = true
+# observability_hostname = "grafana.localhost"
+
+###
 # Container registry authentication
 ###
 # Uncomment to reduce pull-rate limiting

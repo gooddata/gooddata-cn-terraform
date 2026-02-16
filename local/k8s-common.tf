@@ -75,6 +75,14 @@ module "k8s_common" {
   helm_istio_version         = var.helm_istio_version
   helm_pulsar_version        = var.helm_pulsar_version
   helm_ingress_nginx_version = var.helm_ingress_nginx_version
+  helm_prometheus_version    = var.helm_prometheus_version
+  helm_loki_version          = var.helm_loki_version
+  helm_promtail_version      = var.helm_promtail_version
+  helm_tempo_version         = var.helm_tempo_version
+  helm_grafana_version       = var.helm_grafana_version
+
+  enable_observability   = var.enable_observability
+  observability_hostname = var.observability_hostname
 
   # Local MinIO-backed S3 (used for CSV upload storage via Quiver datasource FS)
   local_s3_endpoint_override    = module.k8s_local.minio_s3_endpoint
