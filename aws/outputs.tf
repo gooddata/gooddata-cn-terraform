@@ -1,3 +1,6 @@
+output "enable_observability" { value = var.enable_observability }
+output "observability_hostname" { value = var.observability_hostname }
+
 locals {
   use_istio_gateway = var.ingress_controller == "istio_gateway"
 
@@ -60,7 +63,11 @@ output "ingress_controller" { value = var.ingress_controller }
 output "manual_dns_records" {
   description = "DNS records to create when dns_provider is self-managed."
   value = var.dns_provider == "self-managed" && local.manual_dns_target != "" ? [
-    for hostname in distinct(compact(concat([module.k8s_common.auth_hostname], module.k8s_common.org_domains))) : {
+    for hostname in distinct(compact(concat(
+      [module.k8s_common.auth_hostname],
+      module.k8s_common.org_domains,
+      var.enable_observability ? [trimspace(var.observability_hostname)] : []
+      ))) : {
       hostname    = hostname
       record_type = "CNAME"
       records     = [local.manual_dns_target]
