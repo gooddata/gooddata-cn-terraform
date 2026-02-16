@@ -6,7 +6,7 @@ locals {
   minio_namespace = "minio"
 }
 
-resource "kubernetes_namespace" "minio" {
+resource "kubernetes_namespace_v1" "minio" {
   metadata {
     name = local.minio_namespace
   }
@@ -22,10 +22,10 @@ resource "random_password" "minio_gdcn_secret_key" {
   special = false
 }
 
-resource "kubernetes_secret" "minio_root" {
+resource "kubernetes_secret_v1" "minio_root" {
   metadata {
     name      = "minio-root"
-    namespace = kubernetes_namespace.minio.metadata[0].name
+    namespace = kubernetes_namespace_v1.minio.metadata[0].name
   }
 
   type = "Opaque"
@@ -40,10 +40,10 @@ resource "kubernetes_secret" "minio_root" {
   }
 }
 
-resource "kubernetes_secret" "minio_gdcn_user" {
+resource "kubernetes_secret_v1" "minio_gdcn_user" {
   metadata {
     name      = "minio-gdcn-user"
-    namespace = kubernetes_namespace.minio.metadata[0].name
+    namespace = kubernetes_namespace_v1.minio.metadata[0].name
   }
 
   type = "Opaque"
@@ -62,7 +62,7 @@ resource "helm_release" "minio" {
   repository = "https://charts.min.io/"
   chart      = "minio"
   version    = var.helm_minio_version
-  namespace  = kubernetes_namespace.minio.metadata[0].name
+  namespace  = kubernetes_namespace_v1.minio.metadata[0].name
 
   create_namespace = false
   wait             = true
@@ -81,7 +81,7 @@ resource "helm_release" "minio" {
         }
       }
 
-      existingSecret = kubernetes_secret.minio_root.metadata[0].name
+      existingSecret = kubernetes_secret_v1.minio_root.metadata[0].name
 
       persistence = {
         enabled      = true
@@ -148,7 +148,7 @@ resource "helm_release" "minio" {
       users = [
         {
           accessKey         = "gdcn"
-          existingSecret    = kubernetes_secret.minio_gdcn_user.metadata[0].name
+          existingSecret    = kubernetes_secret_v1.minio_gdcn_user.metadata[0].name
           existingSecretKey = "secretKey"
           policy            = "gdcn-rw"
         }
@@ -157,8 +157,8 @@ resource "helm_release" "minio" {
   ]
 
   depends_on = [
-    kubernetes_secret.minio_root,
-    kubernetes_secret.minio_gdcn_user,
+    kubernetes_secret_v1.minio_root,
+    kubernetes_secret_v1.minio_gdcn_user,
   ]
 }
 
