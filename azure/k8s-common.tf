@@ -2,11 +2,6 @@
 # Deploy all common Kubernetes resources
 ###
 
-locals {
-  gdcn_namespace            = "gooddata-cn"
-  gdcn_service_account_name = "gooddata-cn"
-}
-
 module "k8s_common" {
   source = "../modules/k8s-common"
 
@@ -19,6 +14,7 @@ module "k8s_common" {
   }
 
   deployment_name    = var.deployment_name
+  gdcn_namespace     = var.gdcn_namespace
   gdcn_license_key   = var.gdcn_license_key
   gdcn_orgs          = var.gdcn_orgs
   size_profile       = var.size_profile
@@ -41,6 +37,14 @@ module "k8s_common" {
   helm_istio_version         = var.helm_istio_version
   helm_pulsar_version        = var.helm_pulsar_version
   helm_ingress_nginx_version = var.helm_ingress_nginx_version
+  helm_prometheus_version    = var.helm_prometheus_version
+  helm_loki_version          = var.helm_loki_version
+  helm_promtail_version      = var.helm_promtail_version
+  helm_tempo_version         = var.helm_tempo_version
+  helm_grafana_version       = var.helm_grafana_version
+
+  enable_observability   = var.enable_observability
+  observability_hostname = var.observability_hostname
 
   db_hostname = azurerm_postgresql_flexible_server.main.fqdn
   db_username = local.db_username
@@ -63,6 +67,16 @@ module "k8s_common" {
 output "auth_hostname" {
   description = "The hostname for Dex authentication ingress"
   value       = module.k8s_common.auth_hostname
+}
+
+output "enable_observability" {
+  description = "Whether observability stack is enabled."
+  value       = var.enable_observability
+}
+
+output "observability_hostname" {
+  description = "Hostname used for Grafana ingress."
+  value       = var.observability_hostname
 }
 
 output "org_domains" {
@@ -119,22 +133,31 @@ data "external" "istio_ingress_lb_ip" {
 
 locals {
   # May be empty early in provisioning.
-  ingress_lb_ip = length(data.external.ingress_lb_ip) > 0 ? trimspace(try(data.external.ingress_lb_ip[0].result.ip, "")) : ""
+  ingress_lb_ip       = length(data.external.ingress_lb_ip) > 0 ? trimspace(try(data.external.ingress_lb_ip[0].result.ip, "")) : ""
+  istio_ingress_lb_ip = length(data.external.istio_ingress_lb_ip) > 0 ? trimspace(try(data.external.istio_ingress_lb_ip[0].result.ip, "")) : ""
 }
 
 output "manual_dns_records" {
   description = "DNS records to create for Azure ingress."
   value = var.ingress_controller == "ingress-nginx" && local.ingress_lb_ip != "" ? [
-    for hostname in distinct(compact(concat([module.k8s_common.auth_hostname], module.k8s_common.org_domains))) : {
+    for hostname in distinct(compact(concat(
+      [module.k8s_common.auth_hostname],
+      module.k8s_common.org_domains,
+      var.enable_observability ? [trimspace(var.observability_hostname)] : []
+      ))) : {
       hostname    = hostname
       record_type = "A"
       value       = local.ingress_lb_ip
     }
-    ] : (var.ingress_controller == "istio_gateway" ? [
-      for hostname in distinct(compact(concat([module.k8s_common.auth_hostname], module.k8s_common.org_domains))) : {
+    ] : (var.ingress_controller == "istio_gateway" && local.istio_ingress_lb_ip != "" ? [
+      for hostname in distinct(compact(concat(
+        [module.k8s_common.auth_hostname],
+        module.k8s_common.org_domains,
+        var.enable_observability ? [trimspace(var.observability_hostname)] : []
+        ))) : {
         hostname    = hostname
         record_type = "A"
-        value       = length(data.external.istio_ingress_lb_ip) > 0 ? data.external.istio_ingress_lb_ip[0].result.ip : ""
+        value       = local.istio_ingress_lb_ip
       }
   ] : [])
 }
