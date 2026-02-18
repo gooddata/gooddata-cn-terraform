@@ -131,7 +131,7 @@ create_payload=$(jq -n \
   '{name: $name, email: $email, login: $login, password: $password}')
 
 create_full=$(curl_grafana_json -X POST \
-  "https://${OBSERVABILITY_HOSTNAME}/observability/api/admin/users" \
+  "https://${OBSERVABILITY_HOSTNAME}/api/admin/users" \
   -H "Content-Type: application/json" \
   -d "${create_payload}") || true
 create_status=${create_full##*$'\n'}
@@ -156,12 +156,12 @@ if [[ "${PROMOTE_TO_ADMIN}" == "yes" ]]; then
   echo "Promoting ${GRAFANA_USER_EMAIL} to Admin..."
   role_payload=$(jq -n '{role: "Admin"}')
   curl_grafana_json -X PATCH \
-    "https://${OBSERVABILITY_HOSTNAME}/observability/api/org/users/${grafana_user_id}" \
+    "https://${OBSERVABILITY_HOSTNAME}/api/org/users/${grafana_user_id}" \
     -H "Content-Type: application/json" \
     -d "${role_payload}" >/dev/null
   echo "${GRAFANA_USER_EMAIL} is now an Admin."
 fi
 
-echo -e "\nDone! User can log in at https://${OBSERVABILITY_HOSTNAME}/observability with:"
+echo -e "\nDone! User can log in at https://${OBSERVABILITY_HOSTNAME}/ with:"
 echo "  Email:    ${GRAFANA_USER_EMAIL}"
 echo "  Password: ${GRAFANA_USER_PASSWORD}"
