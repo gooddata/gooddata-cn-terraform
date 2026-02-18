@@ -24,6 +24,22 @@ locals {
   dex_tls_enabled         = local.use_cert_manager
 }
 
+resource "kubectl_manifest" "peerauth_gdcn_strict" {
+  count = local.use_istio_gateway ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "security.istio.io/v1beta1"
+    kind       = "PeerAuthentication"
+    metadata   = { name = "default", namespace = var.gdcn_namespace }
+    spec       = { mtls = { mode = "STRICT" } }
+  })
+
+  depends_on = [
+    kubernetes_namespace_v1.gdcn,
+    helm_release.istiod,
+  ]
+}
+
 resource "kubernetes_namespace_v1" "gdcn" {
   metadata {
     name = var.gdcn_namespace
@@ -41,17 +57,18 @@ data "external" "tinkey_keyset" {
     <<-EOT
       set -euo pipefail
 
-      # Get a unique temp file path and clean it up on exit
-      tmpfile="$(mktemp -u)"
+      # Create a unique temp path and clean it up on exit
+      tmpfile="$(mktemp)"
+      rm -f "$tmpfile"
       trap 'rm -f "$tmpfile"' EXIT
 
-      # Generate the keyset into that file
+      # Generate the keyset into that file (tinkey requires --out path must not exist)
       tinkey create-keyset --key-template AES256_GCM --out "$tmpfile" >/dev/null 2>&1
 
       # Read it, base64-encode, and emit as JSON
       key_json="$(cat "$tmpfile")"
 
-      printf '{"keyset_b64":"%s"}' "$(printf '%s' "$key_json" | base64 -w0)"
+      printf '{"keyset_b64":"%s"}' "$(printf '%s' "$key_json" | base64 | tr -d '\n')"
     EOT
   ]
 }

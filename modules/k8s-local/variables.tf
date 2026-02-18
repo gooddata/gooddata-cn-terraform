@@ -9,6 +9,12 @@ variable "db_username" {
   type        = string
 }
 
+variable "enable_istio_injection" {
+  description = "Whether to label namespaces with istio-injection=enabled."
+  type        = bool
+  default     = false
+}
+
 variable "helm_cnpg_version" {
   description = "Version of the CloudNativePG Helm chart to deploy."
   type        = string

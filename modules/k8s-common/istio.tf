@@ -61,22 +61,26 @@ resource "helm_release" "istiod" {
   version    = var.helm_istio_version
   namespace  = kubernetes_namespace_v1.istio_system[0].metadata[0].name
 
-  values = [yamlencode(merge(
-    {
-      meshConfig = { accessLogFile = "/dev/stdout" }
-      pilot = {
-        env = {
-          # Enable reconciliation of Kubernetes Ingress resources (needed for cert-manager HTTP-01
-          # when we use ingress class "istio").
-          PILOT_ENABLE_K8S_INGRESS = "true"
-        }
+  values = [yamlencode({
+    meshConfig = { accessLogFile = "/dev/stdout" }
+    global = merge(
+      # Native sidecars start the Envoy proxy before init containers, so
+      # init containers participate in mTLS and the mesh from the start.
+      { proxy = { nativeSidecar = true } },
+      # Route Istio images through the pull-through cache when enabled
+      var.enable_image_cache ? { hub = "${var.registry_dockerio}/istio" } : {}
+    )
+    pilot = {
+      env = {
+        # Enable reconciliation of Kubernetes Ingress resources (needed for cert-manager HTTP-01
+        # when we use ingress class "istio").
+        PILOT_ENABLE_K8S_INGRESS = "true"
+        # Must match global.proxy.nativeSidecar — the env var controls the
+        # .NativeSidecars template variable that istiod uses at injection time.
+        ENABLE_NATIVE_SIDECARS = "true"
       }
-    },
-    # Route Istio images through the pull-through cache when enabled
-    var.enable_image_cache ? {
-      global = { hub = "${var.registry_dockerio}/istio" }
-    } : {}
-  ))]
+    }
+  })]
 
   wait          = true
   wait_for_jobs = true
@@ -150,23 +154,6 @@ resource "kubectl_manifest" "ingressclass_istio" {
   ]
 }
 
-# Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
-resource "kubectl_manifest" "peerauth_gdcn_strict" {
-  count = local.istio_enabled ? 1 : 0
-
-  yaml_body = yamlencode({
-    apiVersion = "security.istio.io/v1beta1"
-    kind       = "PeerAuthentication"
-    metadata   = { name = "default", namespace = var.gdcn_namespace }
-    spec       = { mtls = { mode = "STRICT" } }
-  })
-
-  depends_on = [
-    kubernetes_namespace_v1.gdcn,
-    helm_release.istiod,
-  ]
-}
-
 # Public TLS certificate (cert-manager / Let's Encrypt)
 resource "kubectl_manifest" "istio_public_tls_certificate" {
   count = local.use_istio_gateway && local.use_cert_manager ? 1 : 0
@@ -218,10 +205,11 @@ resource "kubectl_manifest" "istio_public_gateway" {
           hosts = local.istio_gateway_hosts
           tls   = { credentialName = local.istio_public_tls_secret_name, mode = "SIMPLE" }
         },
-        # HTTP (typically for redirects to HTTPS)
+        # HTTP → HTTPS redirect
         {
           port  = { name = "http", number = 80, protocol = "HTTP" }
           hosts = local.istio_gateway_hosts
+          tls   = { httpsRedirect = true }
         },
       ]
     }

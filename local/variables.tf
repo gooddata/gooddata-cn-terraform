@@ -58,6 +58,23 @@ variable "gdcn_orgs" {
     name        = string
   }))
   default = []
+
+  validation {
+    condition = (
+      length(distinct([for org in var.gdcn_orgs : trimspace(org.id)])) == length(var.gdcn_orgs) &&
+      length(distinct([for org in var.gdcn_orgs : trimspace(org.hostname)])) == length(var.gdcn_orgs)
+      ) && alltrue([
+        for org in var.gdcn_orgs : (
+          length(trimspace(org.id)) > 0 &&
+          can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", trimspace(org.id))) &&
+          length(trimspace(org.name)) > 0 &&
+          length(trimspace(org.admin_user)) > 0 &&
+          length(trimspace(org.admin_group)) > 0 &&
+          length(trimspace(org.hostname)) > 0
+        )
+    ])
+    error_message = "gdcn_orgs must have unique non-empty ids (lowercase DNS labels) and hostnames, and each org must set non-empty name, admin_user, admin_group, and hostname."
+  }
 }
 
 variable "helm_cert_manager_version" {
@@ -76,6 +93,24 @@ variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy."
   type        = string
   default     = "3.36.0"
+
+  validation {
+    condition = (
+      var.ingress_controller != "istio_gateway" ? true : (
+        length(split(".", var.helm_gdcn_version)) >= 2 &&
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
+        can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
+        (
+          tonumber(split(".", var.helm_gdcn_version)[0]) > 3 ||
+          (
+            tonumber(split(".", var.helm_gdcn_version)[0]) == 3 &&
+            tonumber(split(".", var.helm_gdcn_version)[1]) >= 53
+          )
+        )
+      )
+    )
+    error_message = "ingress_controller=\"istio_gateway\" requires helm_gdcn_version >= 3.53.0."
+  }
 }
 
 variable "helm_ingress_nginx_version" {
