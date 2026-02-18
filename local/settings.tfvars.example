@@ -1,0 +1,78 @@
+
+###
+# Local environment
+###
+# Name prefix for local resources
+deployment_name = "gooddata-cn-local"
+
+###
+# k3d cluster
+###
+k3d_cluster_name = "gdcluster"
+
+# If you're running Terraform on a Linux host (not inside a container) and
+# host.docker.internal is not resolvable, set:
+# k3d_kubeapi_host = "127.0.0.1"
+
+###
+# GoodData.CN deployment configuration
+###
+helm_gdcn_version = "3.54.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+
+# GoodData.CN license key
+gdcn_license_key = "key/asdf==" # provided by GoodData
+
+# Deploys and enables GoodData generative AI services
+# enable_ai_features = true
+
+# Size profile controls replicas/resources across services:
+# - dev: lowest footprint, not HA
+# NOTE: switching size profile after deploying isn't supported since persistent
+# volume sizes can't be automatically adjusted in-place.
+size_profile = "dev"
+
+###
+# Ingress + TLS
+###
+
+# Option 1 — NGINX Ingress Controller (ingress-nginx) + cert-manager self-signed certificates
+ingress_controller      = "ingress-nginx"
+tls_mode                = "selfsigned"
+
+# Option 2 — Istio Gateway + cert-manager self-signed certificates
+# ingress_controller = "istio_gateway"
+# tls_mode           = "selfsigned"
+#
+# NOTE: Switching to/from Istio after the initial deploy requires a manual
+# restart of all workloads so sidecars are added or removed:
+#   kubectl -n <namespace> rollout restart deployment
+#   kubectl -n <namespace> rollout restart statefulset
+# Repeat for each injected namespace (gooddata-cn, pulsar, observability, minio).
+
+###
+# Organization configuration
+###
+# Authentication endpoint hostname (must be an FQDN when using Istio)
+# *.localhost subdomains auto-resolve to 127.0.0.1 — no /etc/hosts needed.
+auth_hostname = "auth.localhost"
+
+# Configure one or more GoodData.CN organizations to be managed by Terraform.
+# - If gdcn_orgs is empty, Terraform will not create any Organization objects.
+# - Each org must include id, name, admin_user, admin_group, and hostname.
+#
+gdcn_orgs = [
+  {
+    id          = "test"
+    name        = "Test, Inc."
+    admin_user  = "admin"
+    admin_group = "adminGroup"
+    hostname    = "gooddata.localhost"
+  }
+]
+
+###
+# Container registry authentication
+###
+# Uncomment to reduce pull-rate limiting
+# dockerhub_username     = "your-dockerhub-user"
+# dockerhub_access_token = "your-dockerhub-pat"

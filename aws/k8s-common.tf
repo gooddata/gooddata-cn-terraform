@@ -3,14 +3,12 @@
 ###
 
 locals {
-  gdcn_namespace            = "gooddata-cn"
-  gdcn_service_account_name = "gooddata-cn"
-  use_alb                   = var.ingress_controller == "alb"
-  use_ingress_nginx         = var.ingress_controller == "ingress-nginx"
-  nlb_load_balancer_name    = local.use_ingress_nginx ? "${var.deployment_name}-ingress" : ""
-  alb_base_name             = "${var.deployment_name}-gdcn"
-  alb_name_sanitized        = replace(lower(local.alb_base_name), "/[^a-z0-9-]/", "-")
-  alb_load_balancer_name    = local.use_alb ? substr(local.alb_name_sanitized, 0, min(length(local.alb_name_sanitized), 32)) : ""
+  use_alb                = var.ingress_controller == "alb"
+  use_ingress_nginx      = var.ingress_controller == "ingress-nginx"
+  nlb_load_balancer_name = local.use_ingress_nginx ? "${var.deployment_name}-ingress" : ""
+  alb_base_name          = "${var.deployment_name}-gdcn"
+  alb_name_sanitized     = replace(lower(local.alb_base_name), "/[^a-z0-9-]/", "-")
+  alb_load_balancer_name = local.use_alb ? substr(local.alb_name_sanitized, 0, min(length(local.alb_name_sanitized), 32)) : ""
   # When Route53: use validated cert ARN; when self-managed: use cert ARN directly (pending until user validates).
   # For self-managed DNS rotations, HTTPS may be temporarily removed while the old cert is detached.
   alb_certificate_arn = local.use_alb && var.tls_mode == "acm" ? (
@@ -46,6 +44,7 @@ module "k8s_common" {
   }
 
   deployment_name    = var.deployment_name
+  gdcn_namespace     = var.gdcn_namespace
   gdcn_license_key   = var.gdcn_license_key
   gdcn_orgs          = var.gdcn_orgs
   size_profile       = var.size_profile

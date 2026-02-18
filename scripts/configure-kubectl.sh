@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Configure kubectl to connect to the Kubernetes cluster provisioned by Terraform.
-# Run this script from the aws/ or azure/ directory after running `terraform apply`.
+# Run this script from the aws/, azure/, or local/ directory after running `terraform apply`.
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=/dev/null
@@ -64,14 +64,55 @@ case "${CURRENT_DIR}" in
     echo ">> kubectl configured successfully."
     ;;
 
+  local)
+    require_command k3d "k3d CLI not found; install it to configure kubectl for local clusters."
+    require_command kubectl "kubectl not found; install it to interact with Kubernetes."
+    load_tf_outputs
+    if ! has_tf_outputs; then
+      echo ">> ERROR: Terraform outputs not available. Run 'terraform apply' first." >&2
+      exit 1
+    fi
+
+    K3D_CLUSTER_NAME=$(tf_output_value "k3d_cluster_name")
+    KUBECONFIG_CONTEXT=$(tf_output_value "kubeconfig_context")
+    KUBECONFIG_PATH=$(tf_output_value "kubeconfig_path")
+
+    if [[ -z "${K3D_CLUSTER_NAME}" || -z "${KUBECONFIG_CONTEXT}" || -z "${KUBECONFIG_PATH}" ]]; then
+      echo ">> ERROR: Missing required Terraform outputs (k3d_cluster_name, kubeconfig_context, kubeconfig_path)." >&2
+      exit 1
+    fi
+
+    echo ">> Generating/merging kubeconfig for k3d cluster '${K3D_CLUSTER_NAME}'..."
+
+    # 1) Ensure the kubeconfig used by Terraform provisioning is populated.
+    mkdir -p "$(dirname "${KUBECONFIG_PATH}")"
+    k3d kubeconfig merge "${K3D_CLUSTER_NAME}" \
+      --output "${KUBECONFIG_PATH}" \
+      --kubeconfig-switch-context=false >/dev/null
+
+    # 2) Also merge into the default kubeconfig so the context is available in new shells
+    #    (i.e., when KUBECONFIG is not explicitly set).
+    k3d kubeconfig merge "${K3D_CLUSTER_NAME}" \
+      --kubeconfig-merge-default \
+      --kubeconfig-switch-context=false >/dev/null
+
+    echo ">> Switching kubectl context to '${KUBECONFIG_CONTEXT}'..."
+    # We want the "global" current context (default kubeconfig), not just this shell session.
+    unset KUBECONFIG || true
+    kubectl config use-context "${KUBECONFIG_CONTEXT}"
+    echo ">> kubectl configured successfully."
+    ;;
+
   *)
     cat <<EOF
->> ERROR: This script must be run from the 'aws' or 'azure' directory.
+>> ERROR: This script must be run from the 'aws', 'azure', or 'local' directory.
 
 Usage:
   cd aws   && ../scripts/configure-kubectl.sh
   # or
   cd azure && ../scripts/configure-kubectl.sh
+  # or
+  cd local && ../scripts/configure-kubectl.sh
 EOF
     exit 1
     ;;

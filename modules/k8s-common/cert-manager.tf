@@ -1,5 +1,5 @@
 ###
-# Deploy cert-manager to Kubernetes when tls_mode is cert-manager
+# Deploy cert-manager to Kubernetes when tls_mode uses cert-manager
 ###
 
 locals {
@@ -45,7 +45,7 @@ resource "helm_release" "cert-manager" {
 }
 
 resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
-  count = local.use_cert_manager ? 1 : 0
+  count = var.tls_mode == "letsencrypt" ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "cert-manager.io/v1"
@@ -72,6 +72,19 @@ resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
         }]
       }
     }
+  })
+
+  depends_on = [helm_release.cert-manager]
+}
+
+resource "kubectl_manifest" "selfsigned_cluster_issuer" {
+  count = var.tls_mode == "selfsigned" ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata   = { name = "selfsigned" }
+    spec       = { selfSigned = {} }
   })
 
   depends_on = [helm_release.cert-manager]

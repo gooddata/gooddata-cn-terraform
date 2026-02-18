@@ -7,9 +7,12 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 require_command jq "jq CLI not found; install it to run this script."
 
+CURL_TLS_ARGS=()
+CURL_CONNECT_ARGS=()
+
 curl_json() {
   local response status body
-  response=$(curl --silent --show-error --write-out "\n%{http_code}" "$@")
+  response=$(curl --silent --show-error --write-out "\n%{http_code}" "${CURL_TLS_ARGS[@]}" "${CURL_CONNECT_ARGS[@]}" "$@")
   status=${response##*$'\n'}
   body=${response%$'\n'*}
 
@@ -131,6 +134,13 @@ urlencode() {
 
 extract_auth_id() {
   jq -r '.authenticationId // .data.attributes.authenticationId // empty'
+}
+
+build_api_token_id() {
+  local ts random_suffix
+  ts=$(date +%s)
+  random_suffix=$(printf '%04d' "$((RANDOM % 10000))")
+  printf 'cli-%s-%s' "${ts}" "${random_suffix}"
 }
 
 create_user() {
@@ -262,9 +272,47 @@ add_user_to_admin_group() {
     -d "${payload}" >/dev/null
 }
 
+generate_user_bearer_token() {
+  local token_id payload full http_status response bearer_token
+
+  token_id=$(build_api_token_id)
+  payload=$(jq -n \
+    --arg id "${token_id}" \
+    '{
+      data: {
+        id: $id,
+        type: "apiToken"
+      }
+    }')
+
+  printf '\n>> Generating API bearer token...\n' >&2
+  full=$(curl_json -X POST "https://${GDCN_ORG_HOSTNAME}/api/v1/entities/users/${GDCN_USER_ID_PATH}/apiTokens" \
+    -H "Authorization: Bearer ${GDCN_BOOT_TOKEN}" \
+    -H "Content-Type: application/vnd.gooddata.api+json" \
+    -d "${payload}") || true
+  http_status=${full##*$'\n'}
+  response=$(printf '%s\n' "${full}" | sed '$d')
+
+  if [[ ! "${http_status}" =~ ^2 ]]; then
+    die "Failed to generate API token for ${GDCN_USER_EMAIL} (HTTP ${http_status}). Response:\n${response}"
+  fi
+
+  bearer_token=$(printf '%s\n' "${response}" | jq -r '.data.attributes.bearerToken // empty')
+  [[ -n "${bearer_token}" ]] || die "API token creation succeeded, but response is missing data.attributes.bearerToken:\n${response}"
+
+  printf '%s\n' "${bearer_token}"
+}
+
 # Ask the user for info
 load_tf_outputs
 require_tf_context "$(basename "$0")"
+
+TLS_MODE=$(tf_output_value "tls_mode")
+if [[ "${TLS_MODE}" == "selfsigned" ]]; then
+  echo ">> Detected tls_mode=selfsigned; using curl --insecure for local dev."
+  CURL_TLS_ARGS=(--insecure)
+fi
+
 SUPPORTED_ORG_IDS=("org")
 SUPPORTED_ORG_HOSTS=()
 declare -A ORG_ID_TO_HOST=()
@@ -329,6 +377,17 @@ if [[ -z "${GDCN_ORG_HOSTNAME}" ]]; then
   GDCN_ORG_HOSTNAME=$(prompt_required ">> GoodData.CN organization domain (e.g. example.com): " "GoodData.CN organization domain is required")
 fi
 
+# If we're running inside a devcontainer, "localhost" refers to the container.
+# For local k3d (Docker-outside-of-Docker), the ingress port is on the Docker host.
+# Important: keep the URL hostname as-is so Ingress host routing works, but
+# connect to host.docker.internal underneath.
+if is_inside_container && [[ "${GDCN_ORG_HOSTNAME}" == "localhost" || "${GDCN_ORG_HOSTNAME}" == *.localhost ]]; then
+  if command_exists getent && getent hosts host.docker.internal >/dev/null 2>&1; then
+    echo ">> Detected container environment; connecting via host.docker.internal (preserving Host=${GDCN_ORG_HOSTNAME})."
+    CURL_CONNECT_ARGS=(--connect-to "${GDCN_ORG_HOSTNAME}:443:host.docker.internal:443")
+  fi
+fi
+
 # Admin credentials
 # - Prefer environment overrides if set (useful for CI)
 # - Otherwise, try to read from a Terraform-managed Secret
@@ -370,6 +429,7 @@ GDCN_BOOT_TOKEN=$(printf '%s' "${GDCN_BOOT_TOKEN_RAW}" | base64 | tr -d '\n')
 DISPLAY_NAME="${GDCN_USER_FIRSTNAME} ${GDCN_USER_LASTNAME}"
 
 dex_auth_id=""
+GDCN_USER_BEARER_TOKEN=""
 
 # Create the user in Dex
 create_user
@@ -383,4 +443,8 @@ if [[ "${GDCN_PROMOTE_TO_ADMIN}" == "yes" ]]; then
   echo -e "\n>> User ${GDCN_USER_EMAIL} now has admin privileges via group ${GDCN_ADMIN_GROUP_ID}."
 fi
 
+GDCN_USER_BEARER_TOKEN=$(generate_user_bearer_token)
+
 echo -e "\n>> User is ready. Log in at https://${GDCN_ORG_HOSTNAME} with ${GDCN_USER_EMAIL}."
+echo ">> API bearer token (save it now, this is the only time it will be shown):"
+echo "${GDCN_USER_BEARER_TOKEN}"

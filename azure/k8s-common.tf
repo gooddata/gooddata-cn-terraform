@@ -2,11 +2,6 @@
 # Deploy all common Kubernetes resources
 ###
 
-locals {
-  gdcn_namespace            = "gooddata-cn"
-  gdcn_service_account_name = "gooddata-cn"
-}
-
 module "k8s_common" {
   source = "../modules/k8s-common"
 
@@ -19,6 +14,7 @@ module "k8s_common" {
   }
 
   deployment_name    = var.deployment_name
+  gdcn_namespace     = var.gdcn_namespace
   gdcn_license_key   = var.gdcn_license_key
   gdcn_orgs          = var.gdcn_orgs
   size_profile       = var.size_profile
@@ -119,7 +115,8 @@ data "external" "istio_ingress_lb_ip" {
 
 locals {
   # May be empty early in provisioning.
-  ingress_lb_ip = length(data.external.ingress_lb_ip) > 0 ? trimspace(try(data.external.ingress_lb_ip[0].result.ip, "")) : ""
+  ingress_lb_ip       = length(data.external.ingress_lb_ip) > 0 ? trimspace(try(data.external.ingress_lb_ip[0].result.ip, "")) : ""
+  istio_ingress_lb_ip = length(data.external.istio_ingress_lb_ip) > 0 ? trimspace(try(data.external.istio_ingress_lb_ip[0].result.ip, "")) : ""
 }
 
 output "manual_dns_records" {
@@ -130,11 +127,14 @@ output "manual_dns_records" {
       record_type = "A"
       value       = local.ingress_lb_ip
     }
-    ] : (var.ingress_controller == "istio_gateway" ? [
-      for hostname in distinct(compact(concat([module.k8s_common.auth_hostname], module.k8s_common.org_domains))) : {
+    ] : (var.ingress_controller == "istio_gateway" && local.istio_ingress_lb_ip != "" ? [
+      for hostname in distinct(compact(concat(
+        [module.k8s_common.auth_hostname],
+        module.k8s_common.org_domains,
+        ))) : {
         hostname    = hostname
         record_type = "A"
-        value       = length(data.external.istio_ingress_lb_ip) > 0 ? data.external.istio_ingress_lb_ip[0].result.ip : ""
+        value       = local.istio_ingress_lb_ip
       }
   ] : [])
 }

@@ -1,0 +1,44 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: ${k3d_cluster_name}
+servers: 1
+agents: 2
+kubeAPI:
+  host: "${kubeapi_host}"
+  hostIP: "0.0.0.0"
+  hostPort: "6443"
+network: k3d-default
+ports:
+  - port: "443:443"
+    nodeFilters:
+      - loadbalancer
+  - port: "80:80"
+    nodeFilters:
+      - loadbalancer
+%{ if dockerhub_username != "" && dockerhub_access_token != "" ~}
+registries:
+  config: |
+    mirrors:
+      "docker.io":
+        endpoint:
+          - "https://registry-1.docker.io"
+    configs:
+      "registry-1.docker.io":
+        auth:
+          username: "$${DOCKER_USERNAME}"
+          password: "$${DOCKER_PASSWORD}"
+%{ endif ~}
+options:
+  k3d:
+    wait: true
+    timeout: "60s"
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: false
+    switchCurrentContext: false
+

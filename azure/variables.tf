@@ -122,6 +122,16 @@ variable "gdcn_license_key" {
   sensitive   = true
 }
 
+variable "gdcn_namespace" {
+  description = "Kubernetes namespace used for GoodData.CN resources (and service account)."
+  type        = string
+  default     = "gooddata-cn"
+  validation {
+    condition     = length(trimspace(var.gdcn_namespace)) > 0
+    error_message = "gdcn_namespace must be provided."
+  }
+}
+
 variable "gdcn_orgs" {
   description = "Organizations to manage as Organization custom resources. If empty, Terraform does not create any Organization objects."
   type = list(object({
