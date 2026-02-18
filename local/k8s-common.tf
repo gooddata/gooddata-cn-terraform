@@ -31,9 +31,10 @@ module "k8s_local" {
     external   = external
   }
 
-  helm_cnpg_version = var.helm_cnpg_version
-  db_username       = local.local_db_username
-  db_password       = random_password.local_postgres_password.result
+  enable_istio_injection = var.ingress_controller == "istio_gateway"
+  helm_cnpg_version      = var.helm_cnpg_version
+  db_username            = local.local_db_username
+  db_password            = random_password.local_postgres_password.result
 
   depends_on = [
     null_resource.k3d_cluster,
@@ -50,8 +51,6 @@ module "k8s_common" {
     random     = random
     external   = external
   }
-
-  gdcn_namespace = "gooddata-cn"
 
   deployment_name    = var.deployment_name
   gdcn_license_key   = var.gdcn_license_key
@@ -97,3 +96,20 @@ module "k8s_common" {
   ]
 }
 
+# Enforce STRICT mTLS for MinIO when Istio is active.
+# Lives in the root module because the namespace is created by k8s-local
+# while the Istio CRDs are installed by k8s-common.
+# NOTE: Postgres is excluded — its binary wire protocol is incompatible with Envoy.
+
+resource "kubectl_manifest" "peerauth_minio_strict" {
+  count = var.ingress_controller == "istio_gateway" ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "security.istio.io/v1beta1"
+    kind       = "PeerAuthentication"
+    metadata   = { name = "default", namespace = module.k8s_local.minio_namespace }
+    spec       = { mtls = { mode = "STRICT" } }
+  })
+
+  depends_on = [module.k8s_common]
+}

@@ -70,6 +70,12 @@ tls_mode           = "acm"
 # ingress_controller = "istio_gateway"
 # tls_mode           = "letsencrypt"
 # letsencrypt_email  = "me@example.com"
+#
+# NOTE: Switching to/from Istio after the initial deploy requires a manual
+# restart of all workloads so sidecars are added or removed:
+#   kubectl -n <namespace> rollout restart deployment
+#   kubectl -n <namespace> rollout restart statefulset
+# Repeat for each injected namespace (gooddata-cn, pulsar, observability, minio).
 
 ###
 # Organization configuration

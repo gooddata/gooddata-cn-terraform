@@ -42,26 +42,31 @@ tls_mode                = "selfsigned"
 # Option 2 — Istio Gateway + cert-manager self-signed certificates
 # ingress_controller = "istio_gateway"
 # tls_mode           = "selfsigned"
+#
+# NOTE: Switching to/from Istio after the initial deploy requires a manual
+# restart of all workloads so sidecars are added or removed:
+#   kubectl -n <namespace> rollout restart deployment
+#   kubectl -n <namespace> rollout restart statefulset
+# Repeat for each injected namespace (gooddata-cn, pulsar, observability, minio).
 
 ###
 # Organization configuration
 ###
-# Authentication endpoint hostname
-# NOTE: if you change this, you need to edit /etc/hosts to map the hostname to localhost.
-auth_hostname = "localhost"
+# Authentication endpoint hostname (must be an FQDN when using Istio)
+# *.localhost subdomains auto-resolve to 127.0.0.1 — no /etc/hosts needed.
+auth_hostname = "auth.localhost"
 
 # Configure one or more GoodData.CN organizations to be managed by Terraform.
 # - If gdcn_orgs is empty, Terraform will not create any Organization objects.
 # - Each org must include id, name, admin_user, admin_group, and hostname.
 #
-# NOTE: if you change the hostname, you need to edit /etc/hosts to map it to localhost.
 gdcn_orgs = [
   {
     id          = "test"
     name        = "Test, Inc."
     admin_user  = "admin"
     admin_group = "adminGroup"
-    hostname    = "localhost"
+    hostname    = "gooddata.localhost"
   }
 ]
 

@@ -25,6 +25,7 @@ Terraform provisions:
 1. Install the following CLI utilities:
     - [Terraform](https://developer.hashicorp.com/terraform/install)
     - Cloud provider CLI ([AWS](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), [Azure](https://learn.microsoft.com/cli/azure/install-azure-cli))
+    - For Azure deployments: [kubelogin](https://azure.github.io/kubelogin/install.html)
     - [kubectl](https://kubernetes.io/docs/tasks/tools/)
     - [helm](https://helm.sh/docs/intro/install/)
     - For local deployments:
@@ -57,6 +58,7 @@ Terraform provisions:
 1. Authenticate to your cloud provider's CLI:
     - For AWS: `aws login` / `aws sso login` (or otherwise configure your AWS credentials)
     - For Azure: `az login`
+    - Azure note: Terraform's Kubernetes authentication uses `kubelogin` with your Azure CLI session.
 
 1. Initialize Terraform: `terraform init`
 

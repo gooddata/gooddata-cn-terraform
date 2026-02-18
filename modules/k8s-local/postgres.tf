@@ -93,7 +93,7 @@ resource "kubectl_manifest" "postgres_cluster" {
 
       postgresql = {
         pg_hba = [
-          "host all all 0.0.0.0/0 scram-sha-256",
+          "hostssl all all 0.0.0.0/0 scram-sha-256",
         ]
       }
     }

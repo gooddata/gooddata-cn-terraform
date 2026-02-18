@@ -9,6 +9,9 @@ locals {
 resource "kubernetes_namespace_v1" "minio" {
   metadata {
     name = local.minio_namespace
+    labels = var.enable_istio_injection ? {
+      "istio-injection" = "enabled"
+    } : null
   }
 }
 
@@ -161,4 +164,3 @@ resource "helm_release" "minio" {
     kubernetes_secret_v1.minio_gdcn_user,
   ]
 }
-
