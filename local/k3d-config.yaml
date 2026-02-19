@@ -26,8 +26,8 @@ registries:
     configs:
       "registry-1.docker.io":
         auth:
-          username: "$${DOCKER_USERNAME}"
-          password: "$${DOCKER_PASSWORD}"
+          username: "${dockerhub_username}"
+          password: "${dockerhub_access_token}"
 %{ endif ~}
 options:
   k3d:

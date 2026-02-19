@@ -35,6 +35,8 @@ module "k8s_local" {
   helm_cnpg_version      = var.helm_cnpg_version
   db_username            = local.local_db_username
   db_password            = random_password.local_postgres_password.result
+  kubeconfig_path        = local.kubeconfig_path
+  kubeconfig_context     = local.kubeconfig_context
 
   depends_on = [
     null_resource.k3d_cluster,
@@ -54,6 +56,7 @@ module "k8s_common" {
 
   deployment_name    = var.deployment_name
   gdcn_license_key   = var.gdcn_license_key
+  gdcn_namespace     = var.gdcn_namespace
   gdcn_orgs          = var.gdcn_orgs
   size_profile       = var.size_profile
   cloud              = "local"

@@ -5,7 +5,6 @@
 ###
 
 locals {
-  istio_enabled       = var.ingress_controller == "istio_gateway"
   istio_chart_repo    = "https://istio-release.storage.googleapis.com/charts"
   istio_system_ns     = "istio-system"
   istio_ingress_ns    = "istio-ingress"
@@ -23,7 +22,7 @@ locals {
   # Used by AWS outputs to look up the NLB DNS name when dns_provider=self-managed.
   aws_istio_nlb_base_name          = "${var.deployment_name}-istio"
   aws_istio_nlb_name_sanitized     = replace(lower(local.aws_istio_nlb_base_name), "/[^a-z0-9-]/", "-")
-  aws_istio_nlb_load_balancer_name = var.cloud == "aws" && local.istio_enabled ? substr(local.aws_istio_nlb_name_sanitized, 0, min(length(local.aws_istio_nlb_name_sanitized), 32)) : ""
+  aws_istio_nlb_load_balancer_name = var.cloud == "aws" && local.use_istio_gateway ? substr(local.aws_istio_nlb_name_sanitized, 0, min(length(local.aws_istio_nlb_name_sanitized), 32)) : ""
 }
 
 ###
@@ -31,7 +30,7 @@ locals {
 ###
 
 resource "kubernetes_namespace_v1" "istio_system" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   metadata {
     name = local.istio_system_ns
@@ -39,7 +38,7 @@ resource "kubernetes_namespace_v1" "istio_system" {
 }
 
 resource "helm_release" "istio_base" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   name       = "istio-base"
   repository = local.istio_chart_repo
@@ -53,7 +52,7 @@ resource "helm_release" "istio_base" {
 }
 
 resource "helm_release" "istiod" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   name       = "istiod"
   repository = local.istio_chart_repo
@@ -92,7 +91,7 @@ resource "helm_release" "istiod" {
 }
 
 resource "helm_release" "istio_ingress_gateway" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   name             = local.istio_ingress_name
   repository       = local.istio_chart_repo
@@ -168,7 +167,7 @@ resource "kubectl_manifest" "istio_public_tls_certificate" {
     spec = {
       secretName = local.istio_public_tls_secret_name
       issuerRef = {
-        name = var.tls_mode
+        name = local.cert_manager_cluster_issuer_name
         kind = "ClusterIssuer"
       }
       dnsNames = local.istio_gateway_hosts
@@ -187,7 +186,7 @@ resource "kubectl_manifest" "istio_public_tls_certificate" {
 # chart (and organization-controller) won't create/manage Gateway resources
 # and will reference this Gateway from its VirtualServices (including Dex).
 resource "kubectl_manifest" "istio_public_gateway" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "networking.istio.io/v1"

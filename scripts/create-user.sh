@@ -392,6 +392,9 @@ fi
 # - Prefer environment overrides if set (useful for CI)
 # - Otherwise, try to read from a Terraform-managed Secret
 # - Finally, prompt interactively as a fallback
+if [[ -z "${GDCN_NAMESPACE:-}" ]]; then
+  GDCN_NAMESPACE=$(tf_output_value "gdcn_namespace")
+fi
 GDCN_NAMESPACE=${GDCN_NAMESPACE:-gooddata-cn}
 if [[ -n "${GDCN_ADMIN_USER:-}" && -n "${GDCN_ADMIN_PASSWORD:-}" ]]; then
   echo ">> Using admin credentials from environment variables."

@@ -20,7 +20,7 @@ locals {
 resource "local_file" "k3d_config" {
   filename        = "${path.module}/k3d-config.generated.yaml"
   content         = local.k3d_config_content
-  file_permission = "0644"
+  file_permission = "0600"
 }
 
 resource "null_resource" "k3d_cluster" {
@@ -64,10 +64,6 @@ resource "null_resource" "k3d_cluster" {
       fi
     EOT
 
-    environment = {
-      DOCKER_USERNAME = var.dockerhub_username
-      DOCKER_PASSWORD = var.dockerhub_access_token
-    }
   }
 
   provisioner "local-exec" {

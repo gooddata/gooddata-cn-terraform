@@ -83,7 +83,7 @@ Terraform provisions:
 
 1. Finally, open your GoodData.CN URL and log in.
     - For cloud deployments: open `https://<gdcn_org_hostname>` (exact address in Terraform output).
-   - For local deployments: open `https://localhost` (you will see a browser warning because the certificate is self-signed).
+    - For local deployments: open `https://localhost` (you will see a browser warning because the certificate is self-signed).
 
 ### Upgrading GoodData.CN
 

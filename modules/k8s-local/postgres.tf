@@ -117,7 +117,9 @@ data "external" "wait_postgres_ready" {
         exit 1
       fi
 
-      kubectl -n "${kubernetes_namespace_v1.postgres.metadata[0].name}" wait --for=condition=Ready --timeout=600s cluster/postgres >/dev/null
+      KUBECONFIG="${var.kubeconfig_path}" kubectl --context "${var.kubeconfig_context}" \
+        -n "${kubernetes_namespace_v1.postgres.metadata[0].name}" \
+        wait --for=condition=Ready --timeout=600s cluster/postgres >/dev/null
       printf '{"ready":"true"}'
     EOT
   ]
@@ -126,4 +128,3 @@ data "external" "wait_postgres_ready" {
     kubectl_manifest.postgres_cluster,
   ]
 }
-

@@ -3,6 +3,11 @@ output "auth_hostname" {
   value       = module.k8s_common.auth_hostname
 }
 
+output "gdcn_namespace" {
+  description = "Namespace used for the GoodData.CN deployment."
+  value       = var.gdcn_namespace
+}
+
 output "hosts_file_entries" {
   description = "Hostnames to map to 127.0.0.1 for local access (e.g., /etc/hosts)."
   value = [

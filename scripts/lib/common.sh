@@ -18,36 +18,28 @@ command_exists() {
 }
 
 is_inside_container() {
-  # Heuristics:
-  # - /.dockerenv exists in many Docker/Dev Container environments
-  # - /proc/1/cgroup often contains container markers
+  # Heuristics (ordered from most to least reliable):
+  # 1. /.dockerenv exists in many Docker/Dev Container environments
   if [[ -f "/.dockerenv" ]]; then
     return 0
   fi
 
+  # 2. cgroup v1: /proc/1/cgroup contains container runtime markers
   if [[ -r "/proc/1/cgroup" ]] && grep -qaE '(docker|containerd|kubepods)' "/proc/1/cgroup"; then
     return 0
   fi
 
-  return 1
-}
-
-rewrite_localhost_for_container() {
-  # When running inside a container but talking to services exposed on the Docker
-  # host (e.g., k3d publishes 443 on the host), "localhost" won't work.
-  # In that case, prefer host.docker.internal when it resolves.
-  local hostname="${1:-}"
-
-  if is_inside_container; then
-    if [[ "${hostname}" == "localhost" || "${hostname}" == *.localhost ]]; then
-      if command_exists getent && getent hosts host.docker.internal >/dev/null 2>&1; then
-        printf '%s' "${hostname/localhost/host.docker.internal}"
-        return 0
-      fi
-    fi
+  # 3. cgroup v2: /proc/1/mountinfo contains container overlay/cgroup markers
+  if [[ -r "/proc/1/mountinfo" ]] && grep -qaE '(docker|containerd|kubepods)' "/proc/1/mountinfo"; then
+    return 0
   fi
 
-  printf '%s' "${hostname}"
+  # 4. container_env set by some container runtimes
+  if [[ -n "${container:-}" ]]; then
+    return 0
+  fi
+
+  return 1
 }
 
 require_command() {

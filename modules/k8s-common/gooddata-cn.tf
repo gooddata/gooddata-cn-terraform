@@ -76,7 +76,7 @@ data "external" "tinkey_keyset" {
 resource "kubernetes_secret_v1" "gdcn_encryption" {
   metadata {
     name      = "gdcn-encryption"
-    namespace = kubernetes_namespace_v1.gdcn.metadata[0].name
+    namespace = var.gdcn_namespace
   }
 
   data = {
@@ -99,7 +99,7 @@ resource "kubernetes_secret_v1" "gdcn_encryption" {
 resource "kubernetes_secret_v1" "gdcn_license" {
   metadata {
     name      = "gdcn-license"
-    namespace = kubernetes_namespace_v1.gdcn.metadata[0].name
+    namespace = var.gdcn_namespace
   }
 
   data = {
@@ -117,7 +117,7 @@ resource "helm_release" "gooddata_cn" {
   repository = "https://charts.gooddata.com/"
   chart      = "gooddata-cn"
   version    = var.helm_gdcn_version
-  namespace  = kubernetes_namespace_v1.gdcn.metadata[0].name
+  namespace  = var.gdcn_namespace
 
   values = compact([
     templatefile("${path.module}/templates/gdcn-base.yaml.tftpl", {
@@ -199,7 +199,7 @@ resource "kubectl_manifest" "export_builder_localhost_forwarder" {
     kind: Deployment
     metadata:
       name: gooddata-cn-export-builder
-      namespace: ${kubernetes_namespace_v1.gdcn.metadata[0].name}
+      namespace: ${var.gdcn_namespace}
     spec:
       template:
         spec:

@@ -27,6 +27,16 @@ variable "helm_minio_version" {
   default     = "5.4.0"
 }
 
+variable "kubeconfig_context" {
+  description = "Kubeconfig context to use for provisioning."
+  type        = string
+}
+
+variable "kubeconfig_path" {
+  description = "Path to kubeconfig file used for provisioning."
+  type        = string
+}
+
 variable "minio_bucket_datasource_fs" {
   description = "Bucket used for Quiver datasource filesystem (CSV uploads)."
   type        = string

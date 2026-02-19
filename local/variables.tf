@@ -48,6 +48,16 @@ variable "gdcn_license_key" {
   }
 }
 
+variable "gdcn_namespace" {
+  description = "Kubernetes namespace used for GoodData.CN resources (and service account)."
+  type        = string
+  default     = "gooddata-cn"
+  validation {
+    condition     = length(trimspace(var.gdcn_namespace)) > 0
+    error_message = "gdcn_namespace must be provided."
+  }
+}
+
 variable "gdcn_orgs" {
   description = "Organizations to manage as Organization custom resources. If empty, Terraform does not create any Organization objects."
   type = list(object({
@@ -92,7 +102,6 @@ variable "helm_cnpg_version" {
 variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy."
   type        = string
-  default     = "3.36.0"
 
   validation {
     condition = (
@@ -152,8 +161,8 @@ variable "k3d_cluster_name" {
   type        = string
   default     = "gdcluster"
   validation {
-    condition     = length(trimspace(var.k3d_cluster_name)) > 0
-    error_message = "k3d_cluster_name must be provided."
+    condition     = can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", var.k3d_cluster_name))
+    error_message = "k3d_cluster_name must start with a letter, contain only lowercase letters, numbers, and hyphens, and must not end with a hyphen."
   }
 }
 

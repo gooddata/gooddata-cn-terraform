@@ -43,11 +43,6 @@ variable "db_username" { type = string }
 
 variable "deployment_name" { type = string }
 
-variable "gdcn_namespace" {
-  type    = string
-  default = "gooddata-cn"
-}
-
 variable "dex_ingress_annotations_override" {
   type    = map(string)
   default = {}
@@ -65,6 +60,11 @@ variable "gdcn_irsa_role_arn" {
 variable "gdcn_license_key" {
   type      = string
   sensitive = true
+}
+
+variable "gdcn_namespace" {
+  type    = string
+  default = "gooddata-cn"
 }
 
 variable "gdcn_orgs" {
