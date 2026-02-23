@@ -168,7 +168,7 @@ variable "helm_cert_manager_version" {
 variable "helm_cluster_autoscaler_version" {
   description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
   type        = string
-  default     = "9.46.6"
+  default     = "9.55.1"
 }
 
 variable "helm_external_dns_version" {
