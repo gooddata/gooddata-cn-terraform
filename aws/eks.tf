@@ -2,10 +2,6 @@
 # Provision EKS cluster
 ###
 
-data "aws_eks_cluster_auth" "cluster" {
-  name = module.eks.cluster_name
-}
-
 # Allow nodes to create repositories (the first time an image is pulled through the cache)
 resource "aws_iam_policy" "ecr_pull_through_cache_min" {
   count = var.enable_image_cache ? 1 : 0

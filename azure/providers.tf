@@ -6,7 +6,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">= 3.0"
+      version = ">= 4.0"
     }
     azuread = {
       source  = "hashicorp/azuread"
@@ -95,7 +95,6 @@ provider "helm" {
   kubernetes = {
     host                   = local.kube_host
     cluster_ca_certificate = local.kube_ca
-    load_config_file       = false
     exec = {
       api_version = local.kubelogin_exec.api_version
       command     = local.kubelogin_exec.command

@@ -78,8 +78,6 @@ provider "helm" {
   kubernetes = {
     host                   = local.kube_host
     cluster_ca_certificate = local.kube_ca
-    load_config_file       = false
-
     exec = {
       api_version = local.eks_exec.api_version
       command     = local.eks_exec.command
