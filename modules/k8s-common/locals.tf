@@ -10,6 +10,8 @@ locals {
   use_istio_gateway = var.ingress_controller == "istio_gateway"
 
   # Reuse a single ingress class name throughout the module
-  resolved_ingress_class_name = var.ingress_controller == "alb" ? "alb" : "nginx"
+  resolved_ingress_class_name = var.ingress_controller == "alb" ? "alb" : (
+    var.ingress_controller == "istio_gateway" ? "" : "nginx"
+  )
 }
 

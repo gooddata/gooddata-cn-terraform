@@ -26,7 +26,7 @@ locals {
   # suffix for ACR name to make it globally unique
   acr_name = var.enable_image_cache ? substr(
     replace(
-      "${replace(lower(var.deployment_name), "[^0-9a-z]", "")}${random_id.acr_suffix[0].hex}",
+      "${replace(lower(var.deployment_name), "/[^0-9a-z]/", "")}${random_id.acr_suffix[0].hex}",
       "-", ""
     ),
     0, 50
