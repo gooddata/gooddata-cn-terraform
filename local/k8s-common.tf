@@ -79,14 +79,14 @@ module "k8s_common" {
   helm_pulsar_version        = var.helm_pulsar_version
   helm_ingress_nginx_version = var.helm_ingress_nginx_version
 
-  # Local MinIO-backed S3 (used for CSV upload storage via Quiver datasource FS)
-  local_s3_endpoint_override    = module.k8s_local.minio_s3_endpoint
-  local_s3_region               = module.k8s_local.minio_region
-  local_s3_access_key           = module.k8s_local.minio_gdcn_access_key
-  local_s3_secret_key           = module.k8s_local.minio_gdcn_secret_key
-  local_s3_exports_bucket       = module.k8s_local.minio_bucket_exports
-  local_s3_datasource_fs_bucket = module.k8s_local.minio_bucket_datasource_fs
-  local_s3_quiver_cache_bucket  = module.k8s_local.minio_bucket_quiver_cache
+  # Local SeaweedFS-backed S3 (used for CSV upload storage via Quiver datasource FS)
+  local_s3_endpoint_override    = module.k8s_local.seaweedfs_s3_endpoint
+  local_s3_region               = module.k8s_local.seaweedfs_region
+  local_s3_access_key           = module.k8s_local.seaweedfs_gdcn_access_key
+  local_s3_secret_key           = module.k8s_local.seaweedfs_gdcn_secret_key
+  local_s3_exports_bucket       = module.k8s_local.seaweedfs_bucket_exports
+  local_s3_datasource_fs_bucket = module.k8s_local.seaweedfs_bucket_datasource_fs
+  local_s3_quiver_cache_bucket  = module.k8s_local.seaweedfs_bucket_quiver_cache
 
   # Local DB provisioned in-cluster by modules/k8s-local
   db_hostname = local.local_db_hostname
@@ -99,18 +99,18 @@ module "k8s_common" {
   ]
 }
 
-# Enforce STRICT mTLS for MinIO when Istio is active.
+# Enforce STRICT mTLS for SeaweedFS when Istio is active.
 # Lives in the root module because the namespace is created by k8s-local
 # while the Istio CRDs are installed by k8s-common.
 # NOTE: Postgres is excluded — its binary wire protocol is incompatible with Envoy.
 
-resource "kubectl_manifest" "peerauth_minio_strict" {
+resource "kubectl_manifest" "peerauth_seaweedfs_strict" {
   count = var.ingress_controller == "istio_gateway" ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "security.istio.io/v1beta1"
     kind       = "PeerAuthentication"
-    metadata   = { name = "default", namespace = module.k8s_local.minio_namespace }
+    metadata   = { name = "default", namespace = module.k8s_local.seaweedfs_namespace }
     spec       = { mtls = { mode = "STRICT" } }
   })
 

@@ -61,7 +61,7 @@ letsencrypt_email = "me@example.com"
 # restart of all workloads so sidecars are added or removed:
 #   kubectl -n <namespace> rollout restart deployment
 #   kubectl -n <namespace> rollout restart statefulset
-# Repeat for each injected namespace (gooddata-cn, pulsar, observability, minio).
+# Repeat for each injected namespace (gooddata-cn, pulsar, observability).
 
 ###
 # Organization configuration

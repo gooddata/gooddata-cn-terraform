@@ -4,12 +4,11 @@ exportController:
   exportS3Storage:
     s3Region: "${s3_region}"
     s3Bucket: "${s3_exports_bucket}"
+    endpointOverride: "${s3_endpoint_override}"
+    scheme: "http"
   s3:
     accessKey: "${s3_access_key}"
     secretKey: "${s3_secret_key}"
-  extraEnvVars:
-    - name: STORAGE_S3ENDPOINT
-      value: "${s3_endpoint_override}"
 
 visualExporterProxy:
   permittedDestinations: "127.0.0.1/32 ::1/128"
@@ -41,4 +40,3 @@ quiver:
     authType: "aws_tokens"
     s3AccessKey: "${s3_access_key}"
     s3SecretKey: "${s3_secret_key}"
-
