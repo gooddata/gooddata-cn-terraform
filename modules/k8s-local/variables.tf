@@ -73,6 +73,12 @@ variable "seaweedfs_release_name" {
   default     = "seaweedfs"
 }
 
+variable "registry_dockerio" {
+  description = "Docker Hub registry prefix (e.g. docker.io or a pull-through cache)."
+  type        = string
+  default     = "docker.io"
+}
+
 variable "seaweedfs_storage_class" {
   description = "StorageClass name for SeaweedFS PVC. Empty uses cluster default."
   type        = string

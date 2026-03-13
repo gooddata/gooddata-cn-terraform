@@ -3,8 +3,9 @@
 ###
 
 locals {
-  cnpg_namespace     = "cnpg-system"
-  postgres_namespace = "postgres"
+  cnpg_namespace         = "cnpg-system"
+  postgres_namespace     = "postgres"
+  postgres_storage_class = "local-path"
 }
 
 resource "kubernetes_namespace_v1" "postgres" {
@@ -71,7 +72,7 @@ resource "kubectl_manifest" "postgres_cluster" {
 
       storage = {
         size         = "2Gi"
-        storageClass = "local-path"
+        storageClass = local.postgres_storage_class
       }
 
       bootstrap = {

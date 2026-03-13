@@ -15,7 +15,7 @@ output "seaweedfs_bucket_quiver_cache" {
 
 output "seaweedfs_gdcn_access_key" {
   description = "Access key for the dedicated GoodData.CN SeaweedFS S3 user."
-  value       = "gdcn"
+  value       = local.seaweedfs_s3_access_key
 }
 
 output "seaweedfs_gdcn_secret_key" {

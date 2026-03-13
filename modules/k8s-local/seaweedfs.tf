@@ -5,6 +5,8 @@
 locals {
   seaweedfs_namespace = "seaweedfs"
 
+  seaweedfs_s3_access_key = "gdcn"
+
   seaweedfs_buckets = [
     var.seaweedfs_bucket_exports,
     var.seaweedfs_bucket_datasource_fs,
@@ -101,7 +103,7 @@ resource "helm_release" "seaweedfs" {
         enableAuth = true
         credentials = {
           admin = {
-            accessKey = "gdcn"
+            accessKey = local.seaweedfs_s3_access_key
             secretKey = kubernetes_secret_v1.seaweedfs_s3_credentials.data["secretKey"]
           }
         }
@@ -137,7 +139,7 @@ resource "kubernetes_job_v1" "seaweedfs_create_buckets" {
 
         container {
           name  = "create-buckets"
-          image = "chrislusf/seaweedfs:${split(".", var.helm_seaweedfs_version)[0]}.${split(".", var.helm_seaweedfs_version)[1]}"
+          image = "${var.registry_dockerio}/chrislusf/seaweedfs:${split(".", var.helm_seaweedfs_version)[0]}.${split(".", var.helm_seaweedfs_version)[1]}"
 
           env {
             name  = "WEED_CLUSTER_DEFAULT"
@@ -162,6 +164,7 @@ resource "kubernetes_job_v1" "seaweedfs_create_buckets" {
               "  echo \"Attempt $i: not ready, retrying in 5s...\"",
               "  sleep 5; i=$((i+1))",
               "done",
+              "if [ $i -gt $max ]; then echo 'SeaweedFS filer did not become ready in time'; exit 1; fi",
             ],
             # Create each bucket if it doesn't already exist.
             flatten([for b in local.seaweedfs_buckets : [

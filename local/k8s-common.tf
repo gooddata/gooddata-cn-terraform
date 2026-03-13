@@ -37,6 +37,7 @@ module "k8s_local" {
   db_password            = random_password.local_postgres_password.result
   kubeconfig_path        = local.kubeconfig_path
   kubeconfig_context     = local.kubeconfig_context
+  registry_dockerio      = var.registry_dockerio
 
   depends_on = [
     null_resource.k3d_cluster,

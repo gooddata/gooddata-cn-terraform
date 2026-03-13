@@ -114,6 +114,7 @@ data "external" "istio_ingress_lb_ip" {
 }
 
 locals {
+  gdcn_service_account_name = "gooddata-cn"
   # May be empty early in provisioning.
   ingress_lb_ip       = length(data.external.ingress_lb_ip) > 0 ? trimspace(try(data.external.ingress_lb_ip[0].result.ip, "")) : ""
   istio_ingress_lb_ip = length(data.external.istio_ingress_lb_ip) > 0 ? trimspace(try(data.external.istio_ingress_lb_ip[0].result.ip, "")) : ""

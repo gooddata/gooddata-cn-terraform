@@ -216,8 +216,8 @@ resource "kubectl_manifest" "export_builder_localhost_forwarder" {
                   wait
               securityContext:
                 allowPrivilegeEscalation: false
-                runAsNonRoot: false
-                runAsUser: 0
+                runAsNonRoot: true
+                runAsUser: 65534
                 capabilities:
                   drop:
                     - ALL
