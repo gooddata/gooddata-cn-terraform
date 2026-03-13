@@ -24,6 +24,7 @@ locals {
   dex_tls_enabled         = local.use_cert_manager
 }
 
+# Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
 resource "kubectl_manifest" "peerauth_gdcn_strict" {
   count = local.use_istio_gateway ? 1 : 0
 
