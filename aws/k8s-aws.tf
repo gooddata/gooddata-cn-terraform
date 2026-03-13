@@ -6,6 +6,7 @@ module "k8s_aws" {
   source = "../modules/k8s-aws"
 
   providers = {
+    aws        = aws
     kubernetes = kubernetes
     helm       = helm
   }
