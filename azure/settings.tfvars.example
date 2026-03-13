@@ -89,7 +89,7 @@ gdcn_orgs = [
 ###
 # Uncomment to enable the observability stack
 # enable_observability = true
-# observability_hostname = "analytics.gooddata.example.com"
+# observability_hostname = "observability.gooddata.example.com"
 
 ###
 # Container image caching (optional)
