@@ -1,0 +1,13 @@
+monitoring:
+  tracing:
+    enabled: true
+    pythonOtelExporterType: "otlp-grpc"
+    zipkin:
+      host: "tempo"
+      namespace: "${observability_namespace}"
+      port: 9411
+    otel:
+      grpc:
+        host: "tempo"
+        namespace: "${observability_namespace}"
+        port: 4317
