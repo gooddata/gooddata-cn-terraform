@@ -3,7 +3,6 @@
 ###
 
 locals {
-  gdcn_namespace            = "gooddata-cn"
   gdcn_service_account_name = "gooddata-cn"
   use_alb                   = var.ingress_controller == "alb"
   use_ingress_nginx         = var.ingress_controller == "ingress-nginx"
@@ -46,6 +45,7 @@ module "k8s_common" {
   }
 
   deployment_name    = var.deployment_name
+  gdcn_namespace     = var.gdcn_namespace
   gdcn_license_key   = var.gdcn_license_key
   gdcn_orgs          = var.gdcn_orgs
   size_profile       = var.size_profile

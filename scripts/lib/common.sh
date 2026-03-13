@@ -17,6 +17,31 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+is_inside_container() {
+  # Heuristics (ordered from most to least reliable):
+  # 1. /.dockerenv exists in many Docker/Dev Container environments
+  if [[ -f "/.dockerenv" ]]; then
+    return 0
+  fi
+
+  # 2. cgroup v1: /proc/1/cgroup contains container runtime markers
+  if [[ -r "/proc/1/cgroup" ]] && grep -qaE '(docker|containerd|kubepods)' "/proc/1/cgroup"; then
+    return 0
+  fi
+
+  # 3. cgroup v2: /proc/1/mountinfo contains container overlay/cgroup markers
+  if [[ -r "/proc/1/mountinfo" ]] && grep -qaE '(docker|containerd|kubepods)' "/proc/1/mountinfo"; then
+    return 0
+  fi
+
+  # 4. container_env set by some container runtimes
+  if [[ -n "${container:-}" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
 require_command() {
   local binary="$1"
   local message="${2:-}"
@@ -66,7 +91,7 @@ require_tf_context() {
   local dir_name has_context=1
   dir_name=$(basename "$(pwd)")
 
-  if [[ "${dir_name}" != "aws" && "${dir_name}" != "azure" ]]; then
+  if [[ "${dir_name}" != "aws" && "${dir_name}" != "azure" && "${dir_name}" != "local" ]]; then
     has_context=0
   elif ! has_tf_outputs; then
     has_context=0
@@ -79,6 +104,8 @@ require_tf_context() {
 >>   cd aws   && ../scripts/${script_name}
 >>   # or
 >>   cd azure && ../scripts/${script_name}
+>>   # or
+>>   cd local && ../scripts/${script_name}
 >> Proceeding without Terraform outputs; you'll need to enter values manually.
 EOF
   fi

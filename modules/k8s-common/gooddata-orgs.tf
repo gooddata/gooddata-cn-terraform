@@ -28,7 +28,7 @@ locals {
       tls = local.use_cert_manager ? {
         tls = {
           secretName = "${org.id}-tls"
-          issuerName = "letsencrypt"
+          issuerName = local.cert_manager_cluster_issuer_name
           issuerType = "ClusterIssuer"
         }
       } : {}
@@ -112,7 +112,7 @@ resource "kubernetes_secret_v1" "gdcn_org_admin" {
 
   metadata {
     name      = "gdcn-org-admin-${each.key}"
-    namespace = kubernetes_namespace_v1.gdcn.metadata[0].name
+    namespace = var.gdcn_namespace
   }
 
   type = "Opaque"
@@ -137,7 +137,7 @@ resource "kubectl_manifest" "gdcn_organization" {
     kind       = "Organization"
     metadata = {
       name      = "${each.key}-org"
-      namespace = kubernetes_namespace_v1.gdcn.metadata[0].name
+      namespace = var.gdcn_namespace
     }
     spec = merge({
       id             = each.key

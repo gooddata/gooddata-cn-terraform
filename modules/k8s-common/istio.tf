@@ -5,7 +5,6 @@
 ###
 
 locals {
-  istio_enabled       = var.ingress_controller == "istio_gateway"
   istio_chart_repo    = "https://istio-release.storage.googleapis.com/charts"
   istio_system_ns     = "istio-system"
   istio_ingress_ns    = "istio-ingress"
@@ -23,7 +22,7 @@ locals {
   # Used by AWS outputs to look up the NLB DNS name when dns_provider=self-managed.
   aws_istio_nlb_base_name          = "${var.deployment_name}-istio"
   aws_istio_nlb_name_sanitized     = replace(lower(local.aws_istio_nlb_base_name), "/[^a-z0-9-]/", "-")
-  aws_istio_nlb_load_balancer_name = var.cloud == "aws" && local.istio_enabled ? substr(local.aws_istio_nlb_name_sanitized, 0, min(length(local.aws_istio_nlb_name_sanitized), 32)) : ""
+  aws_istio_nlb_load_balancer_name = var.cloud == "aws" && local.use_istio_gateway ? substr(local.aws_istio_nlb_name_sanitized, 0, min(length(local.aws_istio_nlb_name_sanitized), 32)) : ""
 }
 
 ###
@@ -31,7 +30,7 @@ locals {
 ###
 
 resource "kubernetes_namespace_v1" "istio_system" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   metadata {
     name = local.istio_system_ns
@@ -39,7 +38,7 @@ resource "kubernetes_namespace_v1" "istio_system" {
 }
 
 resource "helm_release" "istio_base" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   name       = "istio-base"
   repository = local.istio_chart_repo
@@ -53,7 +52,7 @@ resource "helm_release" "istio_base" {
 }
 
 resource "helm_release" "istiod" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   name       = "istiod"
   repository = local.istio_chart_repo
@@ -61,22 +60,26 @@ resource "helm_release" "istiod" {
   version    = var.helm_istio_version
   namespace  = kubernetes_namespace_v1.istio_system[0].metadata[0].name
 
-  values = [yamlencode(merge(
-    {
-      meshConfig = { accessLogFile = "/dev/stdout" }
-      pilot = {
-        env = {
-          # Enable reconciliation of Kubernetes Ingress resources (needed for cert-manager HTTP-01
-          # when we use ingress class "istio").
-          PILOT_ENABLE_K8S_INGRESS = "true"
-        }
+  values = [yamlencode({
+    meshConfig = { accessLogFile = "/dev/stdout" }
+    global = merge(
+      # Native sidecars start the Envoy proxy before init containers, so
+      # init containers participate in mTLS and the mesh from the start.
+      { proxy = { nativeSidecar = true } },
+      # Route Istio images through the pull-through cache when enabled
+      var.enable_image_cache ? { hub = "${var.registry_dockerio}/istio" } : {}
+    )
+    pilot = {
+      env = {
+        # Enable reconciliation of Kubernetes Ingress resources (needed for cert-manager HTTP-01
+        # when we use ingress class "istio").
+        PILOT_ENABLE_K8S_INGRESS = "true"
+        # Must match global.proxy.nativeSidecar — the env var controls the
+        # .NativeSidecars template variable that istiod uses at injection time.
+        ENABLE_NATIVE_SIDECARS = "true"
       }
-    },
-    # Route Istio images through the pull-through cache when enabled
-    var.enable_image_cache ? {
-      global = { hub = "${var.registry_dockerio}/istio" }
-    } : {}
-  ))]
+    }
+  })]
 
   wait          = true
   wait_for_jobs = true
@@ -88,7 +91,7 @@ resource "helm_release" "istiod" {
 }
 
 resource "helm_release" "istio_ingress_gateway" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   name             = local.istio_ingress_name
   repository       = local.istio_chart_repo
@@ -150,23 +153,6 @@ resource "kubectl_manifest" "ingressclass_istio" {
   ]
 }
 
-# Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
-resource "kubectl_manifest" "peerauth_gdcn_strict" {
-  count = local.istio_enabled ? 1 : 0
-
-  yaml_body = yamlencode({
-    apiVersion = "security.istio.io/v1beta1"
-    kind       = "PeerAuthentication"
-    metadata   = { name = "default", namespace = local.gdcn_namespace }
-    spec       = { mtls = { mode = "STRICT" } }
-  })
-
-  depends_on = [
-    kubernetes_namespace_v1.gdcn,
-    helm_release.istiod,
-  ]
-}
-
 # Public TLS certificate (cert-manager / Let's Encrypt)
 resource "kubectl_manifest" "istio_public_tls_certificate" {
   count = local.use_istio_gateway && local.use_cert_manager ? 1 : 0
@@ -181,7 +167,7 @@ resource "kubectl_manifest" "istio_public_tls_certificate" {
     spec = {
       secretName = local.istio_public_tls_secret_name
       issuerRef = {
-        name = "letsencrypt"
+        name = local.cert_manager_cluster_issuer_name
         kind = "ClusterIssuer"
       }
       dnsNames = local.istio_gateway_hosts
@@ -190,6 +176,7 @@ resource "kubectl_manifest" "istio_public_tls_certificate" {
 
   depends_on = [
     kubectl_manifest.letsencrypt_cluster_issuer,
+    kubectl_manifest.selfsigned_cluster_issuer,
     helm_release.istio_ingress_gateway,
   ]
 }
@@ -199,7 +186,7 @@ resource "kubectl_manifest" "istio_public_tls_certificate" {
 # chart (and organization-controller) won't create/manage Gateway resources
 # and will reference this Gateway from its VirtualServices (including Dex).
 resource "kubectl_manifest" "istio_public_gateway" {
-  count = local.istio_enabled ? 1 : 0
+  count = local.use_istio_gateway ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "networking.istio.io/v1"
@@ -217,10 +204,11 @@ resource "kubectl_manifest" "istio_public_gateway" {
           hosts = local.istio_gateway_hosts
           tls   = { credentialName = local.istio_public_tls_secret_name, mode = "SIMPLE" }
         },
-        # HTTP (typically for redirects to HTTPS)
+        # HTTP → HTTPS redirect
         {
           port  = { name = "http", number = 80, protocol = "HTTP" }
           hosts = local.istio_gateway_hosts
+          tls   = { httpsRedirect = true }
         },
       ]
     }
