@@ -1,9 +1,17 @@
-#!/usr/bin/env sh
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-TINKEY_VERSION="$(curl -sS https://api.github.com/repos/tink-crypto/tink-tinkey/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
-K9S_VERSION="$(curl -sS https://api.github.com/repos/derailed/k9s/releases/latest | jq -r '.tag_name')"
-KUBELOGIN_VERSION="$(curl -sS https://api.github.com/repos/Azure/kubelogin/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
+TINKEY_VERSION="$(curl -fsSL https://api.github.com/repos/tink-crypto/tink-tinkey/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
+K9S_VERSION="$(curl -fsSL https://api.github.com/repos/derailed/k9s/releases/latest | jq -r '.tag_name')"
+KUBELOGIN_VERSION="$(curl -fsSL https://api.github.com/repos/Azure/kubelogin/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
+
+for var_name in TINKEY_VERSION K9S_VERSION KUBELOGIN_VERSION; do
+  val="${!var_name}"
+  if [ -z "${val}" ] || [ "${val}" = "null" ]; then
+    echo "ERROR: Failed to fetch ${var_name} from GitHub API" >&2
+    exit 1
+  fi
+done
 
 # Install Java and vim
 sudo apt-get update
@@ -37,6 +45,6 @@ case "$ARCH" in
 esac
 curl -fsSL -o /tmp/kubelogin.zip "https://github.com/Azure/kubelogin/releases/download/v${KUBELOGIN_VERSION}/kubelogin-linux-${PKG_ARCH}.zip"
 sudo unzip -q /tmp/kubelogin.zip -d /tmp
-sudo install -m 0755 /tmp/bin/linux_${PKG_ARCH}/kubelogin /usr/local/bin/kubelogin
+sudo install -m 0755 "/tmp/bin/linux_${PKG_ARCH}/kubelogin" /usr/local/bin/kubelogin
 sudo rm -rf /tmp/kubelogin.zip /tmp/bin
 
