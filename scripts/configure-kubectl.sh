@@ -61,6 +61,12 @@ case "${CURRENT_DIR}" in
       --name "${AKS_CLUSTER_NAME}" \
       --overwrite-existing
 
+    # Convert kubelogin to azurecli mode so kubectl reuses the `az login` token
+    # instead of prompting for device-code auth on every command.
+    if command -v kubelogin &>/dev/null; then
+      kubelogin convert-kubeconfig -l azurecli
+    fi
+
     echo ">> kubectl configured successfully."
     ;;
 
