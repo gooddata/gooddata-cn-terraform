@@ -43,39 +43,8 @@ resource "helm_release" "pulsar" {
   timeout          = 1800
 
   values = compact([
-    yamlencode({
-      defaultPulsarImageRepository = "${var.registry_dockerio}/apachepulsar/pulsar"
-      components = {
-        functions      = false
-        proxy          = false
-        toolset        = false
-        pulsar_manager = false
-      }
-      zookeeper = {
-        podManagementPolicy          = "OrderedReady"
-        podMonitor                   = { enabled = false }
-        restartPodsOnConfigMapChange = true
-      }
-      bookkeeper = {
-        podMonitor                   = { enabled = false }
-        restartPodsOnConfigMapChange = true
-        configData                   = { nettyMaxFrameSizeBytes = "10485760" }
-      }
-      autorecovery = {
-        podMonitor                   = { enabled = false }
-        restartPodsOnConfigMapChange = true
-      }
-      broker = {
-        podMonitor                   = { enabled = false }
-        restartPodsOnConfigMapChange = true
-        configData = {
-          subscriptionExpirationTimeMinutes = "5"
-          systemTopicEnabled                = "true"
-          topicLevelPoliciesEnabled         = "true"
-        }
-      }
-      proxy                   = { podMonitor = { enabled = false } }
-      "kube-prometheus-stack" = { enabled = false }
+    templatefile("${path.module}/templates/pulsar-base.yaml.tftpl", {
+      registry_dockerio = var.registry_dockerio
     }),
     local.use_istio_gateway ? templatefile("${path.module}/templates/pulsar-istio.tftpl", {}) : null,
     templatefile("${path.module}/templates/pulsar-size-${var.size_profile}.yaml.tftpl", {})
