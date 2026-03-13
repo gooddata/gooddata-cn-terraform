@@ -201,7 +201,7 @@ variable "helm_metrics_server_version" {
 variable "helm_pulsar_version" {
   description = "Version of the pulsar Helm chart to deploy. https://artifacthub.io/packages/helm/apache/pulsar"
   type        = string
-  default     = "3.9.0"
+  default     = "4.5.0"
 }
 
 variable "ingress_controller" {
