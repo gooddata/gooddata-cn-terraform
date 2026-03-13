@@ -3,8 +3,9 @@
   "extends": [
     "local>gooddata/.github:renovate-config"
   ],
-  "regexManagers": [
+  "customManagers": [
     {
+      "customType": "regex",
       "fileMatch": ["^[^/]+/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"helm_cert_manager_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
@@ -14,6 +15,7 @@
       "registryUrlTemplate": "https://charts.jetstack.io"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^[^/]+/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"helm_metrics_server_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
@@ -23,6 +25,7 @@
       "registryUrlTemplate": "https://kubernetes-sigs.github.io/metrics-server/"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^[^/]+/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"helm_pulsar_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
@@ -32,6 +35,7 @@
       "registryUrlTemplate": "https://pulsar.apache.org/charts"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^[^/]+/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"helm_ingress_nginx_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
@@ -41,6 +45,7 @@
       "registryUrlTemplate": "https://kubernetes.github.io/ingress-nginx"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^[^/]+/settings\\.tfvars\\.example$"],
       "matchStrings": [
         "helm_gdcn_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
@@ -50,6 +55,7 @@
       "registryUrlTemplate": "https://charts.gooddata.com/"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^aws/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"eks_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
@@ -58,6 +64,7 @@
       "depNameTemplate": "amazon-eks"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^aws/settings\\.tfvars\\.example$"],
       "matchStrings": [
         "#\\s*eks_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
@@ -66,6 +73,7 @@
       "depNameTemplate": "amazon-eks"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^azure/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"aks_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
@@ -74,6 +82,7 @@
       "depNameTemplate": "azure-kubernetes-service"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^azure/settings\\.tfvars\\.example$"],
       "matchStrings": [
         "#\\s*aks_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
@@ -82,6 +91,7 @@
       "depNameTemplate": "azure-kubernetes-service"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^[^/]+/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"helm_aws_lb_controller_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
@@ -91,6 +101,7 @@
       "registryUrlTemplate": "https://aws.github.io/eks-charts"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^[^/]+/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"helm_cluster_autoscaler_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
@@ -100,6 +111,7 @@
       "registryUrlTemplate": "https://kubernetes.github.io/autoscaler"
     },
     {
+      "customType": "regex",
       "fileMatch": ["^[^/]+/variables\\.tf$"],
       "matchStrings": [
         "variable\\s+\"helm_external_dns_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
