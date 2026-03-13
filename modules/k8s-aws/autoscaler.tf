@@ -20,7 +20,7 @@ data "aws_iam_policy_document" "cluster_autoscaler_assume_role" {
     condition {
       test     = "StringEquals"
       variable = "${replace(var.eks_cluster_oidc_issuer_url, "https://", "")}:sub"
-      values   = ["system:serviceaccount:cluster-autoscaler:cluster-autoscaler-aws-cluster-autoscaler"]
+      values   = ["system:serviceaccount:cluster-autoscaler:cluster-autoscaler"]
     }
   }
 }
@@ -85,12 +85,13 @@ resource "helm_release" "cluster_autoscaler" {
     image = { repository = "${var.registry_k8sio}/autoscaling/cluster-autoscaler" }
     rbac = {
       serviceAccount = {
+        create      = true
+        name        = "cluster-autoscaler"
         annotations = { "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler.arn }
       }
     }
-    serviceAccount = { create = true, name = "cluster-autoscaler" }
-    autoDiscovery  = { clusterName = var.deployment_name }
-    awsRegion      = var.aws_region
-    cloudProvider  = "aws"
+    autoDiscovery = { clusterName = var.deployment_name }
+    awsRegion     = var.aws_region
+    cloudProvider = "aws"
   })]
 }

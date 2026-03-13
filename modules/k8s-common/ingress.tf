@@ -36,7 +36,7 @@ locals {
           } : {}
         )
         addHeaders = {
-          Permission-Policy         = "geolocation 'none'; midi 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; fullscreen 'none'; payment 'none';"
+          Permission-Policy         = "geolocation=(), midi=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), fullscreen=(), payment=()"
           Strict-Transport-Security = "max-age=31536000; includeSubDomains"
         }
       },
