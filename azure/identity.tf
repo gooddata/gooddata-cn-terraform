@@ -17,10 +17,9 @@ resource "azurerm_role_assignment" "gdcn_blob_contrib" {
 }
 
 resource "azurerm_federated_identity_credential" "gdcn" {
-  name                = "gdcn-workload"
-  resource_group_name = azurerm_resource_group.main.name
-  parent_id           = azurerm_user_assigned_identity.gdcn.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject             = "system:serviceaccount:${local.gdcn_namespace}:${local.gdcn_service_account_name}"
+  name      = "gdcn-workload"
+  parent_id = azurerm_user_assigned_identity.gdcn.id
+  audience  = ["api://AzureADTokenExchange"]
+  issuer    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject   = "system:serviceaccount:${local.gdcn_namespace}:${local.gdcn_service_account_name}"
 }
