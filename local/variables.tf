@@ -141,7 +141,7 @@ variable "helm_ingress_nginx_version" {
   description = "Version of the ingress-nginx Helm chart to deploy."
   type        = string
   # renovate: depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
-  default = "4.12.3"
+  default = "4.15.0"
 }
 
 variable "helm_istio_version" {
