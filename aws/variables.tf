@@ -172,25 +172,29 @@ variable "gdcn_orgs" {
 variable "helm_aws_lb_controller_version" {
   description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string
-  default     = "3.1.0"
+  # renovate: depName=aws-load-balancer-controller registryUrl=https://aws.github.io/eks-charts
+  default = "3.1.0"
 }
 
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
-  default     = "v1.19.4"
+  # renovate: depName=cert-manager registryUrl=https://charts.jetstack.io
+  default = "v1.19.4"
 }
 
 variable "helm_cluster_autoscaler_version" {
   description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
   type        = string
-  default     = "9.56.0"
+  # renovate: depName=cluster-autoscaler registryUrl=https://kubernetes.github.io/autoscaler
+  default = "9.56.0"
 }
 
 variable "helm_external_dns_version" {
   description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
   type        = string
-  default     = "1.20.0"
+  # renovate: depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
+  default = "1.20.0"
 }
 
 variable "helm_gdcn_version" {
@@ -232,55 +236,64 @@ variable "helm_gdcn_version" {
 variable "helm_grafana_version" {
   description = "Version of the grafana Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/grafana"
   type        = string
-  default     = "8.10.0"
+  # renovate: depName=grafana registryUrl=https://grafana.github.io/helm-charts
+  default = "8.10.0"
 }
 
 variable "helm_ingress_nginx_version" {
   description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
   type        = string
-  default     = "4.14.3"
+  # renovate: depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
+  default = "4.14.3"
 }
 
 variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
   type        = string
-  default     = "1.28.2"
+  # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
+  default = "1.28.2"
 }
 
 variable "helm_loki_version" {
   description = "Version of the loki Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/loki"
   type        = string
-  default     = "6.30.1"
+  # renovate: depName=loki registryUrl=https://grafana.github.io/helm-charts
+  default = "6.30.1"
 }
 
 variable "helm_metrics_server_version" {
   description = "Version of the metrics-server Helm chart to deploy. https://artifacthub.io/packages/helm/metrics-server/metrics-server"
   type        = string
-  default     = "3.13.0"
+  # renovate: depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server/
+  default = "3.13.0"
 }
 
 variable "helm_prometheus_version" {
   description = "Version of the prometheus Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/prometheus"
   type        = string
-  default     = "27.39.0"
+  # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
+  default = "27.39.0"
 }
 
 variable "helm_promtail_version" {
   description = "Version of the promtail Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/promtail"
   type        = string
-  default     = "6.17.0"
+  # renovate: depName=promtail registryUrl=https://grafana.github.io/helm-charts
+  default = "6.17.0"
 }
 
 variable "helm_pulsar_version" {
   description = "Version of the pulsar Helm chart to deploy. https://artifacthub.io/packages/helm/apache/pulsar"
   type        = string
-  default     = "4.5.0"
+  # renovate: depName=pulsar registryUrl=https://pulsar.apache.org/charts
+  default = "4.5.0"
 }
 
 variable "helm_tempo_version" {
   description = "Version of the tempo Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/tempo"
   type        = string
-  default     = "1.23.2"
+  # renovate: depName=tempo registryUrl=https://grafana.github.io/helm-charts
+  default = "1.23.2"
 }
 
 variable "ingress_controller" {
