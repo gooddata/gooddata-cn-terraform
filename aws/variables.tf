@@ -272,7 +272,7 @@ variable "helm_prometheus_version" {
   description = "Version of the prometheus Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/prometheus"
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "27.39.0"
+  default = "82.10.4"
 }
 
 variable "helm_promtail_version" {
