@@ -251,7 +251,7 @@ variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
-  default = "1.28.2"
+  default = "1.29.1"
 }
 
 variable "helm_loki_version" {
