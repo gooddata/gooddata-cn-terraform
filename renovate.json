@@ -119,6 +119,86 @@
       "datasourceTemplate": "helm",
       "depNameTemplate": "external-dns",
       "registryUrlTemplate": "https://kubernetes-sigs.github.io/external-dns/"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^[^/]+/variables\\.tf$", "^modules/[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_cnpg_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "cloudnative-pg",
+      "registryUrlTemplate": "https://cloudnative-pg.github.io/charts"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_grafana_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "grafana",
+      "registryUrlTemplate": "https://grafana.github.io/helm-charts"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_istio_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "base",
+      "registryUrlTemplate": "https://istio-release.storage.googleapis.com/charts"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_loki_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "loki",
+      "registryUrlTemplate": "https://grafana.github.io/helm-charts"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_prometheus_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "kube-prometheus-stack",
+      "registryUrlTemplate": "https://prometheus-community.github.io/helm-charts"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_promtail_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "promtail",
+      "registryUrlTemplate": "https://grafana.github.io/helm-charts"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_tempo_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "tempo",
+      "registryUrlTemplate": "https://grafana.github.io/helm-charts"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^modules/[^/]+/variables\\.tf$"],
+      "matchStrings": [
+        "variable\\s+\"helm_seaweedfs_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "seaweedfs",
+      "registryUrlTemplate": "https://seaweedfs.github.io/seaweedfs/helm"
     }
   ]
 }
