@@ -3,45 +3,18 @@
   "extends": [
     "local>gooddata/.github:renovate-config"
   ],
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["^[^/]+/variables\\.tf$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/\\.tf$/"],
       "matchStrings": [
-        "variable\\s+\"helm_cert_manager_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+registryUrl=(?<registryUrl>\\S+)\\n\\s*default\\s*=\\s*\"(?<currentValue>v?[\\d.]+)\""
       ],
-      "datasourceTemplate": "helm",
-      "depNameTemplate": "cert-manager",
-      "registryUrlTemplate": "https://charts.jetstack.io"
+      "datasourceTemplate": "helm"
     },
     {
-      "fileMatch": ["^[^/]+/variables\\.tf$"],
-      "matchStrings": [
-        "variable\\s+\"helm_metrics_server_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "datasourceTemplate": "helm",
-      "depNameTemplate": "metrics-server",
-      "registryUrlTemplate": "https://kubernetes-sigs.github.io/metrics-server/"
-    },
-    {
-      "fileMatch": ["^[^/]+/variables\\.tf$"],
-      "matchStrings": [
-        "variable\\s+\"helm_pulsar_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "datasourceTemplate": "helm",
-      "depNameTemplate": "pulsar",
-      "registryUrlTemplate": "https://pulsar.apache.org/charts"
-    },
-    {
-      "fileMatch": ["^[^/]+/variables\\.tf$"],
-      "matchStrings": [
-        "variable\\s+\"helm_ingress_nginx_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "datasourceTemplate": "helm",
-      "depNameTemplate": "ingress-nginx",
-      "registryUrlTemplate": "https://kubernetes.github.io/ingress-nginx"
-    },
-    {
-      "fileMatch": ["^[^/]+/settings\\.tfvars\\.example$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/^[^/]+/settings\\.tfvars\\.example$/"],
       "matchStrings": [
         "helm_gdcn_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
       ],
@@ -50,7 +23,8 @@
       "registryUrlTemplate": "https://charts.gooddata.com/"
     },
     {
-      "fileMatch": ["^aws/variables\\.tf$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/^aws/variables\\.tf$/"],
       "matchStrings": [
         "variable\\s+\"eks_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
       ],
@@ -58,7 +32,8 @@
       "depNameTemplate": "amazon-eks"
     },
     {
-      "fileMatch": ["^aws/settings\\.tfvars\\.example$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/^aws/settings\\.tfvars\\.example$/"],
       "matchStrings": [
         "#\\s*eks_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
       ],
@@ -66,7 +41,8 @@
       "depNameTemplate": "amazon-eks"
     },
     {
-      "fileMatch": ["^azure/variables\\.tf$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/^azure/variables\\.tf$/"],
       "matchStrings": [
         "variable\\s+\"aks_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
       ],
@@ -74,39 +50,13 @@
       "depNameTemplate": "azure-kubernetes-service"
     },
     {
-      "fileMatch": ["^azure/settings\\.tfvars\\.example$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/^azure/settings\\.tfvars\\.example$/"],
       "matchStrings": [
         "#\\s*aks_version\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+)\""
       ],
       "datasourceTemplate": "endoflife-date",
       "depNameTemplate": "azure-kubernetes-service"
-    },
-    {
-      "fileMatch": ["^[^/]+/variables\\.tf$"],
-      "matchStrings": [
-        "variable\\s+\"helm_aws_lb_controller_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "datasourceTemplate": "helm",
-      "depNameTemplate": "aws-load-balancer-controller",
-      "registryUrlTemplate": "https://aws.github.io/eks-charts"
-    },
-    {
-      "fileMatch": ["^[^/]+/variables\\.tf$"],
-      "matchStrings": [
-        "variable\\s+\"helm_cluster_autoscaler_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "datasourceTemplate": "helm",
-      "depNameTemplate": "cluster-autoscaler",
-      "registryUrlTemplate": "https://kubernetes.github.io/autoscaler"
-    },
-    {
-      "fileMatch": ["^[^/]+/variables\\.tf$"],
-      "matchStrings": [
-        "variable\\s+\"helm_external_dns_version\"[\\s\\S]*?default\\s*=\\s*\"(?<currentValue>v?\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "datasourceTemplate": "helm",
-      "depNameTemplate": "external-dns",
-      "registryUrlTemplate": "https://kubernetes-sigs.github.io/external-dns/"
     }
   ]
 }
