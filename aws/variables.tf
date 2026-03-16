@@ -237,7 +237,7 @@ variable "helm_grafana_version" {
   description = "Version of the grafana Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/grafana"
   type        = string
   # renovate: depName=grafana registryUrl=https://grafana.github.io/helm-charts
-  default = "8.10.0"
+  default = "10.5.15"
 }
 
 variable "helm_ingress_nginx_version" {
