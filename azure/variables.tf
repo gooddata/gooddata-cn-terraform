@@ -257,7 +257,7 @@ variable "helm_tempo_version" {
   description = "Version of the tempo Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/tempo"
   type        = string
   # renovate: depName=tempo registryUrl=https://grafana.github.io/helm-charts
-  default = "1.23.2"
+  default = "1.24.4"
 }
 
 variable "ingress_controller" {
