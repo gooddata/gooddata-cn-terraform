@@ -169,7 +169,7 @@ variable "helm_promtail_version" {
   description = "Version of the promtail Helm chart to deploy."
   type        = string
   # renovate: depName=promtail registryUrl=https://grafana.github.io/helm-charts
-  default = "6.17.0"
+  default = "6.17.1"
 }
 
 variable "helm_pulsar_version" {
