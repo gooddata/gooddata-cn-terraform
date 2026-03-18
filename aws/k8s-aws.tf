@@ -25,7 +25,7 @@ module "k8s_aws" {
   helm_metrics_server_version     = var.helm_metrics_server_version
   helm_external_dns_version       = var.helm_external_dns_version
 
-  vpc_id                        = module.vpc.vpc_id
+  vpc_id                        = local.vpc_id
   eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
   eks_cluster_oidc_issuer_url   = module.eks.cluster_oidc_issuer_url
 

@@ -124,6 +124,24 @@ variable "enable_observability" {
   default     = false
 }
 
+variable "existing_private_subnet_ids" {
+  description = "Private subnet IDs in the existing VPC (for EKS nodes and RDS). Required when existing_vpc_id is set. Must span at least 2 AZs."
+  type        = list(string)
+  default     = []
+}
+
+variable "existing_public_subnet_ids" {
+  description = "Public subnet IDs in the existing VPC (for load balancers). Required when existing_vpc_id is set. Must span at least 2 AZs."
+  type        = list(string)
+  default     = []
+}
+
+variable "existing_vpc_id" {
+  description = "ID of an existing VPC to deploy into. Leave empty to create a new VPC. When set, existing_private_subnet_ids and existing_public_subnet_ids must also be provided."
+  type        = string
+  default     = ""
+}
+
 variable "gdcn_license_key" {
   description = "GoodData.CN license key (provided by your GoodData contact)"
   type        = string

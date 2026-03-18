@@ -7,6 +7,11 @@ aws_profile_name = "my-profile"
 # Region to deploy resources to
 aws_region = "eu-central-1"
 
+# Use an existing VPC instead of creating a new one
+# existing_vpc_id             = "vpc-0123456789abcdef0"
+# existing_private_subnet_ids = ["subnet-aaa", "subnet-bbb"]
+# existing_public_subnet_ids  = ["subnet-ccc", "subnet-ddd"]
+
 # Additional tags to apply to all AWS resources
 # aws_additional_tags = {
 #   Environment = "dev"

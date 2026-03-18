@@ -2,12 +2,27 @@
 # Provision VPC
 ###
 
+locals {
+  create_vpc         = var.existing_vpc_id == ""
+  vpc_id             = local.create_vpc ? module.vpc[0].vpc_id : var.existing_vpc_id
+  private_subnet_ids = local.create_vpc ? module.vpc[0].private_subnets : var.existing_private_subnet_ids
+  public_subnet_ids  = local.create_vpc ? module.vpc[0].public_subnets : var.existing_public_subnet_ids
+}
+
+check "existing_vpc_subnets" {
+  assert {
+    condition     = local.create_vpc || (length(var.existing_private_subnet_ids) >= 2 && length(var.existing_public_subnet_ids) >= 2)
+    error_message = "existing_private_subnet_ids and existing_public_subnet_ids must each contain at least 2 entries when existing_vpc_id is set."
+  }
+}
+
 data "aws_availability_zones" "available" {
+  count = local.create_vpc ? 1 : 0
   state = "available"
 }
 
 locals {
-  azs      = slice(data.aws_availability_zones.available.names, 0, 2)
+  azs      = local.create_vpc ? slice(data.aws_availability_zones.available[0].names, 0, 2) : []
   vpc_cidr = "10.0.0.0/16"
 
   public_subnet_cidrs = [
@@ -22,6 +37,8 @@ locals {
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.0"
+
+  count = local.create_vpc ? 1 : 0
 
   name = var.deployment_name
   cidr = local.vpc_cidr
