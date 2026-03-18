@@ -72,11 +72,22 @@ module "k8s_common" {
   helm_prometheus_version    = var.helm_prometheus_version
   helm_loki_version          = var.helm_loki_version
   helm_promtail_version      = var.helm_promtail_version
+  helm_starrocks_version     = var.helm_starrocks_version
   helm_tempo_version         = var.helm_tempo_version
   helm_grafana_version       = var.helm_grafana_version
 
   enable_observability   = var.enable_observability
   observability_hostname = var.observability_hostname
+
+  enable_starrocks                      = var.enable_starrocks
+  starrocks_s3_bucket_id                = var.enable_starrocks ? aws_s3_bucket.starrocks[0].id : ""
+  starrocks_irsa_role_arn               = var.enable_starrocks ? aws_iam_role.starrocks_irsa[0].arn : ""
+  starrocks_fe_image_tag                = var.starrocks_fe_image_tag
+  starrocks_cn_image_tag                = var.starrocks_cn_image_tag
+  starrocks_s3_tables_access_key_id     = var.enable_starrocks ? aws_iam_access_key.starrocks_s3_tables[0].id : ""
+  starrocks_s3_tables_secret_access_key = var.enable_starrocks ? aws_iam_access_key.starrocks_s3_tables[0].secret : ""
+  starrocks_s3_tables_bucket_name       = var.enable_starrocks ? aws_s3tables_table_bucket.starrocks_tables[0].name : ""
+  aws_account_id                        = data.aws_caller_identity.current.account_id
 
   db_hostname = module.rds_postgresql.db_instance_address
   db_username = local.db_username
@@ -95,5 +106,7 @@ module "k8s_common" {
     module.eks,
     module.k8s_aws,
     aws_iam_role_policy_attachment.gdcn_irsa_s3_access,
+    aws_iam_role_policy_attachment.starrocks_irsa_s3_access,
+    terraform_data.s3tables_lakeformation_permissions,
   ]
 }

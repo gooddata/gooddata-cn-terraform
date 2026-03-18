@@ -58,6 +58,12 @@ variable "enable_observability" {
   default     = false
 }
 
+variable "enable_starrocks" {
+  description = "Enable StarRocks deployment for analytics query acceleration (AWS only)"
+  type        = bool
+  default     = false
+}
+
 variable "gdcn_irsa_role_arn" {
   type    = string
   default = ""
@@ -100,6 +106,11 @@ variable "helm_prometheus_version" { type = string }
 variable "helm_promtail_version" { type = string }
 
 variable "helm_pulsar_version" { type = string }
+
+variable "helm_starrocks_version" {
+  type    = string
+  default = ""
+}
 
 variable "helm_tempo_version" { type = string }
 
@@ -190,6 +201,48 @@ variable "s3_quiver_cache_bucket_id" {
   default = ""
 }
 
+variable "starrocks_s3_bucket_id" {
+  type    = string
+  default = ""
+}
+
 variable "size_profile" { type = string }
+
+variable "starrocks_cn_image_tag" {
+  type    = string
+  default = "4.0.6"
+}
+
+variable "starrocks_s3_tables_access_key_id" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "starrocks_s3_tables_secret_access_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "starrocks_s3_tables_bucket_name" {
+  type    = string
+  default = ""
+}
+
+variable "aws_account_id" {
+  type    = string
+  default = ""
+}
+
+variable "starrocks_fe_image_tag" {
+  type    = string
+  default = "4.0.6"
+}
+
+variable "starrocks_irsa_role_arn" {
+  type    = string
+  default = ""
+}
 
 variable "tls_mode" { type = string }

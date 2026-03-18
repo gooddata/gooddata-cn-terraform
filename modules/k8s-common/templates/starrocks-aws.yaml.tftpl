@@ -1,0 +1,135 @@
+# AWS-specific StarRocks overrides
+
+operator:
+  global:
+    rbac:
+      serviceAccount:
+        annotations:
+          eks.amazonaws.com/role-arn: "${starrocks_irsa_role_arn}"
+
+starrocks:
+  starrocksFESpec:
+    # NOTE: This config block fully replaces the base template's config.
+    # Keep common settings in sync with starrocks-base.yaml.tftpl.
+    config: |
+      LOG_DIR = $${STARROCKS_HOME}/log
+      DATE = "$$(date +%Y%m%d-%H%M%S)"
+      JAVA_OPTS="-Dlog4j2.formatMsgNoLookups=true -Xmx${fe_java_heap_mb}m -XX:+UseG1GC -Xlog:gc*:$${LOG_DIR}/fe.gc.log.$$DATE:time"
+      http_port = 8030
+      rpc_port = 9020
+      query_port = 9030
+      edit_log_port = 9010
+      run_mode = shared_data
+      min_graceful_exit_time_second = 25
+      enable_load_volume_from_conf = true
+      mysql_service_nio_enabled = true
+      sys_log_level = INFO
+      audit_log_json_format = true
+      enable_iceberg_metadata_disk_cache = true
+      cloud_native_storage_type = S3
+      aws_s3_path = ${starrocks_s3_bucket_id}/data
+      aws_s3_region = ${aws_region}
+      aws_s3_endpoint = https://s3.${aws_region}.amazonaws.com
+      aws_s3_use_aws_sdk_default_behavior = true
+    # NOTE: This sidecarsMap block fully replaces the base template's sidecarsMap.
+    # Keep common logic (wait loop, global settings, health-check) in sync
+    # with starrocks-base.yaml.tftpl.
+    sidecarsMap:
+      init-globals:
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -euo pipefail
+            echo "Waiting for FE to become ready..."
+            attempts=0
+            until mysql --connect-timeout=5 -h 127.0.0.1 -P 9030 -u root <<'EOF'
+              SET GLOBAL enable_query_cache = true;
+              SET GLOBAL enable_spill = true;
+              SET GLOBAL wait_timeout = 3600;
+            EOF
+            do
+              attempts=$$((attempts + 1))
+              if [ "$$attempts" -ge 120 ]; then
+                echo "FE did not become ready within 10 minutes, giving up."
+                exit 1
+              fi
+              sleep 5
+            done
+            echo "Global settings applied."
+%{ if s3_tables_credentials_secret != "" ~}
+            echo "Configuring Iceberg catalog and catalog user..."
+            mysql --connect-timeout=5 -h 127.0.0.1 -P 9030 -u root <<EOSQL
+              DROP CATALOG IF EXISTS s3tables;
+              CREATE EXTERNAL CATALOG s3tables PROPERTIES(
+                "type"="iceberg",
+                "iceberg.catalog.type" = "rest",
+                "iceberg.catalog.uri"  = "https://glue.${aws_region}.amazonaws.com/iceberg",
+                "iceberg.catalog.rest.sigv4-enabled" = "true",
+                "iceberg.catalog.rest.signing-name" = "glue",
+                "iceberg.catalog.rest.access-key-id" = "$$SR_S3T_ACCESS_KEY_ID",
+                "iceberg.catalog.rest.secret-access-key" = "$$SR_S3T_SECRET_ACCESS_KEY",
+                "iceberg.catalog.warehouse" = "${aws_account_id}:s3tablescatalog/${s3_tables_bucket_name}",
+                "aws.s3.region" = "${aws_region}"
+              );
+
+              -- Create/update user and set default catalog
+              CREATE USER IF NOT EXISTS 'gooddata' IDENTIFIED BY "$$SR_CATALOG_USER_PWD";
+              ALTER USER 'gooddata' IDENTIFIED BY "$$SR_CATALOG_USER_PWD";
+              ALTER USER 'gooddata' SET PROPERTIES ("catalog" = "s3tables");
+
+              -- Grants in default_catalog context
+              GRANT USAGE ON CATALOG s3tables TO USER 'gooddata';
+              GRANT USAGE ON WAREHOUSE default_warehouse TO USER 'gooddata';
+              GRANT SELECT ON ALL TABLES IN DATABASE information_schema TO USER 'gooddata';
+              GRANT SELECT ON ALL VIEWS IN DATABASE information_schema TO USER 'gooddata';
+
+              -- Switch to s3tables catalog for catalog-scoped grants
+              SET CATALOG s3tables;
+              GRANT ALL ON ALL DATABASES TO USER 'gooddata';
+              GRANT ALL ON ALL TABLES IN ALL DATABASES TO USER 'gooddata';
+              GRANT SELECT ON ALL TABLES IN DATABASE information_schema TO USER 'gooddata';
+              GRANT SELECT ON ALL VIEWS IN DATABASE information_schema TO USER 'gooddata';
+            EOSQL
+            echo "Iceberg catalog and user configured."
+%{ endif ~}
+            echo "Entering health-check loop."
+            while true; do
+              sleep 10
+              if ! mysql --connect-timeout=5 -h 127.0.0.1 -P 9030 -u root -e "SELECT 1" >/dev/null 2>&1; then
+                echo "FE is no longer reachable, exiting."
+                exit 0
+              fi
+            done
+        env:
+          - name: MYSQL_PWD
+            valueFrom:
+              secretKeyRef:
+                name: "${root_password_secret}"
+                key: password
+%{ if s3_tables_credentials_secret != "" ~}
+          - name: SR_S3T_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: "${s3_tables_credentials_secret}"
+                key: access_key_id
+          - name: SR_S3T_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: "${s3_tables_credentials_secret}"
+                key: secret_access_key
+%{ endif ~}
+%{ if catalog_user_password_secret != "" ~}
+          - name: SR_CATALOG_USER_PWD
+            valueFrom:
+              secretKeyRef:
+                name: "${catalog_user_password_secret}"
+                key: password
+%{ endif ~}
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi

@@ -43,13 +43,19 @@ module "eks" {
   tags = local.common_tags
 
   addons = {
-    coredns                = {}
+    coredns = {
+      resolve_conflicts_on_create = "OVERWRITE"
+      resolve_conflicts_on_update = "OVERWRITE"
+    }
     eks-pod-identity-agent = {}
     kube-proxy             = {}
     vpc-cni = {
       before_compute = true
     }
-    aws-ebs-csi-driver = {}
+    aws-ebs-csi-driver = {
+      resolve_conflicts_on_create = "OVERWRITE"
+      resolve_conflicts_on_update = "OVERWRITE"
+    }
   }
 
   # Adds the current caller identity as an administrator via cluster access entry
@@ -58,11 +64,13 @@ module "eks" {
   vpc_id     = local.vpc_id
   subnet_ids = local.private_subnet_ids
 
+  # One node group per instance type so the cluster autoscaler can
+  # independently evaluate and scale each size (least-waste expander).
   eks_managed_node_groups = {
-    nodes = {
+    for instance_type in var.eks_node_types : replace(instance_type, ".", "-") => {
       create                     = true
       ami_type                   = "BOTTLEROCKET_x86_64"
-      instance_types             = var.eks_node_types
+      instance_types             = [instance_type]
       use_custom_launch_template = false
       disk_size                  = 100
 
@@ -80,12 +88,12 @@ module "eks" {
         AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
       }, local.ecr_pull_through_cache_policy)
 
-      min_size = 1
+      min_size = 0
       max_size = var.eks_max_nodes
 
       # This value is ignored after the initial creation
       # https://github.com/bryantbiggs/eks-desired-size-hack
-      desired_size = 2
+      desired_size = instance_type == var.eks_node_types[0] ? 1 : 0
     }
   }
 

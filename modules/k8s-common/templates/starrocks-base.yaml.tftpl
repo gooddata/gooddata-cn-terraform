@@ -1,0 +1,128 @@
+# StarRocks shared-data mode configuration
+
+operator:
+  timeZone: "UTC"
+
+starrocks:
+  timeZone: "UTC"
+
+  initPassword:
+    enabled: true
+    passwordSecret: "${root_password_secret}"
+    resources:
+      requests:
+        cpu: 300m
+        memory: 300Mi
+      limits:
+        cpu: 300m
+        memory: 300Mi
+
+  starrocksCluster:
+    enabledBe: false
+    enabledCn: true
+
+  starrocksFESpec:
+    image:
+      repository: "${registry_dockerio}/starrocks/fe-ubuntu"
+      tag: "${starrocks_fe_image_tag}"
+    service:
+      type: ClusterIP
+      ports:
+        - name: http-port
+          port: 8030
+          containerPort: 8030
+        - name: query-port
+          port: 9030
+          containerPort: 9030
+    feEnvVars:
+      - name: LOG_CONSOLE
+        value: "true"
+    config: |
+      LOG_DIR = $${STARROCKS_HOME}/log
+      DATE = "$$(date +%Y%m%d-%H%M%S)"
+      JAVA_OPTS="-Dlog4j2.formatMsgNoLookups=true -Xmx${fe_java_heap_mb}m -XX:+UseG1GC -Xlog:gc*:$${LOG_DIR}/fe.gc.log.$$DATE:time"
+      http_port = 8030
+      rpc_port = 9020
+      query_port = 9030
+      edit_log_port = 9010
+      run_mode = shared_data
+      min_graceful_exit_time_second = 25
+      enable_load_volume_from_conf = true
+      mysql_service_nio_enabled = true
+      sys_log_level = INFO
+      audit_log_json_format = true
+      enable_iceberg_metadata_disk_cache = true
+    serviceAccount: "${starrocks_service_account}"
+    sidecarsMap:
+      init-globals:
+        image: "${registry_dockerio}/starrocks/fe-ubuntu:${starrocks_fe_image_tag}"
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -euo pipefail
+            echo "Waiting for FE to become ready..."
+            attempts=0
+            until mysql --connect-timeout=5 -h 127.0.0.1 -P 9030 -u root <<'EOF'
+              SET GLOBAL enable_query_cache = true;
+              SET GLOBAL enable_spill = true;
+              SET GLOBAL wait_timeout = 3600;
+            EOF
+            do
+              attempts=$$((attempts + 1))
+              if [ "$$attempts" -ge 120 ]; then
+                echo "FE did not become ready within 10 minutes, giving up."
+                exit 1
+              fi
+              sleep 5
+            done
+            echo "Global settings applied."
+            echo "Entering health-check loop."
+            while true; do
+              sleep 10
+              if ! mysql --connect-timeout=5 -h 127.0.0.1 -P 9030 -u root -e "SELECT 1" >/dev/null 2>&1; then
+                echo "FE is no longer reachable, exiting."
+                exit 0
+              fi
+            done
+        env:
+          - name: MYSQL_PWD
+            valueFrom:
+              secretKeyRef:
+                name: "${root_password_secret}"
+                key: password
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi
+
+  starrocksCnSpec:
+    image:
+      repository: "${registry_dockerio}/starrocks/cn-ubuntu"
+      tag: "${starrocks_cn_image_tag}"
+    cnEnvVars:
+      - name: LOG_CONSOLE
+        value: "true"
+    config: |
+      sys_log_level = INFO
+      sys_log_roll_mode = SIZE-MB-100
+      sys_log_roll_num = 10
+      be_port = 9060
+      be_http_port = 8040
+      heartbeat_service_port = 9050
+      brpc_port = 8060
+      starlet_port = 9070
+      JAVA_OPTS="--add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+    serviceAccount: "${starrocks_service_account}"
+
+  componentValues:
+    runAsNonRoot: true
+
+%{ if enable_observability ~}
+  metrics:
+    serviceMonitor:
+      enabled: true
+%{ endif ~}
