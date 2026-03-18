@@ -93,5 +93,6 @@ resource "helm_release" "cluster_autoscaler" {
     autoDiscovery = { clusterName = var.deployment_name }
     awsRegion     = var.aws_region
     cloudProvider = "aws"
+    extraArgs     = { expander = "least-waste" }
   })]
 }

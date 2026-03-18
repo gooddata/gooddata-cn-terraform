@@ -150,6 +150,12 @@ resource "aws_lakeformation_resource" "s3tables" {
   with_privileged_access = true
 
   depends_on = [aws_iam_role_policy.s3tables_lakeformation]
+
+  # AWS provider reads back with_federation as false for wildcard S3 Tables ARNs,
+  # causing a perpetual replace cycle. The setting is applied correctly on create.
+  lifecycle {
+    ignore_changes = [with_federation]
+  }
 }
 
 # Workaround: Use AWS CLI to create Glue catalog until Terraform supports it
