@@ -37,6 +37,24 @@ Terraform provisions:
 
 > **Note:** If you want to skip the installation of all of the CLI utilities, a VS Code Dev Containers configuration is provided in this repo. Just install the extension into any compatible IDE and the repo will reopen with all utilities installed.
 
+### (optional, AWS only) Use an existing VPC
+
+By default Terraform creates a new VPC. If your IT team has already provisioned a VPC for the PoC, you can deploy into it instead by setting three variables in `aws/settings.tfvars`:
+
+```hcl
+existing_vpc_id             = "vpc-0123456789abcdef0"
+existing_private_subnet_ids = ["subnet-aaa", "subnet-bbb"]
+existing_public_subnet_ids  = ["subnet-ccc", "subnet-ddd"]
+```
+
+Requirements:
+- The VPC must have **DNS hostnames** and **DNS support** enabled.
+- Provide at least **2 private** and **2 public** subnet IDs, spanning at least 2 availability zones.
+- Private subnets are used for EKS nodes and RDS; public subnets are used for load balancers.
+- Subnets must carry the following tags for the AWS Load Balancer Controller and EKS to discover them:
+  - **Public subnets:** `kubernetes.io/role/elb = 1` and `kubernetes.io/cluster/<deployment_name> = shared`
+  - **Private subnets:** `kubernetes.io/role/internal-elb = 1` and `kubernetes.io/cluster/<deployment_name> = shared`
+
 ### Deploy
 
 1. Clone the repo: `git clone https://github.com/gooddata/gooddata-cn-terraform.git`
@@ -85,7 +103,7 @@ Terraform provisions:
 
 1. Finally, open your GoodData.CN URL and log in.
     - For cloud deployments: open `https://<gdcn_org_hostname>` (exact address in Terraform output).
-    - For local deployments: open `https://localhost` (you will see a browser warning because the certificate is self-signed).
+    - For local deployments: open `https://gooddata.localhost` (you will see a browser warning because the certificate is self-signed).
 
 ### Upgrading GoodData.CN
 

@@ -23,7 +23,7 @@ locals {
 resource "aws_security_group" "rds" {
   name        = "${var.deployment_name}-rds"
   description = "Security group for RDS PostgreSQL database"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
 
   tags = local.common_tags
 }
@@ -60,7 +60,7 @@ module "rds_postgresql" {
   manage_master_user_password = false
 
   # Networking
-  subnet_ids             = module.vpc.private_subnets
+  subnet_ids             = local.private_subnet_ids
   vpc_security_group_ids = [aws_security_group.rds.id]
   create_db_subnet_group = true
 

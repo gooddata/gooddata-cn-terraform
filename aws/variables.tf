@@ -124,6 +124,32 @@ variable "enable_observability" {
   default     = false
 }
 
+variable "existing_private_subnet_ids" {
+  description = "Private subnet IDs in the existing VPC (for EKS nodes and RDS). Required when existing_vpc_id is set. Must span at least 2 AZs."
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = length(var.existing_private_subnet_ids) == 0 || length(var.existing_private_subnet_ids) >= 2
+    error_message = "existing_private_subnet_ids must be empty or contain at least 2 entries."
+  }
+}
+
+variable "existing_public_subnet_ids" {
+  description = "Public subnet IDs in the existing VPC (for load balancers). Required when existing_vpc_id is set. Must span at least 2 AZs. Subnets must be tagged with kubernetes.io/role/elb=1 and kubernetes.io/cluster/<deployment_name>=shared for the AWS Load Balancer Controller."
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = length(var.existing_public_subnet_ids) == 0 || length(var.existing_public_subnet_ids) >= 2
+    error_message = "existing_public_subnet_ids must be empty or contain at least 2 entries."
+  }
+}
+
+variable "existing_vpc_id" {
+  description = "ID of an existing VPC to deploy into. Leave empty to create a new VPC. When set, existing_private_subnet_ids and existing_public_subnet_ids must also be provided."
+  type        = string
+  default     = ""
+}
+
 variable "gdcn_license_key" {
   description = "GoodData.CN license key (provided by your GoodData contact)"
   type        = string
