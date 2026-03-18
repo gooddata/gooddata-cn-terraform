@@ -43,13 +43,19 @@ module "eks" {
   tags = local.common_tags
 
   addons = {
-    coredns                = {}
+    coredns = {
+      resolve_conflicts_on_create = "OVERWRITE"
+      resolve_conflicts_on_update = "OVERWRITE"
+    }
     eks-pod-identity-agent = {}
     kube-proxy             = {}
     vpc-cni = {
       before_compute = true
     }
-    aws-ebs-csi-driver = {}
+    aws-ebs-csi-driver = {
+      resolve_conflicts_on_create = "OVERWRITE"
+      resolve_conflicts_on_update = "OVERWRITE"
+    }
   }
 
   # Adds the current caller identity as an administrator via cluster access entry

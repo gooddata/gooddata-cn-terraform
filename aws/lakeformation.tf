@@ -98,6 +98,27 @@ data "aws_iam_policy_document" "s3tables_data_access" {
       "arn:aws:s3tables:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/*"
     ]
   }
+
+  statement {
+    sid    = "LakeFormationGlueCatalogAccess"
+    effect = "Allow"
+
+    actions = [
+      "glue:GetCatalog",
+      "glue:GetDatabase",
+      "glue:GetDatabases",
+      "glue:GetTable",
+      "glue:GetTables",
+    ]
+
+    resources = [
+      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog",
+      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog/s3tablescatalog",
+      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog/s3tablescatalog/*",
+      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:database/s3tablescatalog/*",
+      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/s3tablescatalog/*",
+    ]
+  }
 }
 
 resource "aws_iam_role" "s3tables_lakeformation" {
@@ -198,38 +219,51 @@ resource "terraform_data" "s3tables_lakeformation_permissions" {
   }
 
   # Grant catalog-level permissions (Resource.Catalog.Id)
+  # Retry with backoff: the Glue federated catalog may take time to propagate.
   provisioner "local-exec" {
     command = <<-EOF
-      aws lakeformation grant-permissions \
-        --principal '{"DataLakePrincipalIdentifier":"${self.input.principal_arn}"}' \
-        --resource '{"Catalog":{"Id":"${self.input.catalog_resource_id}"}}' \
-        --permissions ALL \
-        --profile ${self.input.profile} \
-        --region ${self.input.region}
+      for i in 1 2 3 4 5; do
+        aws lakeformation grant-permissions \
+          --principal '{"DataLakePrincipalIdentifier":"${self.input.principal_arn}"}' \
+          --resource '{"Catalog":{"Id":"${self.input.catalog_resource_id}"}}' \
+          --permissions ALL \
+          --profile ${self.input.profile} \
+          --region ${self.input.region} && break
+        echo "Attempt $i failed, retrying in $${i}0s..."
+        sleep $${i}0
+      done
     EOF
   }
 
   # Grant database-level permissions
   provisioner "local-exec" {
     command = <<-EOF
-      aws lakeformation grant-permissions \
-        --principal '{"DataLakePrincipalIdentifier":"${self.input.principal_arn}"}' \
-        --resource '{"Database":{"CatalogId":"${self.input.catalog_resource_id}","Name":"${self.input.database_name}"}}' \
-        --permissions ALL \
-        --profile ${self.input.profile} \
-        --region ${self.input.region}
+      for i in 1 2 3 4 5; do
+        aws lakeformation grant-permissions \
+          --principal '{"DataLakePrincipalIdentifier":"${self.input.principal_arn}"}' \
+          --resource '{"Database":{"CatalogId":"${self.input.catalog_resource_id}","Name":"${self.input.database_name}"}}' \
+          --permissions ALL \
+          --profile ${self.input.profile} \
+          --region ${self.input.region} && break
+        echo "Attempt $i failed, retrying in $${i}0s..."
+        sleep $${i}0
+      done
     EOF
   }
 
   # Grant table-level permissions (wildcard = all tables)
   provisioner "local-exec" {
     command = <<-EOF
-      aws lakeformation grant-permissions \
-        --principal '{"DataLakePrincipalIdentifier":"${self.input.principal_arn}"}' \
-        --resource '{"Table":{"CatalogId":"${self.input.catalog_resource_id}","DatabaseName":"${self.input.database_name}","TableWildcard":{}}}' \
-        --permissions ALL \
-        --profile ${self.input.profile} \
-        --region ${self.input.region}
+      for i in 1 2 3 4 5; do
+        aws lakeformation grant-permissions \
+          --principal '{"DataLakePrincipalIdentifier":"${self.input.principal_arn}"}' \
+          --resource '{"Table":{"CatalogId":"${self.input.catalog_resource_id}","DatabaseName":"${self.input.database_name}","TableWildcard":{}}}' \
+          --permissions ALL \
+          --profile ${self.input.profile} \
+          --region ${self.input.region} && break
+        echo "Attempt $i failed, retrying in $${i}0s..."
+        sleep $${i}0
+      done
     EOF
   }
 
