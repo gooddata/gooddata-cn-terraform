@@ -77,3 +77,31 @@ output "manual_dns_records" {
 
 output "org_domains" { value = module.k8s_common.org_domains }
 output "org_ids" { value = module.k8s_common.org_ids }
+
+output "starrocks_s3_tables_bucket_arn" {
+  description = "ARN of the S3 Table Bucket for StarRocks Iceberg REST catalog."
+  value       = var.enable_starrocks ? aws_s3tables_table_bucket.starrocks_tables[0].arn : null
+}
+
+
+output "starrocks_s3_tables_access_key_id" {
+  description = "Access key ID for the StarRocks S3 Tables IAM user."
+  value       = var.enable_starrocks ? aws_iam_access_key.starrocks_s3_tables[0].id : null
+}
+
+output "starrocks_s3_tables_secret_access_key" {
+  description = "Secret access key for the StarRocks S3 Tables IAM user."
+  value       = var.enable_starrocks ? aws_iam_access_key.starrocks_s3_tables[0].secret : null
+  sensitive   = true
+}
+
+output "starrocks_catalog_username" {
+  description = "StarRocks catalog user username."
+  value       = module.k8s_common.starrocks_catalog_username
+}
+
+output "starrocks_catalog_user_password" {
+  description = "StarRocks catalog user password."
+  value       = module.k8s_common.starrocks_catalog_user_password
+  sensitive   = true
+}

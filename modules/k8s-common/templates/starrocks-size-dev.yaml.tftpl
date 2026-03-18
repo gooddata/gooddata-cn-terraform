@@ -1,0 +1,31 @@
+# StarRocks sizing: dev (minimal, non-HA)
+
+starrocks:
+  starrocksFESpec:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4Gi
+      limits:
+        cpu: 1
+        memory: 8Gi
+    storageSpec:
+      name: fe
+      storageSize: 10Gi
+      logStorageSize: 5Gi
+
+  starrocksCnSpec:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 2
+        memory: 8Gi
+      limits:
+        cpu: 4
+        memory: 16Gi
+    storageSpec:
+      name: cn
+      storageSize: 100Gi
+      logStorageSize: 5Gi
+      spillStorageSize: 50Gi

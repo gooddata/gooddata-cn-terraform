@@ -124,6 +124,12 @@ variable "enable_observability" {
   default     = false
 }
 
+variable "enable_starrocks" {
+  description = "Enable StarRocks deployment for analytics query acceleration"
+  type        = bool
+  default     = false
+}
+
 variable "existing_private_subnet_ids" {
   description = "Private subnet IDs in the existing VPC (for EKS nodes and RDS). Required when existing_vpc_id is set. Must span at least 2 AZs."
   type        = list(string)
@@ -315,6 +321,13 @@ variable "helm_pulsar_version" {
   default = "4.5.0"
 }
 
+variable "helm_starrocks_version" {
+  description = "Version of the kube-starrocks Helm chart to deploy. https://artifacthub.io/packages/helm/kube-starrocks/kube-starrocks"
+  type        = string
+  # renovate: depName=kube-starrocks registryUrl=https://starrocks.github.io/starrocks-kubernetes-operator
+  default = "1.11.4"
+}
+
 variable "helm_tempo_version" {
   description = "Version of the tempo Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/tempo"
   type        = string
@@ -397,6 +410,18 @@ variable "size_profile" {
     condition     = contains(["dev", "prod-small"], var.size_profile)
     error_message = "size_profile must be one of: dev, prod-small."
   }
+}
+
+variable "starrocks_cn_image_tag" {
+  description = "Docker image tag for StarRocks CN nodes"
+  type        = string
+  default     = "4.0.6"
+}
+
+variable "starrocks_fe_image_tag" {
+  description = "Docker image tag for StarRocks FE nodes"
+  type        = string
+  default     = "4.0.6"
 }
 
 variable "tls_mode" {

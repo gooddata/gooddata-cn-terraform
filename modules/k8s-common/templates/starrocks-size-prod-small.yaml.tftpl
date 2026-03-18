@@ -1,0 +1,44 @@
+# StarRocks sizing: prod-small (HA FE, production resources)
+
+starrocks:
+  starrocksFESpec:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 1500m
+        memory: 12Gi
+      limits:
+        cpu: 2
+        memory: 16Gi
+    storageSpec:
+      name: fe
+      storageSize: 10Gi
+      logStorageSize: 5Gi
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.starrocks.ownerreference/name: kube-starrocks-fe
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.starrocks.ownerreference/name: kube-starrocks-fe
+
+  starrocksCnSpec:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 3
+        memory: 8Gi
+      limits:
+        cpu: 4
+        memory: 16Gi
+    storageSpec:
+      name: cn
+      storageSize: 300Gi
+      logStorageSize: 5Gi
+      spillStorageSize: 100Gi

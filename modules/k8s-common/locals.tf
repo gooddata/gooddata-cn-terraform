@@ -1,7 +1,9 @@
 locals {
-  gdcn_service_account_name    = "gooddata-cn"
-  istio_public_gateway_name    = "istio-public-gateway"
-  istio_public_tls_secret_name = "gdcn-istio-gateway-tls"
+  gdcn_service_account_name      = "gooddata-cn"
+  istio_public_gateway_name      = "istio-public-gateway"
+  istio_public_tls_secret_name   = "gdcn-istio-gateway-tls"
+  starrocks_namespace            = "starrocks"
+  starrocks_service_account_name = "starrocks"
 
   use_alb           = var.ingress_controller == "alb"
   use_ingress_nginx = var.ingress_controller == "ingress-nginx"

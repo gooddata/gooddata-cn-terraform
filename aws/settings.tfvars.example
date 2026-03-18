@@ -119,6 +119,12 @@ gdcn_orgs = [
 # dockerhub_access_token = "myaccesstoken"
 
 ###
+# StarRocks (optional)
+###
+# Uncomment to deploy StarRocks
+# enable_starrocks = true
+
+###
 # EKS & infrastructure sizing (optional)
 ###
 # eks_version                      = "1.35"
