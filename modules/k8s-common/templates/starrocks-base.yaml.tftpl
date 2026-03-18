@@ -40,7 +40,7 @@ starrocks:
     config: |
       LOG_DIR = $${STARROCKS_HOME}/log
       DATE = "$$(date +%Y%m%d-%H%M%S)"
-      JAVA_OPTS="-Dlog4j2.formatMsgNoLookups=true -Xmx8192m -XX:+UseG1GC -Xlog:gc*:$${LOG_DIR}/fe.gc.log.$$DATE:time"
+      JAVA_OPTS="-Dlog4j2.formatMsgNoLookups=true -Xmx${fe_java_heap_mb}m -XX:+UseG1GC -Xlog:gc*:$${LOG_DIR}/fe.gc.log.$$DATE:time"
       http_port = 8030
       rpc_port = 9020
       query_port = 9030
