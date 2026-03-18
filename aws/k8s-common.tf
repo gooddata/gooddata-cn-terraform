@@ -72,6 +72,7 @@ module "k8s_common" {
   helm_prometheus_version    = var.helm_prometheus_version
   helm_loki_version          = var.helm_loki_version
   helm_promtail_version      = var.helm_promtail_version
+  helm_starrocks_version     = var.helm_starrocks_version
   helm_tempo_version         = var.helm_tempo_version
   helm_grafana_version       = var.helm_grafana_version
 
@@ -79,8 +80,7 @@ module "k8s_common" {
   observability_hostname = var.observability_hostname
 
   enable_starrocks                      = var.enable_starrocks
-  helm_starrocks_version                = var.helm_starrocks_version
-  s3_starrocks_bucket_id                = var.enable_starrocks ? aws_s3_bucket.starrocks[0].id : ""
+  starrocks_s3_bucket_id                = var.enable_starrocks ? aws_s3_bucket.starrocks[0].id : ""
   starrocks_irsa_role_arn               = var.enable_starrocks ? aws_iam_role.starrocks_irsa[0].arn : ""
   starrocks_fe_image_tag                = var.starrocks_fe_image_tag
   starrocks_cn_image_tag                = var.starrocks_cn_image_tag

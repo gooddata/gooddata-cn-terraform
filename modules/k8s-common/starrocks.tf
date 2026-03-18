@@ -106,7 +106,7 @@ resource "helm_release" "starrocks" {
       s3_tables_credentials_secret = kubernetes_secret_v1.starrocks_s3_tables_credentials[0].metadata[0].name
       aws_region                   = var.aws_region
       aws_account_id               = var.aws_account_id
-      s3_starrocks_bucket_id       = var.s3_starrocks_bucket_id
+      starrocks_s3_bucket_id       = var.starrocks_s3_bucket_id
       s3_tables_bucket_name        = var.starrocks_s3_tables_bucket_name
     }) : null,
     templatefile("${path.module}/templates/starrocks-size-${var.size_profile}.yaml.tftpl", {}),
@@ -118,6 +118,8 @@ resource "helm_release" "starrocks" {
 
 }
 
+# The StarRocks Helm chart does not include PodDisruptionBudget support,
+# so PDBs for FE and CN are managed separately here.
 resource "kubectl_manifest" "starrocks_pdb_fe" {
   count = var.enable_starrocks ? 1 : 0
 
@@ -179,6 +181,7 @@ resource "kubectl_manifest" "peerauth_starrocks_strict" {
   })
 
   depends_on = [
+    kubernetes_namespace_v1.starrocks,
     helm_release.istiod,
   ]
 }

@@ -81,7 +81,7 @@ locals {
 }
 
 ###
-# StarRocks S3 bucket (conditional)
+# StarRocks S3 bucket
 ###
 
 resource "aws_s3_bucket" "starrocks" {

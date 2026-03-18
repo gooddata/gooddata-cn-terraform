@@ -201,7 +201,7 @@ variable "s3_quiver_cache_bucket_id" {
   default = ""
 }
 
-variable "s3_starrocks_bucket_id" {
+variable "starrocks_s3_bucket_id" {
   type    = string
   default = ""
 }
