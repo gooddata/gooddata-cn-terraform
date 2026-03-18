@@ -51,6 +51,9 @@ Requirements:
 - The VPC must have **DNS hostnames** and **DNS support** enabled.
 - Provide at least **2 private** and **2 public** subnet IDs, spanning at least 2 availability zones.
 - Private subnets are used for EKS nodes and RDS; public subnets are used for load balancers.
+- Subnets must carry the following tags for the AWS Load Balancer Controller and EKS to discover them:
+  - **Public subnets:** `kubernetes.io/role/elb = 1` and `kubernetes.io/cluster/<deployment_name> = shared`
+  - **Private subnets:** `kubernetes.io/role/internal-elb = 1` and `kubernetes.io/cluster/<deployment_name> = shared`
 
 ### Deploy
 
