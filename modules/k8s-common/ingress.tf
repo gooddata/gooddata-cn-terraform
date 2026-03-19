@@ -102,7 +102,10 @@ resource "helm_release" "ingress_nginx" {
   values = [yamlencode(local.ingress_values)]
 
   depends_on = [
-    kubernetes_namespace_v1.ingress
+    kubernetes_namespace_v1.ingress,
+    # kube-prometheus-stack installs the ServiceMonitor CRD; ingress-nginx must
+    # wait for it when observability is enabled, otherwise the release fails on fresh clusters.
+    helm_release.kube_prometheus_stack,
   ]
 }
 

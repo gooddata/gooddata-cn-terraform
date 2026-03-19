@@ -54,5 +54,8 @@ resource "helm_release" "pulsar" {
   depends_on = [
     kubernetes_namespace_v1.pulsar,
     helm_release.istiod,
+    # kube-prometheus-stack installs the PodMonitor CRD; Pulsar must wait for
+    # it when observability is enabled, otherwise the release fails on fresh clusters.
+    helm_release.kube_prometheus_stack,
   ]
 }
