@@ -66,6 +66,14 @@ locals {
             "service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path" = "/healthz"
           }
         }
+      } : {},
+      var.enable_observability ? {
+        metrics = {
+          enabled = true
+          serviceMonitor = {
+            enabled = true
+          }
+        }
       } : {}
     )
   }

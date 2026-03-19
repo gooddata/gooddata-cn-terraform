@@ -9,24 +9,24 @@ components:
 zookeeper:
   podManagementPolicy: OrderedReady
   podMonitor:
-    enabled: false
+    enabled: ${enable_observability}
   restartPodsOnConfigMapChange: true
 
 bookkeeper:
   podMonitor:
-    enabled: false
+    enabled: ${enable_observability}
   restartPodsOnConfigMapChange: true
   configData:
     nettyMaxFrameSizeBytes: "10485760"
 
 autorecovery:
   podMonitor:
-    enabled: false
+    enabled: ${enable_observability}
   restartPodsOnConfigMapChange: true
 
 broker:
   podMonitor:
-    enabled: false
+    enabled: ${enable_observability}
   restartPodsOnConfigMapChange: true
   configData:
     subscriptionExpirationTimeMinutes: "5"
@@ -35,7 +35,7 @@ broker:
 
 proxy:
   podMonitor:
-    enabled: false
+    enabled: ${enable_observability}
 
 kube-prometheus-stack:
   enabled: false

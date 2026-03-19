@@ -11,3 +11,9 @@ monitoring:
         host: "tempo"
         namespace: "${observability_namespace}"
         port: 4317
+  # Expose a /actuator/prometheus scrape endpoint on each service and create
+  # a ServiceMonitor so kube-prometheus-stack discovers it automatically.
+  # NOTE: verify key names against the gooddata-cn chart's values.yaml for
+  # your deployed version — the structure below follows the standard pattern.
+  serviceMonitor:
+    enabled: true

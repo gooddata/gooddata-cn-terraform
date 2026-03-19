@@ -32,16 +32,16 @@ module "k8s_common" {
   registry_quayio    = local.registry_quayio
   registry_k8sio     = local.registry_k8sio
 
-  helm_cert_manager_version  = var.helm_cert_manager_version
-  helm_gdcn_version          = var.helm_gdcn_version
-  helm_istio_version         = var.helm_istio_version
-  helm_pulsar_version        = var.helm_pulsar_version
-  helm_ingress_nginx_version = var.helm_ingress_nginx_version
-  helm_prometheus_version    = var.helm_prometheus_version
-  helm_loki_version          = var.helm_loki_version
-  helm_promtail_version      = var.helm_promtail_version
-  helm_tempo_version         = var.helm_tempo_version
-  helm_grafana_version       = var.helm_grafana_version
+  helm_cert_manager_version          = var.helm_cert_manager_version
+  helm_gdcn_version                  = var.helm_gdcn_version
+  helm_istio_version                 = var.helm_istio_version
+  helm_pulsar_version                = var.helm_pulsar_version
+  helm_ingress_nginx_version         = var.helm_ingress_nginx_version
+  helm_kube_prometheus_stack_version = var.helm_kube_prometheus_stack_version
+  helm_loki_version                  = var.helm_loki_version
+  helm_promtail_version              = var.helm_promtail_version
+  helm_tempo_version                 = var.helm_tempo_version
+  helm_grafana_version               = var.helm_grafana_version
 
   enable_observability   = var.enable_observability
   observability_hostname = var.observability_hostname
