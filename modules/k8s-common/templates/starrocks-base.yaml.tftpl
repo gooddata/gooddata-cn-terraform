@@ -23,7 +23,7 @@ starrocks:
 
   starrocksFESpec:
     image:
-      repository: "${registry_dockerio}/starrocks/fe-ubuntu"
+      repository: "${registry_dockerio}/gooddata/gdc-starrocks-fe-ubuntu"
       tag: "${starrocks_fe_image_tag}"
     service:
       type: ClusterIP
@@ -55,7 +55,7 @@ starrocks:
     serviceAccount: "${starrocks_service_account}"
     sidecarsMap:
       init-globals:
-        image: "${registry_dockerio}/starrocks/fe-ubuntu:${starrocks_fe_image_tag}"
+        image: "${registry_dockerio}/gooddata/gdc-starrocks-fe-ubuntu:${starrocks_fe_image_tag}"
         command:
           - /bin/bash
           - -c
@@ -101,7 +101,7 @@ starrocks:
 
   starrocksCnSpec:
     image:
-      repository: "${registry_dockerio}/starrocks/cn-ubuntu"
+      repository: "${registry_dockerio}/gooddata/gdc-starrocks-cn-ubuntu"
       tag: "${starrocks_cn_image_tag}"
     cnEnvVars:
       - name: LOG_CONSOLE
