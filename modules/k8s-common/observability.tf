@@ -241,6 +241,9 @@ resource "helm_release" "grafana" {
 
   values = [
     yamlencode({
+      deploymentStrategy = {
+        type = "Recreate"
+      }
       persistence = {
         enabled = true
         size    = "1Gi"
