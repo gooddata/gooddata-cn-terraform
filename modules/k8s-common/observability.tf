@@ -9,36 +9,61 @@ resource "kubernetes_namespace_v1" "observability" {
   }
 }
 
-resource "helm_release" "prometheus" {
+resource "helm_release" "kube_prometheus_stack" {
   count = var.enable_observability ? 1 : 0
 
-  name       = "prometheus"
+  name       = "kube-prometheus-stack"
   repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "prometheus"
-  version    = var.helm_prometheus_version
+  chart      = "kube-prometheus-stack"
+  version    = var.helm_kube_prometheus_stack_version
   namespace  = kubernetes_namespace_v1.observability[0].metadata[0].name
+
+  # CRDs are installed by the chart by default; skip_crds = false is the default.
+  skip_crds = false
 
   values = [
     yamlencode({
-      server = {
-        retention = "2d"
-        persistentVolume = {
-          size = "5Gi"
-        }
+      # Disable components we manage separately
+      grafana      = { enabled = false }
+      alertmanager = { enabled = false }
+
+      # Cluster-wide visibility
+      kubeStateMetrics = { enabled = true }
+      nodeExporter     = { enabled = true }
+
+      prometheusOperator = {
         resources = {
-          requests = {
-            cpu    = "100m"
-            memory = "256Mi"
-          }
-          limits = {
-            cpu    = "500m"
-            memory = "1Gi"
-          }
+          requests = { cpu = "100m", memory = "128Mi" }
+          limits   = { cpu = "200m", memory = "256Mi" }
         }
       }
-      alertmanager = { enabled = false }
-      pushgateway  = { enabled = false }
-      nodeExporter = { enabled = true }
+
+      prometheus = {
+        prometheusSpec = {
+          retention = "2d"
+          resources = {
+            requests = { cpu = "100m", memory = "256Mi" }
+            limits   = { cpu = "500m", memory = "1Gi" }
+          }
+          storageSpec = {
+            volumeClaimTemplate = {
+              spec = {
+                resources = {
+                  requests = { storage = "5Gi" }
+                }
+              }
+            }
+          }
+          # Discover ALL PodMonitors and ServiceMonitors across ALL namespaces,
+          # regardless of labels — required for Pulsar, GDCN, ingress-nginx etc.
+          podMonitorSelectorNilUsesHelmValues     = false
+          serviceMonitorSelectorNilUsesHelmValues = false
+          podMonitorSelector                      = {}
+          podMonitorNamespaceSelector             = {}
+          serviceMonitorSelector                  = {}
+          serviceMonitorNamespaceSelector         = {}
+        }
+      }
     })
   ]
 
@@ -216,6 +241,9 @@ resource "helm_release" "grafana" {
 
   values = [
     yamlencode({
+      deploymentStrategy = {
+        type = "Recreate"
+      }
       persistence = {
         enabled = true
         size    = "1Gi"
@@ -287,7 +315,7 @@ resource "helm_release" "grafana" {
               name      = "Prometheus"
               type      = "prometheus"
               uid       = "prometheus"
-              url       = "http://prometheus-server.observability.svc.cluster.local"
+              url       = "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090"
               access    = "proxy"
               isDefault = true
             },
@@ -342,7 +370,7 @@ resource "helm_release" "grafana" {
   wait_for_jobs = true
   timeout       = 1800
 
-  depends_on = [helm_release.prometheus, helm_release.loki, helm_release.tempo]
+  depends_on = [helm_release.kube_prometheus_stack, helm_release.loki, helm_release.tempo]
 }
 
 resource "kubectl_manifest" "peerauth_observability_strict" {
