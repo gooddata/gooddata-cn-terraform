@@ -35,7 +35,9 @@ broker:
 
 proxy:
   podMonitor:
-    enabled: ${enable_observability}
+    # proxy component is disabled above (components.proxy: false); keep
+    # podMonitor disabled to avoid a dangling CR targeting non-existent pods.
+    enabled: false
 
 kube-prometheus-stack:
   enabled: false
