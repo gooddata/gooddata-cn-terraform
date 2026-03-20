@@ -28,4 +28,8 @@ module "k8s_aws" {
   vpc_id                        = local.vpc_id
   eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
   eks_cluster_oidc_issuer_url   = module.eks.cluster_oidc_issuer_url
+
+  # Explicit dependency ensures destroy order: k8s_aws controllers are removed
+  # before the EKS cluster and node groups are torn down.
+  depends_on = [module.eks]
 }
