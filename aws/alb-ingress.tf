@@ -197,6 +197,98 @@ data "aws_lb" "gdcn" {
   }
 }
 
+# ---------------------------------------------------------------------------
+# ALB destroy-time cleanup
+# ---------------------------------------------------------------------------
+# The ALB is created out-of-band by the AWS Load Balancer Controller running
+# inside EKS (not directly by Terraform). When Terraform deletes the Ingress
+# object (in k8s_common), the controller begins an async cleanup of the real
+# AWS ALB. If Terraform races ahead and deletes the subnets, IGW, or ACM cert
+# before that cleanup finishes, the destroy hangs or errors out.
+#
+# This resource sits in the dependency chain so that on destroy it runs a
+# provisioner that blocks until the ALB is fully gone (or force-deletes it),
+# guaranteeing the VPC and ACM cert can be safely removed afterwards.
+#
+# Destroy order enforced by the dependency graph:
+#   k8s_common  →  alb_cleanup_wait  →  k8s_aws + acm_cert  →  eks  →  vpc
+# ---------------------------------------------------------------------------
+resource "null_resource" "alb_cleanup_wait" {
+  count = local.use_alb ? 1 : 0
+
+  triggers = {
+    lb_name     = local.alb_load_balancer_name
+    aws_region  = var.aws_region
+    aws_profile = var.aws_profile_name
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      set -euo pipefail
+
+      lb_name="${self.triggers.lb_name}"
+      aws_region="${self.triggers.aws_region}"
+      aws_profile="${self.triggers.aws_profile}"
+      profile_flag=""
+      [ -n "$aws_profile" ] && profile_flag="--profile $aws_profile"
+
+      alb_exists() {
+        aws elbv2 describe-load-balancers \
+          --names "$lb_name" \
+          --region "$aws_region" \
+          $profile_flag >/dev/null 2>&1
+      }
+
+      # If the ALB is already gone, nothing to do.
+      if ! alb_exists; then
+        echo "ALB '$lb_name' does not exist. Nothing to clean up."
+        exit 0
+      fi
+
+      # Phase 1: give the LB controller up to 5 min to delete the ALB.
+      echo "Waiting up to 300s for ALB '$lb_name' to be deleted by the AWS Load Balancer Controller..."
+      end=$((SECONDS + 300))
+      while [ "$SECONDS" -lt "$end" ]; do
+        if ! alb_exists; then
+          echo "ALB '$lb_name' deleted by the controller."
+          exit 0
+        fi
+        sleep 10
+      done
+
+      # Phase 2: controller didn't clean up in time — force-delete the ALB.
+      echo "WARNING: ALB '$lb_name' still exists. Force-deleting..."
+      lb_arn=$(aws elbv2 describe-load-balancers \
+        --names "$lb_name" \
+        --region "$aws_region" \
+        $profile_flag \
+        --query 'LoadBalancers[0].LoadBalancerArn' \
+        --output text 2>/dev/null || echo "")
+
+      if [ -n "$lb_arn" ] && [ "$lb_arn" != "None" ]; then
+        aws elbv2 delete-load-balancer \
+          --load-balancer-arn "$lb_arn" \
+          --region "$aws_region" \
+          $profile_flag || true
+
+        # Wait for ENIs to detach after ALB deletion.
+        echo "Waiting 60s for ALB ENIs to be released..."
+        sleep 60
+      fi
+    EOT
+  }
+
+  # These resources must survive until AFTER the ALB is confirmed deleted.
+  # depends_on controls destroy ordering: this resource is destroyed (i.e. the
+  # cleanup provisioner runs) BEFORE k8s_aws and the ACM cert are removed,
+  # keeping the LB controller and cert alive while we wait.
+  depends_on = [
+    module.k8s_aws,
+    aws_acm_certificate.gdcn,
+  ]
+}
+
 # Query NLB DNS name directly from AWS (NLB name is deterministic)
 data "external" "ingress_nginx_lb" {
   count = local.use_ingress_nginx ? 1 : 0
