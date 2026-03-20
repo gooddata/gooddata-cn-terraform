@@ -115,6 +115,10 @@ module "eks" {
       source_cluster_security_group = true
     }
   } : {}
+
+  # Keep the entire VPC alive (especially the NAT gateway) until after EKS
+  # and all K8s workloads are destroyed, preventing destroy-time hangs.
+  depends_on = [module.vpc]
 }
 
 # Outputs
