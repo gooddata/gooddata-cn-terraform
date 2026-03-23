@@ -18,9 +18,6 @@ resource "helm_release" "kube_prometheus_stack" {
   version    = var.helm_kube_prometheus_stack_version
   namespace  = kubernetes_namespace_v1.observability[0].metadata[0].name
 
-  # CRDs are installed by the chart by default; skip_crds = false is the default.
-  skip_crds = false
-
   values = [
     yamlencode({
       # Disable components we manage separately
@@ -54,14 +51,10 @@ resource "helm_release" "kube_prometheus_stack" {
               }
             }
           }
-          # Discover ALL PodMonitors and ServiceMonitors across ALL namespaces,
-          # regardless of labels — required for Pulsar, GDCN, ingress-nginx etc.
+          # Discover all PodMonitors/ServiceMonitors cluster-wide, not just
+          # those matching the Helm release labels.
           podMonitorSelectorNilUsesHelmValues     = false
           serviceMonitorSelectorNilUsesHelmValues = false
-          podMonitorSelector                      = {}
-          podMonitorNamespaceSelector             = {}
-          serviceMonitorSelector                  = {}
-          serviceMonitorNamespaceSelector         = {}
         }
       }
     })

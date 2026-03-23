@@ -189,6 +189,7 @@ resource "helm_release" "gooddata_cn" {
     kubectl_manifest.selfsigned_cluster_issuer,
     helm_release.istio_ingress_gateway,
     kubectl_manifest.istio_public_gateway,
+    helm_release.kube_prometheus_stack,
   ]
 }
 

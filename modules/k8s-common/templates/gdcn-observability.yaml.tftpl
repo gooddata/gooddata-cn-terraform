@@ -12,9 +12,6 @@ monitoring:
         namespace: "${observability_namespace}"
         port: 4317
 
-# Enable PodMonitors for all GDCN services. The gooddata-cn chart ships a
-# PodMonitor template per service (scraping /actuator/prometheus) gated on
-# .Capabilities.APIVersions.Has "monitoring.coreos.com/v1", so this is a
-# no-op on clusters without the Prometheus Operator CRDs.
+# Enable Pod Monitors on all GoodData.CN services
 podMonitor:
   enabled: true
