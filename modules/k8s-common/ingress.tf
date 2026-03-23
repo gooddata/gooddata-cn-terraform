@@ -66,6 +66,14 @@ locals {
             "service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path" = "/healthz"
           }
         }
+      } : {},
+      var.enable_observability ? {
+        metrics = {
+          enabled = true
+          serviceMonitor = {
+            enabled = true
+          }
+        }
       } : {}
     )
   }
@@ -94,7 +102,8 @@ resource "helm_release" "ingress_nginx" {
   values = [yamlencode(local.ingress_values)]
 
   depends_on = [
-    kubernetes_namespace_v1.ingress
+    kubernetes_namespace_v1.ingress,
+    helm_release.kube_prometheus_stack,
   ]
 }
 

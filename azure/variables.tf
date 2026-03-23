@@ -232,11 +232,11 @@ variable "helm_metrics_server_version" {
   default = "3.13.0"
 }
 
-variable "helm_prometheus_version" {
-  description = "Version of the prometheus Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/prometheus"
+variable "helm_kube_prometheus_stack_version" {
+  description = "Version of the kube-prometheus-stack Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack"
   type        = string
-  # renovate: depName=prometheus registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "28.13.0"
+  # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
+  default = "67.9.0"
 }
 
 variable "helm_promtail_version" {

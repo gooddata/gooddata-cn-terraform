@@ -158,11 +158,11 @@ variable "helm_loki_version" {
   default = "6.55.0"
 }
 
-variable "helm_prometheus_version" {
-  description = "Version of the prometheus Helm chart to deploy."
+variable "helm_kube_prometheus_stack_version" {
+  description = "Version of the kube-prometheus-stack Helm chart to deploy."
   type        = string
-  # renovate: depName=prometheus registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "28.13.0"
+  # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
+  default = "67.9.0"
 }
 
 variable "helm_promtail_version" {

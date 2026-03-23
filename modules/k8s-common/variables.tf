@@ -101,7 +101,7 @@ variable "helm_istio_version" { type = string }
 
 variable "helm_loki_version" { type = string }
 
-variable "helm_prometheus_version" { type = string }
+variable "helm_kube_prometheus_stack_version" { type = string }
 
 variable "helm_promtail_version" { type = string }
 

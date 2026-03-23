@@ -11,3 +11,7 @@ monitoring:
         host: "tempo"
         namespace: "${observability_namespace}"
         port: 4317
+
+# Enable Pod Monitors on all GoodData.CN services
+podMonitor:
+  enabled: true
