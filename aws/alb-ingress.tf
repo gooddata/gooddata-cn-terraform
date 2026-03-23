@@ -227,26 +227,25 @@ resource "null_resource" "alb_cleanup_wait" {
     command = <<-EOT
       set -euo pipefail
 
+      command -v aws >/dev/null 2>&1 || { echo "ERROR: aws CLI not found"; exit 1; }
+
       lb_name="${self.triggers.lb_name}"
       aws_region="${self.triggers.aws_region}"
       aws_profile="${self.triggers.aws_profile}"
-      profile_flag=""
-      [ -n "$aws_profile" ] && profile_flag="--profile $aws_profile"
 
       alb_exists() {
         aws elbv2 describe-load-balancers \
           --names "$lb_name" \
           --region "$aws_region" \
-          $profile_flag >/dev/null 2>&1
+          --profile "$aws_profile" >/dev/null 2>&1
       }
 
-      # If the ALB is already gone, nothing to do.
       if ! alb_exists; then
         echo "ALB '$lb_name' does not exist. Nothing to clean up."
         exit 0
       fi
 
-      # Phase 1: give the LB controller up to 5 min to delete the ALB.
+      # Give the LB controller up to 5 min to delete the ALB.
       echo "Waiting up to 300s for ALB '$lb_name' to be deleted by the AWS Load Balancer Controller..."
       end=$((SECONDS + 300))
       while [ "$SECONDS" -lt "$end" ]; do
@@ -257,12 +256,12 @@ resource "null_resource" "alb_cleanup_wait" {
         sleep 10
       done
 
-      # Phase 2: controller didn't clean up in time — force-delete the ALB.
+      # Controller didn't clean up in time — force-delete the ALB.
       echo "WARNING: ALB '$lb_name' still exists. Force-deleting..."
       lb_arn=$(aws elbv2 describe-load-balancers \
         --names "$lb_name" \
         --region "$aws_region" \
-        $profile_flag \
+        --profile "$aws_profile" \
         --query 'LoadBalancers[0].LoadBalancerArn' \
         --output text 2>/dev/null || echo "")
 
@@ -270,11 +269,25 @@ resource "null_resource" "alb_cleanup_wait" {
         aws elbv2 delete-load-balancer \
           --load-balancer-arn "$lb_arn" \
           --region "$aws_region" \
-          $profile_flag || true
+          --profile "$aws_profile" || true
 
-        # Wait for ENIs to detach after ALB deletion.
-        echo "Waiting 60s for ALB ENIs to be released..."
-        sleep 60
+        # ENIs must detach before VPC resources can be destroyed.
+        echo "Waiting for ALB ENIs to be released..."
+        end_eni=$((SECONDS + 120))
+        while [ "$SECONDS" -lt "$end_eni" ]; do
+          eni_count=$(aws ec2 describe-network-interfaces \
+            --filters "Name=description,Values=*ELB app/$${lb_name}/*" \
+            --region "$aws_region" \
+            --profile "$aws_profile" \
+            --query 'length(NetworkInterfaces)' \
+            --output text 2>/dev/null || echo "0")
+          if [ "$eni_count" = "0" ]; then
+            echo "ALB ENIs released."
+            break
+          fi
+          echo "Still waiting for $eni_count ENI(s)..."
+          sleep 5
+        done
       fi
     EOT
   }
