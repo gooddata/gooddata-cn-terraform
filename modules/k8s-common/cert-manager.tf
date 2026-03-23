@@ -28,20 +28,30 @@ resource "helm_release" "cert-manager" {
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
-  values = [yamlencode({
-    installCRDs = true
-    serviceAccount = {
-      create = true
-      name   = "cert-manager"
-    }
-    image           = { repository = "${var.registry_quayio}/jetstack/cert-manager-controller" }
-    webhook         = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-webhook" } }
-    cainjector      = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-cainjector" } }
-    acmesolver      = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-acmesolver" } }
-    startupapicheck = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-startupapicheck" } }
-  })]
+  values = [yamlencode(merge(
+    {
+      installCRDs = true
+      serviceAccount = {
+        create = true
+        name   = "cert-manager"
+      }
+      image           = { repository = "${var.registry_quayio}/jetstack/cert-manager-controller" }
+      webhook         = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-webhook" } }
+      cainjector      = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-cainjector" } }
+      acmesolver      = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-acmesolver" } }
+      startupapicheck = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-startupapicheck" } }
+    },
+    var.enable_observability ? {
+      prometheus = {
+        servicemonitor = { enabled = true }
+      }
+    } : {}
+  ))]
 
-  depends_on = [kubernetes_namespace_v1.cert-manager]
+  depends_on = [
+    kubernetes_namespace_v1.cert-manager,
+    helm_release.kube_prometheus_stack,
+  ]
 }
 
 resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
