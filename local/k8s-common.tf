@@ -32,6 +32,7 @@ module "k8s_local" {
   }
 
   enable_istio_injection = var.ingress_controller == "istio_gateway"
+  enable_observability   = var.enable_observability
   helm_cnpg_version      = var.helm_cnpg_version
   db_username            = local.local_db_username
   db_password            = random_password.local_postgres_password.result
