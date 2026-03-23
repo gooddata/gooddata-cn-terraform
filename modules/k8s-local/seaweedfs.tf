@@ -67,7 +67,13 @@ resource "helm_release" "seaweedfs" {
         # Default -volume.max is 8 which is quickly exhausted when
         # multiple buckets/collections are in use.  Raise it so
         # SeaweedFS can allocate volumes for every collection.
-        extraArgs = ["-volume.max=30"]
+        #
+        # Raise garbageThreshold (default 0.3) so the continuous vacuum
+        # loop only compacts volumes with significant garbage.  The
+        # quiver-cache health-check writes/deletes a small file every
+        # ~60 s, creating tombstones that otherwise trigger compaction
+        # on every vacuum pass across all volumes.
+        extraArgs = ["-volume.max=24", "-master.garbageThreshold=0.5"]
 
         s3 = {
           enabled    = true
@@ -86,7 +92,12 @@ resource "helm_release" "seaweedfs" {
 
         resources = {
           requests = {
+            cpu    = "100m"
             memory = "256Mi"
+          }
+          limits = {
+            cpu    = "500m"
+            memory = "512Mi"
           }
         }
       }
