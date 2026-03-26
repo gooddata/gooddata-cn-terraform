@@ -340,6 +340,18 @@ resource "helm_release" "grafana" {
           ]
         }
       }
+      sidecar = {
+        dashboards = {
+          enabled          = true
+          label            = "grafana_dashboard"
+          labelValue       = "1"
+          folderAnnotation = "grafana_folder"
+          provider = {
+            allowUiUpdates            = true
+            foldersFromFilesStructure = true
+          }
+        }
+      }
       ingress = {
         enabled          = !local.use_istio_gateway
         ingressClassName = local.resolved_ingress_class_name
