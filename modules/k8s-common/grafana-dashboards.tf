@@ -1,15 +1,3 @@
-locals {
-  # Substitute placeholder UIDs in dashboard JSON with the actual datasource UIDs
-  # provisioned by Terraform (see observability.tf datasources block).
-  _gd_cn_health_json = replace(
-    replace(
-      file("${path.module}/dashboards/gooddata-cn-overall-health.json"),
-      "GDMIMIR", "prometheus"
-    ),
-    "GDLOKI", "loki"
-  )
-}
-
 resource "kubernetes_config_map_v1" "grafana_dashboard_gooddata_cn_overall_health" {
   count = var.enable_observability ? 1 : 0
 
@@ -25,7 +13,7 @@ resource "kubernetes_config_map_v1" "grafana_dashboard_gooddata_cn_overall_healt
   }
 
   data = {
-    "gooddata-cn-overall-health.json" = local._gd_cn_health_json
+    "gooddata-cn-overall-health.json" = file("${path.module}/dashboards/gooddata-cn-overall-health.json")
   }
 
   depends_on = [helm_release.grafana]

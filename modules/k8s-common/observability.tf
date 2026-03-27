@@ -60,6 +60,8 @@ resource "helm_release" "kube_prometheus_stack" {
     })
   ]
 
+  skip_crds = true
+
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
@@ -310,6 +312,14 @@ resource "helm_release" "grafana" {
               uid       = "prometheus"
               url       = "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090"
               access    = "proxy"
+              isDefault = false
+            },
+            {
+              name      = "Mimir"
+              type      = "prometheus"
+              uid       = "GDMIMIR"
+              url       = "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090"
+              access    = "proxy"
               isDefault = true
             },
             {
@@ -318,6 +328,14 @@ resource "helm_release" "grafana" {
               uid    = "loki"
               url    = "http://loki.observability.svc.cluster.local:3100"
               access = "proxy"
+            },
+            {
+              name      = "GD Loki"
+              type      = "loki"
+              uid       = "GDLOKI"
+              url       = "http://loki.observability.svc.cluster.local:3100"
+              access    = "proxy"
+              isDefault = true
             },
             {
               name   = "Tempo"
@@ -330,13 +348,13 @@ resource "helm_release" "grafana" {
                   enabled = true
                 }
                 tracesToLogsV2 = {
-                  datasourceUid = "loki"
+                  datasourceUid = "GDLOKI"
                 }
                 streamingEnabled = {
                   search = false
                 }
               }
-            }
+            },
           ]
         }
       }

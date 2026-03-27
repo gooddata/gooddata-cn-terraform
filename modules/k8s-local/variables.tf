@@ -21,6 +21,12 @@ variable "enable_observability" {
   default     = false
 }
 
+variable "prometheus_crds_ready" {
+  description = "Name of the prometheus-operator-crds helm release. When non-empty, CNPG operator PodMonitor is enabled. Used as a dependency hint to ensure CRDs exist before CNPG applies them."
+  type        = string
+  default     = ""
+}
+
 variable "helm_cnpg_version" {
   description = "Version of the CloudNativePG Helm chart to deploy."
   type        = string

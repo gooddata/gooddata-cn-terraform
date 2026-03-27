@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Single-pane-of-glass overview. Open this first during any incident.\n\nGoodData CN Service Reference:\n  tiger-*          All GoodData CN services use this prefix (e.g. tiger-gateway = API Gateway)\n  Calcique         Analytics Engine \u2014 computes dashboard & report queries\n  Result Cache     Stores computed results to avoid re-running identical queries\n  SQL Executor     Runs queries against your external data sources\n  Pulsar           Internal message queue for background job processing\n  Export Builder   Renders PDF/PNG exports using headless Chrome\n  Hikari           Database connection pool \u2014 number of open DB connections per service",
+  "description": "Single-pane-of-glass overview. Open this first during any incident.\n\nGoodData CN Service Reference:\n  tiger-*          All GoodData CN services use this prefix (e.g. tiger-gateway = API Gateway)\n  Calcique         Analytics Engine — computes dashboard & report queries\n  Result Cache     Stores computed results to avoid re-running identical queries\n  SQL Executor     Runs queries against your external data sources\n  Pulsar           Internal message queue for background job processing\n  Export Builder   Renders PDF/PNG exports using headless Chrome\n  Hikari           Database connection pool — number of open DB connections per service",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -43,15 +43,15 @@
       },
       "id": 92,
       "panels": [],
-      "title": "1 \u2014 Cluster & Service Health",
+      "title": "1 — Cluster & Service Health",
       "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Ratio of Ready nodes. Any value < 1.0 = node(s) NotReady \u2014 pods may be evicted or unschedulable.",
+      "description": "Ratio of Ready nodes. Any value < 1.0 = node(s) NotReady — pods may be evicted or unschedulable.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -111,9 +111,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(kube_node_status_condition{cluster_name=\"$cluster\", condition=\"Ready\", status=\"true\"}) / count(kube_node_info{cluster_name=\"$cluster\"})",
+          "expr": "sum(kube_node_status_condition{cluster_name=~\"$cluster\", condition=\"Ready\", status=\"true\"}) / count(kube_node_info{cluster_name=~\"$cluster\"})",
           "instant": true,
           "legendFormat": "Nodes Ready",
           "refId": "A"
@@ -125,7 +125,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Ratio of ready replicas across all GoodData CN deployments.",
       "fieldConfig": {
@@ -187,9 +187,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(kube_deployment_status_replicas_ready{cluster_name=\"$cluster\", namespace=~\"$ns\"}) / sum(kube_deployment_status_replicas{cluster_name=\"$cluster\", namespace=~\"$ns\"})",
+          "expr": "sum(kube_deployment_status_replicas_ready{cluster_name=~\"$cluster\", namespace=~\"$ns\"}) / sum(kube_deployment_status_replicas{cluster_name=~\"$cluster\", namespace=~\"$ns\"})",
           "instant": true,
           "legendFormat": "Ready",
           "refId": "A"
@@ -201,9 +201,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Ready vs desired replica counts for all Deployments and StatefulSets in the selected namespace, plus Pulsar message broker components (brokers, bookies, ZooKeeper) from pulsar-related namespaces.\n\nSTATUS COLUMN GUIDE\n  \ud83d\udfe2 100%        -- all replicas running and ready\n  \ud83d\udd34 0%          -- no replicas running; this service is completely down\n  partial %      -- service degraded, some replicas unavailable (investigate immediately)\n  Scaled down    -- Desired = 0; the service was intentionally stopped, not an error\n  Stuck Pending  -- pods have been waiting to be scheduled for more than 2 minutes; usually means nodes are full or a taint/toleration mismatch\n\nSorted by Status ascending so partially-ready and down services appear at the top.",
+      "description": "Ready vs desired replica counts for all Deployments and StatefulSets in the selected namespace, plus Pulsar message broker components (brokers, bookies, ZooKeeper) from pulsar-related namespaces.\n\nSTATUS COLUMN GUIDE\n  🟢 100%        -- all replicas running and ready\n  🔴 0%          -- no replicas running; this service is completely down\n  partial %      -- service degraded, some replicas unavailable (investigate immediately)\n  Scaled down    -- Desired = 0; the service was intentionally stopped, not an error\n  Stuck Pending  -- pods have been waiting to be scheduled for more than 2 minutes; usually means nodes are full or a taint/toleration mismatch\n\nSorted by Status ascending so partially-ready and down services appear at the top.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -289,7 +289,7 @@
                       "from": 0.99,
                       "result": {
                         "index": 0,
-                        "text": "\ud83d\udfe2 100%"
+                        "text": "🟢 100%"
                       },
                       "to": 1.001
                     },
@@ -300,7 +300,7 @@
                       "from": -0.001,
                       "result": {
                         "index": 1,
-                        "text": "\ud83d\udd34 0%"
+                        "text": "🔴 0%"
                       },
                       "to": 0.009
                     },
@@ -311,7 +311,7 @@
                       "match": "nan",
                       "result": {
                         "index": 2,
-                        "text": "\u26ab Scaled down"
+                        "text": "⚫ Scaled down"
                       }
                     },
                     "type": "special"
@@ -384,7 +384,7 @@
               },
               {
                 "id": "noValue",
-                "value": "\u2014"
+                "value": "—"
               }
             ]
           },
@@ -412,7 +412,7 @@
               },
               {
                 "id": "noValue",
-                "value": "\u2014"
+                "value": "—"
               },
               {
                 "id": "thresholds",
@@ -476,9 +476,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "kube_deployment_status_replicas_ready{cluster_name=\"$cluster\", namespace=~\"$ns|$pulsar_ns\"}\nor\nlabel_replace(kube_statefulset_status_replicas_ready{cluster_name=\"$cluster\", namespace=~\"$ns|$pulsar_ns\"}, \"deployment\", \"$1\", \"statefulset\", \"(.*)\")",
+          "expr": "kube_deployment_status_replicas_ready{cluster_name=~\"$cluster\", namespace=~\"$ns|$pulsar_ns\"}\nor\nlabel_replace(kube_statefulset_status_replicas_ready{cluster_name=~\"$cluster\", namespace=~\"$ns|$pulsar_ns\"}, \"deployment\", \"$1\", \"statefulset\", \"(.*)\")",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -486,9 +486,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "kube_deployment_status_replicas{cluster_name=\"$cluster\", namespace=~\"$ns|$pulsar_ns\"}\nor\nlabel_replace(kube_statefulset_status_replicas{cluster_name=\"$cluster\", namespace=~\"$ns|$pulsar_ns\"}, \"deployment\", \"$1\", \"statefulset\", \"(.*)\")",
+          "expr": "kube_deployment_status_replicas{cluster_name=~\"$cluster\", namespace=~\"$ns|$pulsar_ns\"}\nor\nlabel_replace(kube_statefulset_status_replicas{cluster_name=~\"$cluster\", namespace=~\"$ns|$pulsar_ns\"}, \"deployment\", \"$1\", \"statefulset\", \"(.*)\")",
           "format": "table",
           "instant": true,
           "refId": "B"
@@ -496,9 +496,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by (namespace, deployment) (\n  label_replace(\n    kube_pod_start_time{cluster_name=\"$cluster\", namespace=~\"$ns|$pulsar_ns\"} * 1000,\n    \"deployment\", \"$1\", \"pod\", \"^(.*)-[a-z0-9]+-[a-z0-9]+$\"\n  )\n)",
+          "expr": "max by (namespace, deployment) (\n  label_replace(\n    kube_pod_start_time{cluster_name=~\"$cluster\", namespace=~\"$ns|$pulsar_ns\"} * 1000,\n    \"deployment\", \"$1\", \"pod\", \"^(.*)-[a-z0-9]+-[a-z0-9]+$\"\n  )\n)",
           "format": "table",
           "instant": true,
           "refId": "C"
@@ -506,9 +506,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "count by (namespace, deployment) (\n  label_replace(\n    kube_pod_status_phase{cluster_name=\"$cluster\", namespace=~\"$ns|$pulsar_ns\", phase=\"Pending\"} == 1\n    and on(namespace, pod)\n    (time() - kube_pod_created{cluster_name=\"$cluster\", namespace=~\"$ns|$pulsar_ns\"} > 120),\n    \"deployment\", \"$1\", \"pod\", \"^(.*)-[a-z0-9]+-[a-z0-9]+$\"\n  )\n)",
+          "expr": "count by (namespace, deployment) (\n  label_replace(\n    kube_pod_status_phase{cluster_name=~\"$cluster\", namespace=~\"$ns|$pulsar_ns\", phase=\"Pending\"} == 1\n    and on(namespace, pod)\n    (time() - kube_pod_created{cluster_name=~\"$cluster\", namespace=~\"$ns|$pulsar_ns\"} > 120),\n    \"deployment\", \"$1\", \"pod\", \"^(.*)-[a-z0-9]+-[a-z0-9]+$\"\n  )\n)",
           "format": "table",
           "instant": true,
           "refId": "D"
@@ -634,7 +634,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -695,9 +695,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(nginx_ingress_controller_requests{cluster_name=\"$cluster\", exported_namespace=~\"$ns\", exported_service=~\"tiger-.*\", status=~\"5..\"}[$__rate_interval])) / sum(rate(nginx_ingress_controller_requests{cluster_name=\"$cluster\", exported_namespace=~\"$ns\", exported_service=~\"tiger-.*\"}[$__rate_interval])) * 100",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\", container=\"gateway-api-gw\", http_response_status_code=~\"5[0-9]{2}\"}[$__rate_interval]))\n/ sum(rate(http_server_request_duration_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\", container=\"gateway-api-gw\"}[$__rate_interval]))\n* 100\nor vector(0)",
           "instant": true,
           "legendFormat": "5xx %",
           "refId": "A"
@@ -709,9 +709,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Containers whose last termination was OOMKilled. Sticky metric \u2014 see OOM Kill History in Resources section for time-windowed events.",
+      "description": "Containers in OOMKilled state at the end of the selected time range. Set the range end to “now” to see the current count.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -765,9 +765,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(kube_pod_container_status_last_terminated_reason{cluster_name=\"$cluster\", namespace=~\"$ns\", reason=\"OOMKilled\"}) OR vector(0)",
+          "expr": "sum(kube_pod_container_status_last_terminated_reason{cluster_name=~\"$cluster\", namespace=~\"$ns\", reason=\"OOMKilled\"}) or vector(0)",
           "instant": true,
           "legendFormat": "OOM Killed",
           "refId": "A"
@@ -779,7 +779,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Image tag of the running metadata-api container. This commit SHA identifies the exact GoodData CN build deployed in this namespace.",
       "fieldConfig": {
@@ -831,9 +831,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "label_replace(\n  max by (image) (\n    kube_pod_container_info{\n      cluster_name=\"$cluster\",\n      namespace=~\"$ns\",\n      container=~\".*metadata-api.*\"\n    }\n  ),\n  \"image_tag\", \"$1\", \"image\", \".*:(.*)\"\n)",
+          "expr": "label_replace(\n  max by (image) (\n    kube_pod_container_info{\n      cluster_name=~\"$cluster\",\n      namespace=~\"$ns\",\n      container=~\".*metadata-api.*\"\n    }\n  ),\n  \"image_tag\", \"$1\", \"image\", \".*:(.*)\"\n)",
           "instant": true,
           "legendFormat": "Version: {{image_tag}}",
           "refId": "A"
@@ -845,9 +845,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Start time of the most recently launched pod in this namespace \u2014 a reliable proxy for the last Helm deployment timestamp.",
+      "description": "Start time of the most recently launched pod in this namespace — a reliable proxy for the last Helm deployment timestamp.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -897,9 +897,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(kube_pod_start_time{\n  cluster_name=\"$cluster\",\n  namespace=~\"$ns\"\n}) * 1000",
+          "expr": "max(kube_pod_start_time{\n  cluster_name=~\"$cluster\",\n  namespace=~\"$ns\"\n}) * 1000",
           "instant": true,
           "legendFormat": "Last deployed",
           "refId": "A"
@@ -918,13 +918,13 @@
       },
       "id": 20,
       "panels": [],
-      "title": "2 \u2014 API Traffic & Errors",
+      "title": "2 — API Traffic & Errors",
       "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1013,22 +1013,23 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (upstream_host, status_class) (\n  label_replace(\n    label_replace(\n      label_replace(\n        rate(forward_call_response_status_count_total{\n          cluster_name=\"$cluster\", namespace=~\"$ns\", container=\"gateway-api-gw\"\n        }[1m]),\n        \"status_class\", \"2xx-3xx\", \"upstream_status\", \"[23]..\"\n      ),\n      \"status_class\", \"4xx\", \"upstream_status\", \"4..\"\n    ),\n    \"status_class\", \"5xx\", \"upstream_status\", \"5..\"\n  )\n)",
+          "expr": "sum by (upstream_host, status_class) (\n  label_replace(\n    label_replace(\n      label_replace(\n        rate(forward_call_response_status_count_total{\n          cluster_name=~\"$cluster\", namespace=~\"$ns\", container=\"gateway-api-gw\"\n        }[1m]),\n        \"status_class\", \"2xx-3xx\", \"upstream_status\", \"[23]..\"\n      ),\n      \"status_class\", \"4xx\", \"upstream_status\", \"4..\"\n    ),\n    \"status_class\", \"5xx\", \"upstream_status\", \"5..\"\n  )\n)",
           "legendFormat": "{{upstream_host}} {{status_class}}",
           "refId": "A"
         }
       ],
       "title": "API Request Rate by Upstream Service",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Request rate through the API Gateway broken down by upstream service and HTTP status class.\n\nUses forward_call_response_status_count_total which provides per-upstream-host granularity (upstream_host label). This metric may not be available in all GoodData.CN versions.\n\nMIGRATION NOTE: In GoodData.CN ≥ 3.58 the equivalent OTel metric is http_server_request_duration_seconds_count with labels http_route (upstream route) and http_response_status_code. If this panel shows no data, switch to that metric."
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "HOW TO READ THIS CHART\n\u2022 X-axis = time\n\u2022 Y-axis = how long the API took to respond, in milliseconds (lower = faster)\n\u2022 Color = how many requests landed at that response speed. Brighter/warmer = more requests at that latency.\n\nHEALTHY PATTERN\nNearly all activity clusters in the lower rows (< 500 ms). Short bright spikes to 1\u20132 s are normal when users run heavy or complex reports.\n\nWARNING SIGNS TO WATCH FOR\n\u25b2 A warm band that drifts upward over time\n   \u2192 A backend service is gradually getting slower.\n\n\u25b2 A sudden bright streak near the top (5 s or higher)\n   \u2192 A service may be stalled, restarting, or hitting a hard timeout.\n\n\u25b2 The entire chart lights up at once (wide bright band)\n   \u2192 A traffic spike or a slowdown affecting all services simultaneously.\n\nNOTE: This chart combines all upstream services. To find which specific service is responsible, check the 'API Request Rate by Upstream Service' panel to the left \u2014 look for the service with rising 5xx counts or matching request timing.",
+      "description": "HOW TO READ THIS CHART\n• X-axis = time\n• Y-axis = how long the API took to respond, in milliseconds (lower = faster)\n• Color = how many requests landed at that response speed. Brighter/warmer = more requests at that latency.\n\nHEALTHY PATTERN\nNearly all activity clusters in the lower rows (< 500 ms). Short bright spikes to 1–2 s are normal when users run heavy or complex reports.\n\nWARNING SIGNS TO WATCH FOR\n▲ A warm band that drifts upward over time\n   → A backend service is gradually getting slower.\n\n▲ A sudden bright streak near the top (5 s or higher)\n   → A service may be stalled, restarting, or hitting a hard timeout.\n\n▲ The entire chart lights up at once (wide bright band)\n   → A traffic spike or a slowdown affecting all services simultaneously.\n\nNOTE: This chart combines all upstream services. To find which specific service is responsible, check the 'API Request Rate by Upstream Service' panel to the left — look for the service with rising 5xx counts or matching request timing.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1086,7 +1087,7 @@
           "axisPlacement": "left",
           "decimals": 0,
           "reverse": false,
-          "unit": "ms"
+          "unit": "s"
         }
       },
       "pluginVersion": "12.4.1",
@@ -1094,21 +1095,21 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (le) (\n  increase(forward_call_duration_ms_bucket{\n    cluster_name=\"$cluster\",\n    namespace=~\"$ns\",\n    container=\"gateway-api-gw\"\n  }[$__rate_interval])\n)",
+          "expr": "sum by (le) (\n  increase(http_server_request_duration_seconds_bucket{\n    cluster_name=~\"$cluster\",\n    namespace=~\"$ns\",\n    container=\"gateway-api-gw\"\n  }[$__rate_interval])\n)",
           "format": "heatmap",
           "legendFormat": "{{le}}",
           "refId": "A"
         }
       ],
-      "title": "API Latency Distribution \u2014 all upstream services",
+      "title": "API Latency Distribution — all upstream services",
       "type": "heatmap"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "One chart showing error signals from every major component. Any line that rises and stays non-zero needs investigation. Use it as a first triage step: identify which component is affected, then scroll to the matching section below for the root cause.\n\nWHAT EACH LINE MEANS\n\nCalcique errors/s\n  The analytics engine failed to compute a query. Users will see a computation-failed or report-could-not-be-loaded error in the UI. A small transient spike during a first-time or complex report load can be normal. A sustained rate means something is consistently broken.\n  Next step: Section 4c -- check Calcique Compute Latency and MAQL Phase Duration for overload, or SQL Executor duration if external data is involved.\n\nExport failures/s\n  A scheduled or on-demand export (PDF, Excel, CSV, PNG) failed to complete. The user receives an error notification instead of their file.\n  Next step: Section 4d -- check Export Failure Rate by format to identify which export type is affected. For visual/PDF failures also check the Browser Pool panel.\n\nPulsar exceptions/s\n  The internal message queue encountered an error. Pulsar handles background jobs (exports, scheduled emails, cache invalidation). Exceptions here can delay or silently drop background tasks without immediately showing up as user-facing errors.\n  Next step: Section 4a -- check the Pulsar Unacknowledged Message Backlog. A growing backlog alongside exceptions means consumers are falling behind.\n\nPod restart rate\n  One or more service pods crashed and restarted. A single restart after a deployment is normal. A continuous non-zero rate means a service is stuck in a crash loop and requests to it may be failing intermittently.\n  Next step: Section 3 OOM Kills and Pod Restarts table -- find which container is restarting and whether it was OOM-killed (memory limit too low) or crashed for another reason. Check Section 5 logs for the crash cause.",
       "fieldConfig": {
@@ -1259,36 +1260,36 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(calcique_compute_errors_total{cluster_name=\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "expr": "sum(rate(calcique_compute_errors_total{cluster_name=~\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval]))",
           "legendFormat": "Calcique errors/s",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(export_duration_seconds_count{cluster_name=\"$cluster\", namespace=~\"$ns\", IS_SUCCESS=\"false\"}[$__rate_interval]))",
+          "expr": "sum(rate(export_duration_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\", IS_SUCCESS=\"false\"}[$__rate_interval]))",
           "legendFormat": "Export failures/s",
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(pulsar_message_exception_total{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) > 0",
+          "expr": "sum(rate(pulsar_message_exception_total{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) > 0",
           "legendFormat": "Pulsar exceptions/s",
           "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(kube_pod_container_status_restarts_total{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "expr": "sum(rate(kube_pod_container_status_restarts_total{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
           "legendFormat": "Pod restart rate",
           "refId": "D"
         }
@@ -1306,13 +1307,13 @@
       },
       "id": 30,
       "panels": [],
-      "title": "3 \u2014 Service Memory & CPU",
+      "title": "3 — Service Memory & CPU",
       "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Memory currently consumed by each container (working set bytes = heap + stack + OS page cache in active use). Sorted by % Requests descending so the most memory-hungry containers appear first.\n\n% Requests -- how close the container is to its Kubernetes memory request. Above 90% means it is close to its scheduled allocation; node pressure may cause pod eviction.\n% Limits -- how close the container is to its hard memory limit. Reaching 100% triggers an OOM Kill: Kubernetes forcibly restarts the container with no warning.\n\nLast = current value. Avg and Max are computed over the selected time window.",
       "fieldConfig": {
@@ -1518,9 +1519,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by (container) (\n  container_memory_working_set_bytes{\n    cluster_name=\"$cluster\", namespace=~\"$ns\"\n  }\n)",
+          "expr": "max by (container) (\n  container_memory_working_set_bytes{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\"\n  }\n)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -1529,9 +1530,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "avg_over_time(\n  max by (container) (\n    container_memory_working_set_bytes{\n      cluster_name=\"$cluster\", namespace=~\"$ns\"\n    }\n  )[$__range:5m]\n)",
+          "expr": "avg_over_time(\n  max by (container) (\n    container_memory_working_set_bytes{\n      cluster_name=~\"$cluster\", namespace=~\"$ns\"\n    }\n  )[$__range:5m]\n)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -1540,9 +1541,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max_over_time(\n  max by (container) (\n    container_memory_working_set_bytes{\n      cluster_name=\"$cluster\", namespace=~\"$ns\"\n    }\n  )[$__range:5m]\n)",
+          "expr": "max_over_time(\n  max by (container) (\n    container_memory_working_set_bytes{\n      cluster_name=~\"$cluster\", namespace=~\"$ns\"\n    }\n  )[$__range:5m]\n)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -1551,9 +1552,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "100 * max by (container) (\n  container_memory_working_set_bytes{\n    cluster_name=\"$cluster\", namespace=~\"$ns\"\n  }\n) / on(container) group_left() max by (container) (\n  kube_pod_container_resource_requests{\n    cluster_name=\"$cluster\", namespace=~\"$ns\",\n    resource=\"memory\", unit=\"byte\"\n  }\n)",
+          "expr": "100 * max by (container) (\n  container_memory_working_set_bytes{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\"\n  }\n) / on(container) group_left() max by (container) (\n  kube_pod_container_resource_requests{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\",\n    resource=\"memory\", unit=\"byte\"\n  }\n)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -1562,16 +1563,16 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "100 * max by (container) (\n  container_memory_working_set_bytes{\n    cluster_name=\"$cluster\", namespace=~\"$ns\"\n  }\n) / on(container) group_left() max by (container) (\n  kube_pod_container_resource_limits{\n    cluster_name=\"$cluster\", namespace=~\"$ns\",\n    resource=\"memory\", unit=\"byte\"\n  }\n)",
+          "expr": "100 * max by (container) (\n  container_memory_working_set_bytes{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\"\n  }\n) / on(container) group_left() max by (container) (\n  kube_pod_container_resource_limits{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\",\n    resource=\"memory\", unit=\"byte\"\n  }\n)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
           "refId": "E"
         }
       ],
-      "title": "Container Memory Usage \u2014 Last \u00b7 Avg \u00b7 Max \u00b7 % Requests \u00b7 % Limits",
+      "title": "Container Memory Usage — Last · Avg · Max · % Requests · % Limits",
       "transformations": [
         {
           "id": "merge",
@@ -1661,7 +1662,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Peak CPU per service (max across replicas, not avg). Catches a single saturated pod masked by averaging.",
       "fieldConfig": {
@@ -1751,10 +1752,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "100 * max by (container) (\n  rate(container_cpu_usage_seconds_total{\n    cluster_name=\"${cluster}\",\n    namespace=~\"${ns}\"\n  }[$__rate_interval])\n)\n/ on (container) group_left() max by (container) (\n  kube_pod_container_resource_requests{\n    cluster_name=\"${cluster}\",\n    namespace=~\"${ns}\",\n    resource=\"cpu\",\n    unit=\"core\"\n  }\n)",
+          "expr": "100 * max by (container) (\n  rate(container_cpu_usage_seconds_total{\n    cluster_name=~\"$cluster\",\n    namespace=~\"${ns}\"\n  }[$__rate_interval])\n)\n/ on (container) group_left() max by (container) (\n  kube_pod_container_resource_requests{\n    cluster_name=~\"$cluster\",\n    namespace=~\"${ns}\",\n    resource=\"cpu\",\n    unit=\"core\"\n  }\n)",
           "legendFormat": "{{container}}",
           "range": true,
           "refId": "A"
@@ -1766,7 +1767,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Peak CPU per service (max across replicas, not avg). Catches a single saturated pod masked by averaging.",
       "fieldConfig": {
@@ -1857,10 +1858,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "max(\n    increase(container_cpu_cfs_throttled_periods_total{cluster_name=\"$cluster\", image!=\"\", container!=\"POD\", namespace=~\"$ns\"}[$__rate_interval])\n    /\n    increase(container_cpu_cfs_periods_total{cluster_name=\"$cluster\", image!=\"\", container!=\"POD\", namespace=~\"$ns\"}[$__rate_interval])\n) by (container) * 100",
+          "expr": "max(\n    increase(container_cpu_cfs_throttled_periods_total{cluster_name=~\"$cluster\", image!=\"\", container!=\"POD\", namespace=~\"$ns\"}[$__rate_interval])\n    /\n    increase(container_cpu_cfs_periods_total{cluster_name=~\"$cluster\", image!=\"\", container!=\"POD\", namespace=~\"$ns\"}[$__rate_interval])\n) by (container) * 100",
           "legendFormat": "{{container}}",
           "range": true,
           "refId": "A"
@@ -1872,9 +1873,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Services with restarts or OOM kills in the selected time range. Restarts = counter delta (max\u2013min over range) \u2014 catches pods that restarted and were replaced mid-window. OOM Kills = currently OOM-killed containers (sticky metric). OOM Pod = which pod was last OOM-killed.",
+      "description": "Services with restarts or OOM kills in the selected time range. Restarts = counter delta (max–min over range) — catches pods that restarted and were replaced mid-window. OOM Kills = currently OOM-killed containers (sticky metric). OOM Pod = which pod was last OOM-killed.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2054,7 +2055,7 @@
               },
               {
                 "id": "noValue",
-                "value": "\u2014"
+                "value": "—"
               }
             ]
           },
@@ -2074,7 +2075,7 @@
               },
               {
                 "id": "noValue",
-                "value": "\u2014"
+                "value": "—"
               }
             ]
           }
@@ -2105,9 +2106,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (namespace, container) (\n  max_over_time(kube_pod_container_status_restarts_total{\n    cluster_name=\"$cluster\", namespace=~\"$ns\"\n  }[$__range])\n)\n-\nsum by (namespace, container) (\n  min_over_time(kube_pod_container_status_restarts_total{\n    cluster_name=\"$cluster\", namespace=~\"$ns\"\n  }[$__range])\n)",
+          "expr": "sum by (namespace, container) (\n  max_over_time(kube_pod_container_status_restarts_total{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\"\n  }[$__range])\n)\n-\nsum by (namespace, container) (\n  min_over_time(kube_pod_container_status_restarts_total{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\"\n  }[$__range])\n)",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -2115,9 +2116,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (namespace, container) (\n  kube_pod_container_status_last_terminated_reason{\n    cluster_name=\"$cluster\", namespace=~\"$ns\", reason=\"OOMKilled\"\n  }\n)",
+          "expr": "sum by (namespace, container) (\n  kube_pod_container_status_last_terminated_reason{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\", reason=\"OOMKilled\"\n  }\n)",
           "format": "table",
           "instant": true,
           "refId": "B"
@@ -2125,9 +2126,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "count by (namespace, container) (\n  kube_pod_container_status_restarts_total{\n    cluster_name=\"$cluster\", namespace=~\"$ns\"\n  }\n)",
+          "expr": "count by (namespace, container) (\n  kube_pod_container_status_restarts_total{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\"\n  }\n)",
           "format": "table",
           "instant": true,
           "refId": "C"
@@ -2135,9 +2136,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by (namespace, container, pod) (\n  kube_pod_container_status_last_terminated_reason{\n    cluster_name=\"$cluster\", namespace=~\"$ns\", reason=\"OOMKilled\"\n  }\n)",
+          "expr": "max by (namespace, container, pod) (\n  kube_pod_container_status_last_terminated_reason{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\", reason=\"OOMKilled\"\n  }\n)",
           "format": "table",
           "instant": true,
           "refId": "D"
@@ -2145,15 +2146,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by (namespace, container) (\n  kube_pod_start_time{cluster_name=\"$cluster\", namespace=~\"$ns\"} * 1000\n  * on(namespace, pod) group_right()\n  kube_pod_container_status_last_terminated_reason{\n    cluster_name=\"$cluster\", namespace=~\"$ns\", reason=\"OOMKilled\"\n  }\n)",
+          "expr": "max by (namespace, container) (\n  kube_pod_start_time{cluster_name=~\"$cluster\", namespace=~\"$ns\"} * 1000\n  * on(namespace, pod) group_right()\n  kube_pod_container_status_last_terminated_reason{\n    cluster_name=~\"$cluster\", namespace=~\"$ns\", reason=\"OOMKilled\"\n  }\n)",
           "format": "table",
           "instant": true,
           "refId": "E"
         }
       ],
-      "title": "OOM Kills & Pod Restarts \u2014 by Service",
+      "title": "OOM Kills & Pod Restarts — by Service",
       "transformations": [
         {
           "id": "merge",
@@ -2296,13 +2297,13 @@
       },
       "id": 40,
       "panels": [],
-      "title": "4a \u2014 Background Jobs | Pulsar",
+      "title": "4a — Background Jobs | Pulsar",
       "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Message send/ack rates per service (Pulsar client metrics from GoodData service pods). Exceptions indicate connectivity or serialization problems with the Pulsar broker.",
       "fieldConfig": {
@@ -2392,27 +2393,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(pulsar_message_send_total{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) by (container)",
+          "expr": "sum(rate(pulsar_message_send_total{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) by (container)",
           "legendFormat": "send {{container}}",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(pulsar_message_ack_total{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) by (container)",
+          "expr": "sum(rate(pulsar_message_ack_total{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) by (container)",
           "legendFormat": "ack {{container}}",
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(pulsar_message_exception_total{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) by (container) > 0",
+          "expr": "sum(rate(pulsar_message_exception_total{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) by (container) > 0",
           "legendFormat": "exceptions {{container}}",
           "refId": "C"
         }
@@ -2423,9 +2424,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Unacknowledged message backlog per topic. A growing backlog means consumers are falling behind \u2014 correlate with pod restarts or Calcique/SQL Executor slowness.",
+      "description": "Unacknowledged message backlog per topic. A growing backlog means consumers are falling behind — correlate with pod restarts or Calcique/SQL Executor slowness.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2513,9 +2514,9 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(pulsar_consumer_unacked_messages{cluster_name=\"$cluster\", topic=~\"persistent://${ns}/tiger/.*\"}) by (topic)",
+          "expr": "sum(pulsar_consumer_unacked_messages{cluster_name=~\"$cluster\", topic=~\"persistent://${ns}/.*\"}) by (topic)",
           "legendFormat": "{{topic}}",
           "refId": "A"
         }
@@ -2533,13 +2534,13 @@
       },
       "id": 50,
       "panels": [],
-      "title": "4b \u2014 Internal Metadata Database | PostgreSQL",
+      "title": "4b — Internal Metadata Database | PostgreSQL",
       "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "GoodData CN stores all internal metadata (workspaces, dashboards, data source connections, user permissions, scheduled exports) in a PostgreSQL database. This is a critical dependency -- if the metadata database is unreachable, the entire GoodData CN platform stops working.\n\nDEPLOYMENT NOTE\nThis database is typically a cloud-managed service (AWS RDS, Azure Database for PostgreSQL, Google Cloud SQL) or deployed via the CloudNativePG operator on Kubernetes. GoodData CN does not manage the database -- you are responsible for backups, high availability, and disk space monitoring.\n\nWHAT IS SHOWN\n  PG active (datname ~ md.*) -- Active query connections to GoodData metadata databases. Should be stable and proportional to the number of running GoodData services.\n  Hikari active -- Java connection pool connections currently executing a query inside each GoodData service.\n  Hikari max -- The configured connection pool ceiling per service.\n\nWHAT TO WATCH FOR\n  Hikari active approaching Hikari max: Pool saturation. New requests queue waiting for a free connection, causing slow page loads and eventual API timeouts. Raise the pool ceiling or investigate slow queries holding connections open.\n  PG active connections growing unbounded: Possible connection leak or long-running queries. Check the PostgreSQL slow query log.\n  PG active connections drop suddenly to zero: The metadata database may be unreachable or has restarted. GoodData CN services will begin returning errors immediately.\n\nFor deeper PostgreSQL health (replication lag, disk usage, deadlocks, backup status) open the dedicated CloudNativePG dashboard from the GoodData CN Dashboards dropdown at the top of this page.",
       "fieldConfig": {
@@ -2629,32 +2630,32 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (datname)(pg_stat_activity_count{cluster_name=\"$cluster\", datname=~\"md.*\"})",
+          "expr": "sum by (datname)(pg_stat_activity_count{cluster_name=~\"$cluster\", datname=~\"md.*\"})",
           "legendFormat": "PG active: {{datname}}",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(hikaricp_connections_active{cluster_name=\"$cluster\", namespace=~\"$ns\"}) by (application)",
+          "expr": "sum(hikaricp_connections_active{cluster_name=~\"$cluster\", namespace=~\"$ns\"}) by (application)",
           "legendFormat": "Hikari active: {{application}}",
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(hikaricp_connections_max{cluster_name=\"$cluster\", namespace=~\"$ns\"}) by (application)",
+          "expr": "sum(hikaricp_connections_max{cluster_name=~\"$cluster\", namespace=~\"$ns\"}) by (application)",
           "legendFormat": "Hikari max: {{application}}",
           "refId": "C"
         }
       ],
-      "title": "Metadata Database \u2014 PostgreSQL & Hikari Connection Pools",
+      "title": "Metadata Database — PostgreSQL & Hikari Connection Pools",
       "type": "timeseries"
     },
     {
@@ -2667,7 +2668,7 @@
       },
       "id": 60,
       "panels": [],
-      "title": "4c \u2014 Analytics Engine | Calcique \u00b7 SQL Executor \u00b7 Result Cache",
+      "title": "4c — Analytics Engine | Calcique · SQL Executor · Result Cache",
       "type": "row"
     },
     {
@@ -2680,13 +2681,13 @@
       },
       "id": 70,
       "panels": [],
-      "title": "4d \u2014 Exports | export-controller \u00b7 tabular-exporter \u00b7 visual-exporter-service",
+      "title": "4d — Exports | export-controller · tabular-exporter · visual-exporter-service",
       "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Average and peak duration split by export type. Sustained high visual peak = headless Chromium rendering slow or browser pool exhausted. Sustained high tabular avg = external data source or large data volume issue.",
       "fieldConfig": {
@@ -2799,29 +2800,29 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (EXPORT_TYPE) (rate(export_duration_seconds_sum{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) / sum by (EXPORT_TYPE) (rate(export_duration_seconds_count{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "expr": "sum by (EXPORT_TYPE) (rate(export_duration_seconds_sum{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) / sum by (EXPORT_TYPE) (rate(export_duration_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
           "legendFormat": "avg {{EXPORT_TYPE}}",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by (EXPORT_TYPE) (export_duration_seconds_max{cluster_name=\"$cluster\", namespace=~\"$ns\"})",
+          "expr": "max by (EXPORT_TYPE) (export_duration_seconds_max{cluster_name=~\"$cluster\", namespace=~\"$ns\"})",
           "legendFormat": "peak {{EXPORT_TYPE}}",
           "refId": "B"
         }
       ],
-      "title": "Export Duration \u2014 avg & peak by type",
+      "title": "Export Duration — avg & peak by type",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Headless Chromium browser pool used for PDF/PNG visual exports. Pool exhaustion (active = total, zero idle, rising acquire time) will queue and eventually fail all visual export requests.",
       "fieldConfig": {
@@ -2958,32 +2959,32 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(export_builder_browser_pool_active_browser_count{cluster_name=\"${cluster}\", namespace=~\"${ns}\"})",
+          "expr": "sum(export_builder_browser_pool_active_browser_count{cluster_name=~\"$cluster\", namespace=~\"${ns}\"})",
           "legendFormat": "active browsers",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(export_builder_browser_pool_browser_count{cluster_name=\"${cluster}\", namespace=~\"${ns}\"}) - sum(export_builder_browser_pool_active_browser_count{cluster_name=\"${cluster}\", namespace=~\"${ns}\"})",
+          "expr": "sum(export_builder_browser_pool_browser_count{cluster_name=~\"$cluster\", namespace=~\"${ns}\"}) - sum(export_builder_browser_pool_active_browser_count{cluster_name=~\"$cluster\", namespace=~\"${ns}\"})",
           "legendFormat": "idle browsers",
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(export_builder_browser_pool_acquire_seconds_sum{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) / sum(rate(export_builder_browser_pool_acquire_seconds_count{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "expr": "sum(rate(export_builder_browser_pool_acquire_seconds_sum{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) / sum(rate(export_builder_browser_pool_acquire_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
           "legendFormat": "avg acquire time",
           "refId": "C"
         }
       ],
-      "title": "Visual Export \u2014 Browser Pool (export-builder)",
+      "title": "Visual Export — Browser Pool (export-builder)",
       "type": "timeseries"
     },
     {
@@ -2998,10 +2999,10 @@
       "panels": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "GDLOKI"
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
           },
-          "description": "Count of 5xx responses recorded in nginx ingress logs. Bars let you spot exactly when errors started. Based on the same log stream as the Logs panel below.",
+          "description": "Count of 5xx upstream responses from the API gateway (forward_call_response_status_count_total). Bars let you spot exactly when errors started.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3084,23 +3085,21 @@
           "targets": [
             {
               "datasource": {
-                "type": "loki",
-                "uid": "GDLOKI"
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
               },
-              "editorMode": "code",
-              "expr": "sum(count_over_time({container=\"controller\", namespace=\"ingress-nginx\", cluster_name=\"$cluster\"} | json | __error__ != `JSONParserErr` | upstreamStatus =~ `5..` [$__interval]))",
+              "expr": "sum(rate(http_server_request_duration_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\", container=\"gateway-api-gw\", http_response_status_code=~\"5[0-9]{2}\"}[$__interval]))",
               "legendFormat": "5xx count",
-              "queryType": "range",
               "refId": "A"
             }
           ],
-          "title": "Ingress 5xx Error Count [log-based]",
+          "title": "Gateway 5xx Error Count",
           "type": "timeseries"
         },
         {
           "datasource": {
             "type": "loki",
-            "uid": "GDLOKI"
+            "uid": "${DS_LOKI}"
           },
           "description": "Rate of ERROR and WARN log lines per container. Any sustained spike points to which service to investigate. Uses raw line filter so it works regardless of log format.",
           "fieldConfig": {
@@ -3189,11 +3188,11 @@
             {
               "datasource": {
                 "type": "loki",
-                "uid": "GDLOKI"
+                "uid": "${DS_LOKI}"
               },
               "direction": "backward",
               "editorMode": "code",
-              "expr": "sum by (container) (rate({cluster_name=\"$cluster\", namespace=~\"$ns\"} |~ `(ERROR|WARN)` [$__interval]))",
+              "expr": "sum by (container) (rate({cluster_name=~\"$cluster\", namespace=~\"$ns\"} |~ `(ERROR|WARN)` [$__interval]))",
               "legendFormat": "{{container}}",
               "queryType": "range",
               "refId": "A"
@@ -3205,9 +3204,9 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "GDLOKI"
+            "uid": "${DS_LOKI}"
           },
-          "description": "Full nginx ingress log lines for 5xx upstream responses. Click a line to expand details \u2014 includes requestID and upstream service for quick diagnosis. Check upstreamStatus, upstream addr, and requestTime fields.",
+          "description": "API gateway (api-gw) log lines for 5xx upstream responses. Click a line to expand details — includes requestID and upstream service for quick diagnosis.",
           "gridPos": {
             "h": 10,
             "w": 24,
@@ -3233,23 +3232,23 @@
             {
               "datasource": {
                 "type": "loki",
-                "uid": "GDLOKI"
+                "uid": "${DS_LOKI}"
               },
               "direction": "backward",
               "editorMode": "code",
-              "expr": "{namespace=\"ingress-nginx\", container=\"controller\", cluster_name=\"$cluster\"} | json | __error__ != `JSONParserErr` | upstreamStatus =~ `5..`",
+              "expr": "{namespace=~\"$ns\", container=\"api-gw\", cluster_name=~\"$cluster\"} | json | __error__ != `JSONParserErr` | level = `ERROR`",
               "maxLines": 200,
               "queryType": "range",
               "refId": "A"
             }
           ],
-          "title": "Ingress 5xx Logs",
+          "title": "API Gateway Error Logs",
           "type": "logs"
         },
         {
           "datasource": {
             "type": "loki",
-            "uid": "GDLOKI"
+            "uid": "${DS_LOKI}"
           },
           "description": "ERROR and WARN log lines from Calcique (compute engine) and SQL Executor. Look for timeout/connection refused/exception messages to diagnose compute failures or external DB connectivity issues.",
           "gridPos": {
@@ -3277,11 +3276,11 @@
             {
               "datasource": {
                 "type": "loki",
-                "uid": "GDLOKI"
+                "uid": "${DS_LOKI}"
               },
               "direction": "backward",
               "editorMode": "code",
-              "expr": "{cluster_name=\"$cluster\", namespace=~\"$ns\", container=~\"calcique|sql-executor\"} |~ `(ERROR|WARN)`",
+              "expr": "{cluster_name=~\"$cluster\", namespace=~\"$ns\", container=~\"calcique|sql-executor\"} |~ `(ERROR|WARN)`",
               "maxLines": 100,
               "queryType": "range",
               "refId": "A"
@@ -3293,7 +3292,7 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "GDLOKI"
+            "uid": "${DS_LOKI}"
           },
           "description": "ERROR and WARN log lines from the export pipeline. Look for browser crash, timeout, template rendering failures, or storage errors.",
           "gridPos": {
@@ -3321,11 +3320,11 @@
             {
               "datasource": {
                 "type": "loki",
-                "uid": "GDLOKI"
+                "uid": "${DS_LOKI}"
               },
               "direction": "backward",
               "editorMode": "code",
-              "expr": "{cluster_name=\"$cluster\", namespace=~\"$ns\", container=~\"export.*|tabular.*\"} |~ `(ERROR|WARN)`",
+              "expr": "{cluster_name=~\"$cluster\", namespace=~\"$ns\", container=~\"export.*|tabular.*\"} |~ `(ERROR|WARN)`",
               "maxLines": 100,
               "queryType": "range",
               "refId": "A"
@@ -3335,13 +3334,13 @@
           "type": "logs"
         }
       ],
-      "title": "5 \u2014 Error Logs | when LOKI deployed",
+      "title": "5 — Error Logs | when LOKI deployed",
       "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Requests sent to the Calcique analytics engine per minute and API-boundary errors. Rising errors with steady rate = compute failures; falling rate + rising errors = service overload. Correlate with Compute Latency panel.",
       "fieldConfig": {
@@ -3451,29 +3450,29 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(calcique_get_sql_seconds_count{cluster_name=\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval])) * 60",
+          "expr": "sum(rate(calcique_get_sql_seconds_count{cluster_name=~\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval])) * 60",
           "legendFormat": "requests/min",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(calcique_get_sql_errors_total{cluster_name=\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval])) * 60",
+          "expr": "sum(rate(calcique_get_sql_errors_total{cluster_name=~\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval])) * 60",
           "legendFormat": "API errors/min",
           "refId": "B"
         }
       ],
-      "title": "Calcique \u2014 Request Rate & API Errors",
+      "title": "Calcique — Request Rate & API Errors",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Average end-to-end compute latency per request and peak (max) seen across any single request. Sustained high peak with low avg = individual slow queries. Both rising = systemic overload. Does NOT include metadata lookup time.",
       "fieldConfig": {
@@ -3563,29 +3562,29 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(calcique_get_sql_seconds_sum{cluster_name=\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval])) / sum(rate(calcique_get_sql_seconds_count{cluster_name=\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "expr": "sum(rate(calcique_get_sql_seconds_sum{cluster_name=~\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval])) / sum(rate(calcique_get_sql_seconds_count{cluster_name=~\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval]))",
           "legendFormat": "avg latency",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(max_over_time(calcique_get_sql_seconds_max{cluster_name=\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "expr": "max(max_over_time(calcique_get_sql_seconds_max{cluster_name=~\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval]))",
           "legendFormat": "peak latency",
           "refId": "B"
         }
       ],
-      "title": "Calcique \u2014 Compute Latency (avg & peak)",
+      "title": "Calcique — Compute Latency (avg & peak)",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "SQL query duration against external customer databases. Avg/max duration and parallel query count. Sustained high parallelism with rising duration = external DB is saturated.",
       "fieldConfig": {
@@ -3698,27 +3697,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(sql_execute_seconds_sum{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) / sum(rate(sql_execute_seconds_count{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "expr": "sum(rate(sql_execute_seconds_sum{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) / sum(rate(sql_execute_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
           "legendFormat": "avg duration",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(sql_execute_seconds_max{cluster_name=\"$cluster\", namespace=~\"$ns\"})",
+          "expr": "max(sql_execute_seconds_max{cluster_name=~\"$cluster\", namespace=~\"$ns\"})",
           "legendFormat": "max duration",
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(sql_executions_parallel_count{cluster_name=\"$cluster\", namespace=~\"$ns\"})",
+          "expr": "max(sql_executions_parallel_count{cluster_name=~\"$cluster\", namespace=~\"$ns\"})",
           "legendFormat": "Parallel queries",
           "refId": "C"
         }
@@ -3729,9 +3728,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Hikari connection pools used by SQL Executor to connect to external customer databases (sqlxhikaricp_*). Pool saturation (active \u2248 max) = queries are queueing waiting for a connection.",
+      "description": "Hikari connection pools used by SQL Executor to connect to external customer databases (sqlxhikaricp_*). Pool saturation (active ≈ max) = queries are queueing waiting for a connection.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3819,27 +3818,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(sqlxhikaricp_connections_active{cluster_name=\"$cluster\", namespace=~\"$ns\"}) by (application)",
+          "expr": "sum(sqlxhikaricp_connections_active{cluster_name=~\"$cluster\", namespace=~\"$ns\"}) by (application)",
           "legendFormat": "active: {{application}}",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(sqlxhikaricp_connections_max{cluster_name=\"$cluster\", namespace=~\"$ns\"}) by (application)",
+          "expr": "sum(sqlxhikaricp_connections_max{cluster_name=~\"$cluster\", namespace=~\"$ns\"}) by (application)",
           "legendFormat": "max: {{application}}",
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(sqlxhikaricp_connections_pending{cluster_name=\"$cluster\", namespace=~\"$ns\"}) by (application)",
+          "expr": "sum(sqlxhikaricp_connections_pending{cluster_name=~\"$cluster\", namespace=~\"$ns\"}) by (application)",
           "legendFormat": "pending: {{application}}",
           "refId": "C"
         }
@@ -3850,7 +3849,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Result cache hit ratio. Low hit ratio forces full recomputation in Calcique and more SQL queries against external databases. Miss breakdown shows which action type is causing misses.",
       "fieldConfig": {
@@ -3971,18 +3970,18 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(result_cache_exec_registration_total{cluster_name=\"$cluster\", namespace=~\"$ns\", cacheHit=\"true\"}[$__rate_interval])) / sum(rate(result_cache_exec_registration_total{cluster_name=\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "expr": "sum(rate(result_cache_exec_registration_total{cluster_name=~\"$cluster\", namespace=~\"$ns\", cacheHit=\"true\"}[$__rate_interval])) / sum(rate(result_cache_exec_registration_total{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
           "legendFormat": "hit ratio",
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (action)(rate(result_cache_exec_registration_total{cluster_name=\"$cluster\", namespace=~\"$ns\", cacheHit=\"false\"}[$__rate_interval]))",
+          "expr": "sum by (action)(rate(result_cache_exec_registration_total{cluster_name=~\"$cluster\", namespace=~\"$ns\", cacheHit=\"false\"}[$__rate_interval]))",
           "legendFormat": "misses/s {{action}}",
           "refId": "B"
         }
@@ -3993,110 +3992,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
-      },
-      "description": "Peak metadata fetch time per source (workspace config, catalog objects, user permissions, etc). High metadata lookup times directly inflate end-to-end query latency before computation starts. Useful for diagnosing slow permissions or large catalogs.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 94
-      },
-      "id": 98,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "sortBy": "Max",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "12.4.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "GDMIMIR"
-          },
-          "expr": "max(max_over_time(calcique_metadata_seconds_max{cluster_name=\"$cluster\", container=\"calcique\", namespace=~\"$ns\"}[$__rate_interval])) by (source)",
-          "legendFormat": "{{source}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Calcique \u2014 Metadata Lookup Times (by source)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Rate of failed exports per second, broken down by EXPORT_TYPE (tabular/visual) and EXPORT_FORMAT (CSV/XLSX/HTML/PDF). Any non-zero value means user export requests are failing. Correlate with SQL Executor (tabular) or Browser Pool (visual) panels below.",
       "fieldConfig": {
@@ -4139,7 +4035,7 @@
             }
           },
           "mappings": [],
-          "noValue": "0 \u2014 no failures",
+          "noValue": "0 — no failures",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -4186,20 +4082,20 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (EXPORT_TYPE, EXPORT_FORMAT) (rate(export_duration_seconds_count{cluster_name=\"$cluster\", namespace=~\"$ns\", IS_SUCCESS=\"false\"}[$__rate_interval]))",
+          "expr": "sum by (EXPORT_TYPE, EXPORT_FORMAT) (rate(export_duration_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\", IS_SUCCESS=\"false\"}[$__rate_interval]))",
           "legendFormat": "{{EXPORT_TYPE}}/{{EXPORT_FORMAT}}",
           "refId": "A"
         }
       ],
-      "title": "Export Failure Rate \u2014 by type & format",
+      "title": "Export Failure Rate — by type & format",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "GDMIMIR"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Total bytes of successfully generated export files per interval, by type and format. Spikes indicate large export requests that may be causing high memory/CPU pressure on tabular-exporter or visual-exporter-service. Useful for diagnosing slow export cycles caused by data volume rather than service issues.",
       "fieldConfig": {
@@ -4289,14 +4185,14 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "GDMIMIR"
+            "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (EXPORT_TYPE, EXPORT_FORMAT) (increase(export_filesize_bytes_total{cluster_name=\"$cluster\", namespace=~\"$ns\", IS_SUCCESS=\"true\"}[$__rate_interval]))",
+          "expr": "sum by (EXPORT_TYPE, EXPORT_FORMAT) (increase(export_filesize_bytes_total{cluster_name=~\"$cluster\", namespace=~\"$ns\", IS_SUCCESS=\"true\"}[$__rate_interval]))",
           "legendFormat": "{{EXPORT_TYPE}}/{{EXPORT_FORMAT}}",
           "refId": "A"
         }
       ],
-      "title": "Export File Size \u2014 by type & format",
+      "title": "Export File Size — by type & format",
       "type": "timeseries"
     }
   ],
@@ -4311,14 +4207,47 @@
     "list": [
       {
         "current": {
+          "selected": true,
+          "text": "Mimir",
+          "value": "GDMIMIR"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Prometheus",
+        "multi": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "GD Loki",
+          "value": "GDLOKI"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Loki",
+        "multi": false,
+        "name": "DS_LOKI",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {
           "text": "iad1",
           "value": "iad1"
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "GDMIMIR"
+          "uid": "${DS_PROMETHEUS}"
         },
-        "includeAll": false,
+        "allValue": ".*",
+        "includeAll": true,
         "label": "Cluster",
         "name": "cluster",
         "options": [],
@@ -4338,14 +4267,14 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "GDMIMIR"
+          "uid": "${DS_PROMETHEUS}"
         },
         "includeAll": false,
         "label": "GoodData-CN Namespace",
         "name": "ns",
         "options": [],
         "query": {
-          "query": "label_values(kube_pod_info{cluster_name=\"$cluster\", namespace=~\".*tiger.*|.*gooddata.*|.*adhoc.*\"}, namespace)",
+          "query": "label_values(kube_pod_info{cluster_name=~\"$cluster\", namespace=~\".*tiger.*|.*gooddata.*|.*adhoc.*\"}, namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -4361,15 +4290,15 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "GDMIMIR"
+          "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(kube_pod_info{cluster_name=\"$cluster\"}, namespace)",
+        "definition": "label_values(kube_pod_info{cluster_name=~\"$cluster\"}, namespace)",
         "includeAll": false,
         "label": "Pulsar NS",
         "name": "pulsar_ns",
         "options": [],
         "query": {
-          "query": "label_values(kube_pod_info{cluster_name=\"$cluster\"}, namespace)",
+          "query": "label_values(kube_pod_info{cluster_name=~\"$cluster\"}, namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,

@@ -20,6 +20,23 @@ resource "random_password" "local_postgres_password" {
   override_special = "_%@-"
 }
 
+resource "helm_release" "prometheus_operator_crds" {
+  count = var.enable_observability ? 1 : 0
+
+  name             = "prometheus-operator-crds"
+  repository       = "https://prometheus-community.github.io/helm-charts"
+  chart            = "prometheus-operator-crds"
+  namespace        = "kube-system"
+  create_namespace = false
+  # renovate: depName=prometheus-operator-crds registryUrl=https://prometheus-community.github.io/helm-charts
+  version = var.helm_prometheus_operator_crds_version
+
+  wait    = true
+  timeout = 300
+
+  depends_on = [null_resource.k3d_cluster]
+}
+
 module "k8s_local" {
   source = "../modules/k8s-local"
 
@@ -39,6 +56,8 @@ module "k8s_local" {
   kubeconfig_path        = local.kubeconfig_path
   kubeconfig_context     = local.kubeconfig_context
   registry_dockerio      = var.registry_dockerio
+
+  prometheus_crds_ready = var.enable_observability ? helm_release.prometheus_operator_crds[0].name : ""
 
   depends_on = [
     null_resource.k3d_cluster,
