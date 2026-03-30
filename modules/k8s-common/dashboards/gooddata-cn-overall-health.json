@@ -4211,7 +4211,7 @@
           "text": "Mimir",
           "value": "GDMIMIR"
         },
-        "hide": 0,
+        "hide": 2,
         "includeAll": false,
         "label": "Prometheus",
         "multi": false,
@@ -4227,7 +4227,7 @@
           "text": "GD Loki",
           "value": "GDLOKI"
         },
-        "hide": 0,
+        "hide": 2,
         "includeAll": false,
         "label": "Loki",
         "multi": false,
