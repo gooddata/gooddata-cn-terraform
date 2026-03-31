@@ -17,7 +17,7 @@ resource "random_password" "local_postgres_password" {
   # - URL/CLI usage
   # - our bootstrap token format: "user:bootstrap:password"
   # (avoid ':' and whitespace)
-  override_special = "_%@-"
+  override_special = "_-"
 }
 
 resource "helm_release" "prometheus_operator_crds" {
