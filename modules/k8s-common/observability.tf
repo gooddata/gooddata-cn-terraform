@@ -37,6 +37,9 @@ resource "helm_release" "kube_prometheus_stack" {
 
       prometheus = {
         prometheusSpec = {
+          externalLabels = {
+            cluster_name = var.deployment_name
+          }
           retention = "2d"
           resources = {
             requests = { cpu = "100m", memory = "256Mi" }
@@ -257,6 +260,31 @@ resource "helm_release" "grafana" {
         server = {
           root_url = "https://${var.observability_hostname}/"
         }
+        snapshots = {
+          external_enabled       = true
+          external_snapshot_url  = "https://snapshots.raintank.io"
+          external_snapshot_name = "Publish to snapshots.raintank.io"
+        }
+      }
+
+      imageRenderer = {
+        enabled  = true
+        replicas = 1
+        image = {
+          tag = "latest"
+        }
+        env = {
+          HTTP_HOST           = "0.0.0.0"
+          XDG_CONFIG_HOME     = "/tmp/.chromium"
+          XDG_CACHE_HOME      = "/tmp/.chromium"
+          RENDERING_ARGS      = "--no-sandbox,--disable-gpu,--window-size=1280x758"
+          RENDERING_MODE      = "default"
+          IGNORE_HTTPS_ERRORS = "true"
+        }
+        resources = {
+          requests = { cpu = "100m", memory = "256Mi" }
+          limits   = { cpu = "500m", memory = "1Gi" }
+        }
       }
       dashboardProviders = {
         "dashboardproviders.yaml" = {
@@ -358,6 +386,9 @@ resource "helm_release" "grafana" {
         enabled          = !local.use_istio_gateway
         ingressClassName = local.resolved_ingress_class_name
         annotations = merge(
+          {
+            "nginx.ingress.kubernetes.io/proxy-body-size" = "50m"
+          },
           local.use_cert_manager ? {
             "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
           } : {},
