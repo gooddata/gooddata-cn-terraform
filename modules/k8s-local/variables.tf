@@ -69,6 +69,12 @@ variable "seaweedfs_bucket_datasource_fs" {
   default     = "gooddata-datasource-fs"
 }
 
+variable "seaweedfs_bucket_geo_collections" {
+  description = "Bucket used for Quiver geo collections."
+  type        = string
+  default     = "gooddata-geo-collections"
+}
+
 variable "seaweedfs_bucket_exports" {
   description = "Bucket used for exports."
   type        = string

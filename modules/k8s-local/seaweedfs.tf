@@ -11,6 +11,7 @@ locals {
     var.seaweedfs_bucket_exports,
     var.seaweedfs_bucket_datasource_fs,
     var.seaweedfs_bucket_quiver_cache,
+    var.seaweedfs_bucket_geo_collections,
   ]
 }
 
