@@ -165,14 +165,13 @@ resource "helm_release" "gooddata_cn" {
       observability_namespace = kubernetes_namespace_v1.observability[0].metadata[0].name
     }) : null,
     var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local.yaml.tftpl", {
-      s3_endpoint_override      = var.local_s3_endpoint_override
-      s3_region                 = var.local_s3_region
-      s3_access_key             = var.local_s3_access_key
-      s3_secret_key             = var.local_s3_secret_key
-      s3_exports_bucket         = var.local_s3_exports_bucket
-      s3_datasource_fs_bucket   = var.local_s3_datasource_fs_bucket
-      s3_quiver_cache_bucket    = var.local_s3_quiver_cache_bucket
-      s3_geo_collections_bucket = var.local_s3_geo_collections_bucket
+      s3_endpoint_override    = var.local_s3_endpoint_override
+      s3_region               = var.local_s3_region
+      s3_access_key           = var.local_s3_access_key
+      s3_secret_key           = var.local_s3_secret_key
+      s3_exports_bucket       = var.local_s3_exports_bucket
+      s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
+      s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.size_profile}.yaml.tftpl", {})
   ])

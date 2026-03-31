@@ -4,23 +4,6 @@ deployPostgresHA: false
 # Enable Quiver filesystem data source (enables uploading CSVs)
 deployQuiverDatasourceFs: true
 
-# Geo area / map features
-deployQuiverGeoCollections: true
-enableGeoArea: true
-enableNewGeoPushpin: true
-
-mapIngestionJob:
-  enabled: true
-  serviceAccount:
-    create: false
-    name: gooddata-cn
-
-# Enable Pulsar-based cache invalidation
-resultCache:
-  pulsar:
-    invalidation:
-      enabled: true
-
 # Use the created encryption secret
 metadataApi:
   encryptor:

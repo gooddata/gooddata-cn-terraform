@@ -3,11 +3,6 @@ output "seaweedfs_bucket_datasource_fs" {
   value       = var.seaweedfs_bucket_datasource_fs
 }
 
-output "seaweedfs_bucket_geo_collections" {
-  description = "SeaweedFS bucket for Quiver geo collections."
-  value       = var.seaweedfs_bucket_geo_collections
-}
-
 output "seaweedfs_bucket_exports" {
   description = "SeaweedFS bucket for exports."
   value       = var.seaweedfs_bucket_exports

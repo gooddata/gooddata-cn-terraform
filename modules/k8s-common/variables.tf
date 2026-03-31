@@ -138,12 +138,6 @@ variable "local_s3_datasource_fs_bucket" {
   default     = ""
 }
 
-variable "local_s3_geo_collections_bucket" {
-  description = "Bucket name used for Quiver geo collections in local S3-compatible storage."
-  type        = string
-  default     = ""
-}
-
 variable "local_s3_endpoint_override" {
   description = "S3 endpoint override URL (with scheme) for local S3-compatible storage."
   type        = string
