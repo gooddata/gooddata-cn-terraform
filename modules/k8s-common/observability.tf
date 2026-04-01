@@ -63,8 +63,6 @@ resource "helm_release" "kube_prometheus_stack" {
     })
   ]
 
-  skip_crds = true
-
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
