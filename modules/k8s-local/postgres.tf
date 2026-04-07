@@ -31,9 +31,9 @@ resource "helm_release" "cnpg" {
   wait_for_jobs    = true
   timeout          = 600
 
-  values = var.enable_observability ? [yamlencode({
-    monitoring = { podMonitorEnabled = true }
-  })] : []
+  values = [yamlencode({
+    monitoring = { podMonitorEnabled = false }
+  })]
 
   depends_on = [
     kubernetes_namespace_v1.cnpg,
