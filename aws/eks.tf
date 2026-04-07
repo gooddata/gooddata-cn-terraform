@@ -116,8 +116,9 @@ module "eks" {
     }
   } : {}
 
-  # Keep the entire VPC alive (especially the NAT gateway) until after EKS
-  # and all K8s workloads are destroyed, preventing destroy-time hangs.
+  # Keep the entire VPC alive (especially the NAT gateway, which pods on
+  # private subnets need for outbound connectivity during graceful shutdown)
+  # until after EKS and all K8s workloads are destroyed.
   depends_on = [module.vpc]
 }
 
