@@ -91,13 +91,13 @@ variable "eks_endpoint_public_access_cidrs" {
 variable "eks_max_nodes" {
   description = "Maximum number of EKS worker nodes"
   type        = number
-  default     = 10
+  default     = 20
 }
 
 variable "eks_node_types" {
   description = "List of EC2 instance types for EKS worker nodes"
   type        = list(string)
-  default     = ["m6i.xlarge"]
+  default     = ["m6i.xlarge", "m6i.2xlarge", "m6i.4xlarge"]
 }
 
 variable "eks_version" {
