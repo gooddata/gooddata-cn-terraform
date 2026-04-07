@@ -10,13 +10,16 @@ locals {
         image = {
           registry = var.registry_k8sio
         }
-        admissionWebhooks = {
-          patch = {
-            image = {
-              registry = var.registry_k8sio
+        admissionWebhooks = merge(
+          {
+            patch = {
+              image = {
+                registry = var.registry_k8sio
+              }
             }
-          }
-        }
+          },
+          var.cloud == "local" ? { enabled = false } : {}
+        )
         config = merge(
           {
             allow-snippet-annotations   = "true"
