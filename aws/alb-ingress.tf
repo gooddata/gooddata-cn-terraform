@@ -197,6 +197,150 @@ data "aws_lb" "gdcn" {
   }
 }
 
+# ---------------------------------------------------------------------------
+# ALB destroy-time cleanup
+# ---------------------------------------------------------------------------
+# The ALB is created out-of-band by the AWS Load Balancer Controller running
+# inside EKS (not directly by Terraform). When Terraform deletes the Ingress
+# object (in k8s_common), the controller begins an async cleanup of the real
+# AWS ALB. If Terraform races ahead and deletes the subnets, IGW, or ACM cert
+# before that cleanup finishes, the destroy hangs or errors out.
+#
+# This resource sits in the dependency chain so that on destroy it runs a
+# provisioner that blocks until the ALB is fully gone (or force-deletes it),
+# guaranteeing the VPC and ACM cert can be safely removed afterwards.
+#
+# Only created when ingress_controller = "alb" (see the count guard below).
+#
+# Destroy order enforced by the dependency graph:
+#   k8s_common  →  alb_cleanup_wait  →  k8s_aws + acm_cert  →  eks  →  vpc
+# ---------------------------------------------------------------------------
+resource "null_resource" "alb_cleanup_wait" {
+  count = local.use_alb ? 1 : 0
+
+  triggers = {
+    lb_name     = local.alb_load_balancer_name
+    aws_region  = var.aws_region
+    aws_profile = var.aws_profile_name
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      set -euo pipefail
+
+      command -v aws >/dev/null 2>&1 || { echo "ERROR: aws CLI not found"; exit 1; }
+
+      lb_name="${self.triggers.lb_name}"
+      aws_region="${self.triggers.aws_region}"
+      aws_profile="${self.triggers.aws_profile}"
+
+      # Distinguish "ALB not found" from real API errors (auth, throttling, etc.).
+      alb_exists() {
+        local output
+        output=$(aws elbv2 describe-load-balancers \
+          --names "$lb_name" \
+          --region "$aws_region" \
+          --profile "$aws_profile" 2>&1)
+        local rc=$?
+        if [ $rc -eq 0 ]; then
+          return 0
+        elif echo "$output" | grep -q "LoadBalancerNotFound"; then
+          return 1
+        else
+          echo "ERROR: Unexpected AWS API error in region '$aws_region' (profile: '$aws_profile'): $output" >&2
+          exit 1
+        fi
+      }
+
+      if ! alb_exists; then
+        echo "ALB '$lb_name' does not exist. Nothing to clean up."
+        exit 0
+      fi
+
+      # Give the LB controller up to 5 min to delete the ALB.
+      echo "Waiting up to 300s for ALB '$lb_name' to be deleted by the AWS Load Balancer Controller..."
+      end=$((SECONDS + 300))
+      while [ "$SECONDS" -lt "$end" ]; do
+        if ! alb_exists; then
+          echo "ALB '$lb_name' deleted by the controller."
+          exit 0
+        fi
+        sleep 10
+      done
+
+      # Controller didn't clean up in time — force-delete the ALB.
+      echo "WARNING: ALB '$lb_name' still exists after 300s. Force-deleting..."
+      lb_arn=$(aws elbv2 describe-load-balancers \
+        --names "$lb_name" \
+        --region "$aws_region" \
+        --profile "$aws_profile" \
+        --query 'LoadBalancers[0].LoadBalancerArn' \
+        --output text 2>&1) || {
+        echo "ERROR: Failed to fetch ALB ARN for '$lb_name' in region '$aws_region' (profile: '$aws_profile'): $lb_arn"
+        exit 1
+      }
+
+      if [ -z "$lb_arn" ] || [ "$lb_arn" = "None" ]; then
+        echo "ALB '$lb_name' was deleted between check and ARN fetch. Continuing."
+        exit 0
+      fi
+
+      delete_output=$(aws elbv2 delete-load-balancer \
+        --load-balancer-arn "$lb_arn" \
+        --region "$aws_region" \
+        --profile "$aws_profile" 2>&1) || {
+        if echo "$delete_output" | grep -q "LoadBalancerNotFound"; then
+          echo "ALB was already deleted (race condition). Continuing."
+        else
+          echo "ERROR: Failed to delete ALB '$lb_name' in region '$aws_region' (profile: '$aws_profile'): $delete_output"
+          exit 1
+        fi
+      }
+
+      # Wait for ALB ENIs to detach so VPC resources can be destroyed.
+      echo "Waiting for ALB ENIs to be released..."
+      eni_count=""
+      end_eni=$((SECONDS + 120))
+      while [ "$SECONDS" -lt "$end_eni" ]; do
+        eni_output=$(aws ec2 describe-network-interfaces \
+          --filters "Name=description,Values=*ELB app/$${lb_name}/*" \
+          --region "$aws_region" \
+          --profile "$aws_profile" \
+          --query 'length(NetworkInterfaces)' \
+          --output text 2>&1) || {
+          echo "WARNING: Failed to query ENIs in region '$aws_region' (profile: '$aws_profile'): $eni_output (will retry)"
+          sleep 5
+          continue
+        }
+        eni_count="$eni_output"
+        if [ "$eni_count" = "0" ]; then
+          echo "ALB ENIs released."
+          break
+        fi
+        echo "Still waiting for $eni_count ENI(s)..."
+        sleep 5
+      done
+
+      if [ "$eni_count" != "0" ]; then
+        echo "ERROR: $eni_count ALB ENI(s) still attached after 120s timeout for '$lb_name' in region '$aws_region' (profile: '$aws_profile')."
+        echo "VPC subnet/security-group deletion will likely fail."
+        echo "Manually detach ENIs for ELB app/$lb_name, then re-run destroy."
+        exit 1
+      fi
+    EOT
+  }
+
+  # depends_on keeps k8s_aws and the ACM cert alive during the cleanup:
+  # Terraform destroys dependents before their dependencies, so this
+  # resource's destroy provisioner runs while the LB controller and cert
+  # still exist.
+  depends_on = [
+    module.k8s_aws,
+    aws_acm_certificate.gdcn,
+  ]
+}
+
 # Query NLB DNS name directly from AWS (NLB name is deterministic)
 data "external" "ingress_nginx_lb" {
   count = local.use_ingress_nginx ? 1 : 0
