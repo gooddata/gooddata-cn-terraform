@@ -32,5 +32,5 @@ module "k8s_aws" {
   # Explicit dependency ensures destroy order: k8s_aws Helm releases (LB
   # controller, cluster-autoscaler, etc.) are removed before the EKS cluster
   # and node groups are torn down.
-  depends_on = [module.eks]
+  depends_on = [module.eks, module.vpc]
 }
