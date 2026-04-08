@@ -4208,8 +4208,8 @@
       {
         "current": {
           "selected": true,
-          "text": "Mimir",
-          "value": "GDMIMIR"
+          "text": "Prometheus",
+          "value": "prometheus"
         },
         "hide": 2,
         "includeAll": false,
@@ -4225,7 +4225,7 @@
         "current": {
           "selected": true,
           "text": "GD Loki",
-          "value": "GDLOKI"
+          "value": "loki"
         },
         "hide": 2,
         "includeAll": false,

@@ -28,7 +28,24 @@ resource "helm_release" "kube_prometheus_stack" {
       kubeStateMetrics = { enabled = true }
       nodeExporter     = { enabled = true }
 
+      # Subchart image overrides
+      "kube-state-metrics" = {
+        image = { registry = var.registry_k8sio }
+      }
+      "prometheus-node-exporter" = {
+        image = { registry = var.registry_quayio }
+      }
+
       prometheusOperator = {
+        image = { registry = var.registry_quayio }
+        prometheusConfigReloader = {
+          image = { registry = var.registry_quayio }
+        }
+        admissionWebhooks = {
+          deployment = {
+            image = { registry = var.registry_quayio }
+          }
+        }
         resources = {
           requests = { cpu = "100m", memory = "128Mi" }
           limits   = { cpu = "200m", memory = "256Mi" }
@@ -37,6 +54,7 @@ resource "helm_release" "kube_prometheus_stack" {
 
       prometheus = {
         prometheusSpec = {
+          image = { registry = var.registry_quayio }
           externalLabels = {
             cluster_name = var.deployment_name
           }
@@ -81,6 +99,7 @@ resource "helm_release" "loki" {
     yamlencode({
       deploymentMode = "SingleBinary"
       loki = {
+        image = { registry = var.registry_dockerio }
         commonConfig = {
           replication_factor = 1
         }
@@ -125,6 +144,12 @@ resource "helm_release" "loki" {
       resultsCache = { enabled = false }
       gateway      = { enabled = false }
       minio        = { enabled = false }
+      sidecar = {
+        image = { registry = var.registry_dockerio }
+      }
+      lokiCanary = {
+        image = { registry = var.registry_dockerio }
+      }
       monitoring = {
         selfMonitoring = { enabled = false }
         lokiCanary     = { enabled = false }
@@ -149,6 +174,7 @@ resource "helm_release" "promtail" {
 
   values = [
     yamlencode({
+      image = { registry = var.registry_dockerio }
       config = {
         clients = [{
           url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push"
@@ -186,6 +212,7 @@ resource "helm_release" "tempo" {
   values = [
     yamlencode({
       tempo = {
+        registry = var.registry_dockerio
         receivers = {
           jaeger = {
             protocols = {
@@ -237,6 +264,11 @@ resource "helm_release" "grafana" {
 
   values = [
     yamlencode({
+      image                   = { registry = var.registry_dockerio }
+      downloadDashboardsImage = { registry = var.registry_dockerio }
+      initChownData = {
+        image = { registry = var.registry_dockerio }
+      }
       deploymentStrategy = {
         type = "Recreate"
       }
@@ -258,18 +290,14 @@ resource "helm_release" "grafana" {
         server = {
           root_url = "https://${var.observability_hostname}/"
         }
-        snapshots = {
-          external_enabled       = true
-          external_snapshot_url  = "https://snapshots.raintank.io"
-          external_snapshot_name = "Publish to snapshots.raintank.io"
-        }
       }
 
       imageRenderer = {
         enabled  = true
         replicas = 1
         image = {
-          tag = "latest"
+          registry = var.registry_dockerio
+          tag      = "latest"
         }
         env = {
           HTTP_HOST           = "0.0.0.0"
@@ -333,9 +361,9 @@ resource "helm_release" "grafana" {
           apiVersion = 1
           datasources = [
             {
-              name      = "Mimir"
+              name      = "Prometheus"
               type      = "prometheus"
-              uid       = "GDMIMIR"
+              uid       = "prometheus"
               url       = "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090"
               access    = "proxy"
               isDefault = true
@@ -343,7 +371,7 @@ resource "helm_release" "grafana" {
             {
               name   = "Loki"
               type   = "loki"
-              uid    = "GDLOKI"
+              uid    = "loki"
               url    = "http://loki.observability.svc.cluster.local:3100"
               access = "proxy"
             },
@@ -358,7 +386,7 @@ resource "helm_release" "grafana" {
                   enabled = true
                 }
                 tracesToLogsV2 = {
-                  datasourceUid = "GDLOKI"
+                  datasourceUid = "loki"
                 }
                 streamingEnabled = {
                   search = false
@@ -369,6 +397,7 @@ resource "helm_release" "grafana" {
         }
       }
       sidecar = {
+        image = { registry = var.registry_quayio }
         dashboards = {
           enabled          = true
           label            = "grafana_dashboard"
