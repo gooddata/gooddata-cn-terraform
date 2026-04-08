@@ -114,6 +114,9 @@ resource "helm_release" "external_dns" {
   timeout       = 1800
 
   values = [yamlencode({
+    image = {
+      repository = "${var.registry_k8sio}/external-dns/external-dns"
+    }
     provider      = "aws"
     policy        = "sync"
     registry      = "txt"
