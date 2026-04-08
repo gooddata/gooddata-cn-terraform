@@ -7,7 +7,7 @@ variable "aks_api_server_authorized_ip_ranges" {
 variable "aks_max_nodes" {
   description = "Maximum number of AKS worker nodes"
   type        = number
-  default     = 10
+  default     = 20
 }
 
 variable "aks_min_nodes" {

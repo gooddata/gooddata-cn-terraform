@@ -125,6 +125,9 @@ resource "helm_release" "starrocks" {
   wait_for_jobs = true
   timeout       = 1800
 
+  depends_on = [
+    helm_release.kube_prometheus_stack,
+  ]
 }
 
 # The StarRocks Helm chart does not include PodDisruptionBudget support,
