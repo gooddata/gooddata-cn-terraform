@@ -27,6 +27,12 @@
       "installDockerBuildx": true,
       "version": "latest",
       "enableNonRootDocker": "true"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {
+      "shallow": false
     }
   },
 
