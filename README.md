@@ -123,6 +123,14 @@ To delete all resources associated with the GoodData POC, follow these steps:
 1. Run Terraform: `terraform destroy -var-file=settings.tfvars`
 
 
+## Observability
+
+Set `enable_observability = true` and `observability_hostname` in your `settings.tfvars` to deploy the observability stack (Prometheus, Loki, Tempo, and Grafana).
+
+After `terraform apply`, Grafana is available at `https://<observability_hostname>`. A GoodData-CN health dashboard is automatically provisioned and can be found under the **GoodData-CN** folder in Grafana.
+
+To import the dashboard into a standalone Grafana instance, upload `modules/k8s-common/dashboards/gooddata-cn-overall-health.json` via **Dashboards → Import** and replace the datasource UIDs (`prometheus` → your Prometheus UID, `loki` → your Loki UID).
+
 ## Need help?
 
 Reach out to your GoodData contact and they'll point you in the right direction!

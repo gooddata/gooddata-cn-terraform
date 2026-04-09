@@ -96,7 +96,7 @@ data "external" "gdcn_org_admin_user_token_hash" {
         exit 1
       fi
 
-      h="$(openssl passwd -6 -salt "$${salt}" "$${pw}")"
+      h="$(openssl passwd -6 -salt "$${salt}" -- "$${pw}")"
       printf '{"hash":"%s"}\n' "$${h}"
     EOT
   ]

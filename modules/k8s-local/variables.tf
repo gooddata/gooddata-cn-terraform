@@ -15,12 +15,6 @@ variable "enable_istio_injection" {
   default     = false
 }
 
-variable "enable_observability" {
-  description = "Whether observability (Prometheus, Grafana, etc.) is enabled. Controls PodMonitor creation for CNPG and PostgreSQL."
-  type        = bool
-  default     = false
-}
-
 variable "helm_cnpg_version" {
   description = "Version of the CloudNativePG Helm chart to deploy."
   type        = string

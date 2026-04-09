@@ -17,7 +17,7 @@ resource "random_password" "local_postgres_password" {
   # - URL/CLI usage
   # - our bootstrap token format: "user:bootstrap:password"
   # (avoid ':' and whitespace)
-  override_special = "_%@-"
+  override_special = "_-"
 }
 
 module "k8s_local" {
@@ -32,7 +32,6 @@ module "k8s_local" {
   }
 
   enable_istio_injection = var.ingress_controller == "istio_gateway"
-  enable_observability   = var.enable_observability
   helm_cnpg_version      = var.helm_cnpg_version
   db_username            = local.local_db_username
   db_password            = random_password.local_postgres_password.result
