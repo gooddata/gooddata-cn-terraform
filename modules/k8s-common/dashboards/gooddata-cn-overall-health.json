@@ -2620,7 +2620,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "max by (pod) (\n  (redis_instance_info{cluster_name=\"$cluster\", namespace=~\"$ns\", role=\"slave\"} * 1)\n  or\n  (redis_instance_info{cluster_name=\"$cluster\", namespace=~\"$ns\", role=\"master\"} * 0)\n)",
+          "expr": "max by (pod) (\n  (redis_instance_info{cluster_name=~\"$cluster|\", namespace=~\"$ns\", role=\"slave\"} * 1)\n  or\n  (redis_instance_info{cluster_name=~\"$cluster|\", namespace=~\"$ns\", role=\"master\"} * 0)\n)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -4312,35 +4312,27 @@
     "list": [
       {
         "current": {
-          "selected": true,
-          "text": "Mimir",
+          "selected": false,
+          "text": "GDMIMIR",
           "value": "GDMIMIR"
         },
-        "hide": 0,
-        "includeAll": false,
+        "hide": 2,
         "label": "Prometheus",
-        "multi": false,
         "name": "DS_PROMETHEUS",
-        "options": [],
-        "query": "prometheus",
-        "refresh": 1,
-        "type": "datasource"
+        "query": "GDMIMIR",
+        "type": "constant"
       },
       {
         "current": {
-          "selected": true,
-          "text": "GD Loki",
+          "selected": false,
+          "text": "GDLOKI",
           "value": "GDLOKI"
         },
-        "hide": 0,
-        "includeAll": false,
+        "hide": 2,
         "label": "Loki",
-        "multi": false,
         "name": "DS_LOKI",
-        "options": [],
-        "query": "loki",
-        "refresh": 1,
-        "type": "datasource"
+        "query": "GDLOKI",
+        "type": "constant"
       },
       {
         "current": {
