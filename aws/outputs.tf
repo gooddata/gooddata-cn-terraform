@@ -83,6 +83,16 @@ output "starrocks_s3_tables_bucket_arn" {
   value       = var.enable_starrocks ? aws_s3tables_table_bucket.starrocks_tables[0].arn : null
 }
 
+output "s3tables_ailake_role_arn" {
+  description = "ARN of IAM role used by AILake for S3 Tables namespace and Lake Formation operations."
+  value       = var.enable_starrocks ? aws_iam_role.s3tables_ailake[0].arn : null
+}
+
+output "glue_etl_job_assume_role_arn" {
+  description = "ARN of IAM role assumed by Glue ETL jobs for current-stack S3 Tables and Glue operations."
+  value       = var.enable_starrocks ? aws_iam_role.glue_etl_job_assume_role[0].arn : null
+}
+
 
 output "starrocks_s3_tables_access_key_id" {
   description = "Access key ID for the StarRocks S3 Tables IAM user."

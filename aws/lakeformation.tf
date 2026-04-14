@@ -313,3 +313,279 @@ resource "terraform_data" "s3tables_lakeformation_permissions" {
     aws_s3tables_namespace.starrocks_tables,
   ]
 }
+
+###
+# AILake and Glue ETL IAM roles for S3 Tables
+###
+
+data "aws_iam_policy_document" "s3tables_ailake_assume_role" {
+  count = var.enable_starrocks ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+
+    principals {
+      type        = "AWS"
+      identifiers = [aws_iam_role.starrocks_irsa[0].arn]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "s3tables_ailake_access" {
+  count = var.enable_starrocks ? 1 : 0
+
+  statement {
+    sid    = "S3TablesNamespaceManagement"
+    effect = "Allow"
+    actions = [
+      "s3tables:CreateNamespace",
+      "s3tables:DeleteNamespace",
+      "s3tables:GetNamespace",
+      "s3tables:ListNamespaces",
+    ]
+    resources = [
+      aws_s3tables_table_bucket.starrocks_tables[0].arn,
+      "${aws_s3tables_table_bucket.starrocks_tables[0].arn}/*",
+    ]
+  }
+
+  statement {
+    sid    = "S3TablesDataAccess"
+    effect = "Allow"
+    actions = [
+      "s3tables:GetTable",
+      "s3tables:ListTables",
+      "s3tables:GetTableData",
+      "s3tables:GetTableMetadataLocation",
+    ]
+    resources = [
+      aws_s3tables_table_bucket.starrocks_tables[0].arn,
+      "${aws_s3tables_table_bucket.starrocks_tables[0].arn}/*",
+    ]
+  }
+
+  statement {
+    sid    = "LakeFormationGrants"
+    effect = "Allow"
+    actions = [
+      "lakeformation:GrantPermissions",
+      "lakeformation:BatchGrantPermissions",
+      "lakeformation:RevokePermissions",
+      "lakeformation:BatchRevokePermissions",
+      "lakeformation:GetDataAccess",
+      "lakeformation:ListPermissions",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "GlueCatalogAccess"
+    effect = "Allow"
+    actions = [
+      "glue:GetCatalog",
+      "glue:GetDatabase",
+      "glue:GetDatabases",
+      "glue:GetTable",
+      "glue:GetTables",
+    ]
+    resources = [
+      "${local.glue_arn_prefix}:catalog",
+      "${local.glue_arn_prefix}:catalog/s3tablescatalog",
+      "${local.glue_arn_prefix}:catalog/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}",
+      "${local.glue_arn_prefix}:database/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*",
+      "${local.glue_arn_prefix}:table/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*/*",
+    ]
+  }
+
+  statement {
+    sid    = "ResourceTagging"
+    effect = "Allow"
+    actions = [
+      "tag:TagResources",
+      "tag:UntagResources",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role" "s3tables_ailake" {
+  count = var.enable_starrocks ? 1 : 0
+
+  name               = "${var.deployment_name}-s3tables-ailake"
+  assume_role_policy = data.aws_iam_policy_document.s3tables_ailake_assume_role[0].json
+  tags               = local.common_tags
+}
+
+resource "aws_iam_role_policy" "s3tables_ailake" {
+  count = var.enable_starrocks ? 1 : 0
+
+  name   = "${var.deployment_name}-S3TablesAILakeAccess"
+  role   = aws_iam_role.s3tables_ailake[0].id
+  policy = data.aws_iam_policy_document.s3tables_ailake_access[0].json
+}
+
+data "aws_iam_policy_document" "glue_etl_job_assume_role" {
+  count = var.enable_starrocks ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["glue.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "glue_etl_job_access" {
+  count = var.enable_starrocks ? 1 : 0
+
+  statement {
+    sid       = "LakeFormationDataAccess"
+    effect    = "Allow"
+    actions   = ["lakeformation:GetDataAccess"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "S3TablesObjectAccess"
+    effect = "Allow"
+    actions = [
+      "s3tables:GetTableBucket",
+      "s3tables:UpdateTableMetadataLocation",
+      "s3tables:PutTableData",
+      "s3tables:GetTableMetadataLocation",
+      "s3tables:GetTableData",
+    ]
+    resources = [
+      aws_s3tables_table_bucket.starrocks_tables[0].arn,
+      "${aws_s3tables_table_bucket.starrocks_tables[0].arn}/*",
+    ]
+  }
+
+  statement {
+    sid    = "S3TablesAccess"
+    effect = "Allow"
+    actions = [
+      "s3tables:GetTable",
+      "s3tables:CreateTable",
+      "s3tables:PutTableData",
+      "s3tables:GetTableData",
+      "s3tables:DeleteTable",
+      "s3tables:ListTables",
+      "s3tables:CommitTransaction",
+      "s3tables:AbortTransaction",
+    ]
+    resources = [
+      aws_s3tables_table_bucket.starrocks_tables[0].arn,
+      "${aws_s3tables_table_bucket.starrocks_tables[0].arn}/*",
+      "${aws_s3tables_table_bucket.starrocks_tables[0].arn}/table/*",
+    ]
+  }
+
+  statement {
+    sid    = "GlueCatalogTableControl"
+    effect = "Allow"
+    actions = [
+      "glue:GetCatalog",
+      "glue:GetDatabase",
+      "glue:GetDatabases",
+      "glue:GetTable",
+      "glue:GetTables",
+      "glue:CreateTable",
+      "glue:UpdateTable",
+      "glue:DeleteTable",
+      "glue:CreateDatabase",
+      "glue:UpdateDatabase",
+      "glue:GetCatalogImportStatus",
+    ]
+    resources = [
+      "${local.glue_arn_prefix}:catalog",
+      "${local.glue_arn_prefix}:catalog/s3tablescatalog",
+      "${local.glue_arn_prefix}:catalog/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}",
+      "${local.glue_arn_prefix}:database/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*",
+      "${local.glue_arn_prefix}:table/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*/*",
+    ]
+  }
+
+  statement {
+    sid    = "GlueJobControl"
+    effect = "Allow"
+    actions = [
+      "glue:GetJob",
+      "glue:GetJobRun",
+      "glue:GetJobRuns",
+      "glue:StartJobRun",
+      "glue:BatchStopJobRun",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "S3Scripts"
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:ListBucket",
+      "s3:DeleteObject",
+      "s3:GetObject",
+      "s3:GetBucketLocation",
+    ]
+    resources = concat(
+      local.gdcn_s3_bucket_arns,
+      local.gdcn_s3_object_arns,
+      [aws_s3_bucket.starrocks[0].arn, "${aws_s3_bucket.starrocks[0].arn}/*"],
+    )
+  }
+
+  statement {
+    sid    = "S3Parquets"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+    ]
+    resources = concat(
+      local.gdcn_s3_object_arns,
+      ["${aws_s3_bucket.starrocks[0].arn}/*"],
+    )
+  }
+
+  statement {
+    sid    = "DescribeLogGroups"
+    effect = "Allow"
+    actions = [
+      "logs:DescribeLogGroups",
+      "logs:DescribeLogStreams",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ManageGlueLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
+    resources = ["arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws-glue/jobs/*"]
+  }
+}
+
+resource "aws_iam_role" "glue_etl_job_assume_role" {
+  count = var.enable_starrocks ? 1 : 0
+
+  name               = "${var.deployment_name}-glue-etl-job-role"
+  assume_role_policy = data.aws_iam_policy_document.glue_etl_job_assume_role[0].json
+  tags               = local.common_tags
+}
+
+resource "aws_iam_role_policy" "glue_etl_job_assume_role" {
+  count = var.enable_starrocks ? 1 : 0
+
+  name   = "${var.deployment_name}-GlueETLJobAccess"
+  role   = aws_iam_role.glue_etl_job_assume_role[0].id
+  policy = data.aws_iam_policy_document.glue_etl_job_access[0].json
+}
