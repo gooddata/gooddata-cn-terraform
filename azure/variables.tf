@@ -25,7 +25,7 @@ variable "aks_node_vm_size" {
 variable "aks_version" {
   description = "Version of AKS to deploy."
   type        = string
-  default     = "1.34"
+  default     = "1.35"
 }
 
 variable "auth_hostname" {
