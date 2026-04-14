@@ -205,7 +205,7 @@ variable "helm_aws_lb_controller_version" {
   description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string
   # renovate: depName=aws-load-balancer-controller registryUrl=https://aws.github.io/eks-charts
-  default = "3.1.0"
+  default = "3.2.1"
 }
 
 variable "helm_cert_manager_version" {
