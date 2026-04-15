@@ -246,3 +246,9 @@ variable "starrocks_irsa_role_arn" {
 }
 
 variable "tls_mode" { type = string }
+
+variable "gdcn_helm_extra_values" {
+  description = "Additional Helm values YAML string appended to the gooddata-cn chart values. Use to override sub-chart settings not exposed as Terraform variables."
+  type        = string
+  default     = ""
+}

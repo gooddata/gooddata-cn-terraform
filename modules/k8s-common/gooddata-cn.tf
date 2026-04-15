@@ -173,13 +173,14 @@ resource "helm_release" "gooddata_cn" {
       s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
       s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
     }) : null,
-    templatefile("${path.module}/templates/gdcn-size-${var.size_profile}.yaml.tftpl", {})
+    templatefile("${path.module}/templates/gdcn-size-${var.size_profile}.yaml.tftpl", {}),
+    var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,
   ])
 
   # Wait until all resources are ready before Terraform continues
   wait          = true
   wait_for_jobs = true
-  timeout       = 1800
+  timeout       = 3600
 
   depends_on = [
     kubernetes_namespace_v1.gdcn,
@@ -189,6 +190,51 @@ resource "helm_release" "gooddata_cn" {
     kubectl_manifest.selfsigned_cluster_issuer,
     helm_release.istio_ingress_gateway,
     kubectl_manifest.istio_public_gateway,
+    helm_release.kube_prometheus_stack,
+  ]
+}
+
+# PodMonitor for Redis HA exporter sidecar.
+# The redis-ha subchart does not create a PodMonitor, so we add one
+# to scrape the redis_exporter metrics (port 9121) into Prometheus.
+resource "kubectl_manifest" "redis_ha_podmonitor" {
+  count = var.enable_observability ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "monitoring.coreos.com/v1"
+    kind       = "PodMonitor"
+    metadata = {
+      name      = "gooddata-cn-redis-ha"
+      namespace = var.gdcn_namespace
+      labels = {
+        "app.kubernetes.io/instance" = "gooddata-cn"
+        "app.kubernetes.io/name"     = "redis-ha"
+      }
+    }
+    spec = {
+      jobLabel = "gooddata-cn"
+      namespaceSelector = {
+        matchNames = [var.gdcn_namespace]
+      }
+      podMetricsEndpoints = [
+        {
+          interval      = "20s"
+          port          = "exporter-port"
+          path          = "/metrics"
+          scrapeTimeout = "10s"
+        }
+      ]
+      selector = {
+        matchLabels = {
+          app     = "redis-ha"
+          release = "gooddata-cn"
+        }
+      }
+    }
+  })
+
+  depends_on = [
+    helm_release.gooddata_cn,
     helm_release.kube_prometheus_stack,
   ]
 }

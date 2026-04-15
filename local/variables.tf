@@ -165,6 +165,13 @@ variable "helm_kube_prometheus_stack_version" {
   default = "83.4.0"
 }
 
+variable "helm_prometheus_operator_crds_version" {
+  description = "Version of the prometheus-operator-crds Helm chart. Must match the prometheus-operator version bundled in helm_kube_prometheus_stack_version."
+  type        = string
+  # renovate: depName=prometheus-operator-crds registryUrl=https://prometheus-community.github.io/helm-charts
+  default = "27.0.1"
+}
+
 variable "helm_promtail_version" {
   description = "Version of the promtail Helm chart to deploy."
   type        = string
@@ -281,4 +288,10 @@ variable "tls_mode" {
     condition     = contains(["selfsigned"], var.tls_mode)
     error_message = "tls_mode must be \"selfsigned\" for local installs."
   }
+}
+
+variable "gdcn_helm_extra_values" {
+  description = "Additional Helm values YAML string appended to the gooddata-cn chart values. Use to override sub-chart settings not exposed as Terraform variables."
+  type        = string
+  default     = ""
 }

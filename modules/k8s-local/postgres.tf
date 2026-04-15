@@ -31,6 +31,10 @@ resource "helm_release" "cnpg" {
   wait_for_jobs    = true
   timeout          = 600
 
+  values = var.enable_observability && var.prometheus_crds_ready != "" ? [yamlencode({
+    monitoring = { podMonitorEnabled = true }
+  })] : []
+
   depends_on = [
     kubernetes_namespace_v1.cnpg,
   ]
@@ -90,6 +94,10 @@ resource "kubectl_manifest" "postgres_cluster" {
           cpu    = "200m"
           memory = "256Mi"
         }
+      }
+
+      monitoring = {
+        enablePodMonitor = var.enable_observability
       }
 
       postgresql = {
