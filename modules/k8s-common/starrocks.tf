@@ -3,7 +3,7 @@
 ###
 
 resource "kubernetes_namespace_v1" "starrocks" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   metadata {
     name = local.starrocks_namespace
@@ -14,7 +14,7 @@ resource "kubernetes_namespace_v1" "starrocks" {
 }
 
 resource "random_password" "starrocks_root" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   length           = 24
   special          = true
@@ -22,7 +22,7 @@ resource "random_password" "starrocks_root" {
 }
 
 resource "kubernetes_secret_v1" "starrocks_root_password" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   metadata {
     name      = "starrocks-root-password"
@@ -39,7 +39,7 @@ resource "kubernetes_secret_v1" "starrocks_root_password" {
 }
 
 resource "random_password" "starrocks_catalog_user" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   length           = 24
   special          = true
@@ -47,7 +47,7 @@ resource "random_password" "starrocks_catalog_user" {
 }
 
 resource "kubernetes_secret_v1" "starrocks_catalog_user_password" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   metadata {
     name      = "starrocks-catalog-user-password"
@@ -64,7 +64,7 @@ resource "kubernetes_secret_v1" "starrocks_catalog_user_password" {
 }
 
 resource "kubernetes_secret_v1" "starrocks_s3_tables_credentials" {
-  count = var.enable_starrocks && var.cloud == "aws" ? 1 : 0
+  count = var.enable_ai_lake && var.cloud == "aws" ? 1 : 0
 
   metadata {
     name      = "starrocks-s3-tables-credentials"
@@ -89,7 +89,7 @@ locals {
 }
 
 resource "helm_release" "starrocks" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name       = "kube-starrocks"
   repository = "https://starrocks.github.io/starrocks-kubernetes-operator"
@@ -133,7 +133,7 @@ resource "helm_release" "starrocks" {
 # The StarRocks Helm chart does not include PodDisruptionBudget support,
 # so PDBs for FE and CN are managed separately here.
 resource "kubectl_manifest" "starrocks_pdb_fe" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "policy/v1"
@@ -158,7 +158,7 @@ resource "kubectl_manifest" "starrocks_pdb_fe" {
 }
 
 resource "kubectl_manifest" "starrocks_pdb_cn" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "policy/v1"
@@ -183,7 +183,7 @@ resource "kubectl_manifest" "starrocks_pdb_cn" {
 }
 
 resource "kubectl_manifest" "peerauth_starrocks_strict" {
-  count = var.enable_starrocks && local.use_istio_gateway ? 1 : 0
+  count = var.enable_ai_lake && local.use_istio_gateway ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "security.istio.io/v1beta1"
@@ -199,10 +199,10 @@ resource "kubectl_manifest" "peerauth_starrocks_strict" {
 }
 
 output "starrocks_catalog_username" {
-  value = var.enable_starrocks ? "gooddata" : null
+  value = var.enable_ai_lake ? "gooddata" : null
 }
 
 output "starrocks_catalog_user_password" {
-  value     = var.enable_starrocks ? random_password.starrocks_catalog_user[0].result : null
+  value     = var.enable_ai_lake ? random_password.starrocks_catalog_user[0].result : null
   sensitive = true
 }

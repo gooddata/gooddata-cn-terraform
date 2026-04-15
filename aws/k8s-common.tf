@@ -79,14 +79,14 @@ module "k8s_common" {
   enable_observability   = var.enable_observability
   observability_hostname = var.observability_hostname
 
-  enable_starrocks                      = var.enable_starrocks
-  starrocks_s3_bucket_id                = var.enable_starrocks ? aws_s3_bucket.starrocks[0].id : ""
-  starrocks_irsa_role_arn               = var.enable_starrocks ? aws_iam_role.starrocks_irsa[0].arn : ""
+  enable_ai_lake                        = var.enable_ai_lake
+  starrocks_s3_bucket_id                = var.enable_ai_lake ? aws_s3_bucket.starrocks[0].id : ""
+  starrocks_irsa_role_arn               = var.enable_ai_lake ? aws_iam_role.starrocks_irsa[0].arn : ""
   starrocks_fe_image_tag                = var.starrocks_fe_image_tag
   starrocks_cn_image_tag                = var.starrocks_cn_image_tag
-  starrocks_s3_tables_access_key_id     = var.enable_starrocks ? aws_iam_access_key.starrocks_s3_tables[0].id : ""
-  starrocks_s3_tables_secret_access_key = var.enable_starrocks ? aws_iam_access_key.starrocks_s3_tables[0].secret : ""
-  starrocks_s3_tables_bucket_name       = var.enable_starrocks ? aws_s3tables_table_bucket.starrocks_tables[0].name : ""
+  starrocks_s3_tables_access_key_id     = var.enable_ai_lake ? aws_iam_access_key.starrocks_s3_tables[0].id : ""
+  starrocks_s3_tables_secret_access_key = var.enable_ai_lake ? aws_iam_access_key.starrocks_s3_tables[0].secret : ""
+  starrocks_s3_tables_bucket_name       = var.enable_ai_lake ? aws_s3tables_table_bucket.starrocks_tables[0].name : ""
   aws_account_id                        = data.aws_caller_identity.current.account_id
 
   db_hostname = module.rds_postgresql.db_instance_address

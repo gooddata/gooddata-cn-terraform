@@ -39,7 +39,7 @@ resource "aws_iam_role_policy_attachment" "gdcn_irsa_s3_access" {
 ###
 
 data "aws_iam_policy_document" "starrocks_irsa_assume_role" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   statement {
     effect  = "Allow"
@@ -61,7 +61,7 @@ data "aws_iam_policy_document" "starrocks_irsa_assume_role" {
 }
 
 resource "aws_iam_role" "starrocks_irsa" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name               = "${var.deployment_name}-starrocks-irsa"
   assume_role_policy = data.aws_iam_policy_document.starrocks_irsa_assume_role[0].json
@@ -70,7 +70,7 @@ resource "aws_iam_role" "starrocks_irsa" {
 }
 
 resource "aws_iam_role_policy_attachment" "starrocks_irsa_s3_access" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   role       = aws_iam_role.starrocks_irsa[0].name
   policy_arn = aws_iam_policy.starrocks_s3_access[0].arn

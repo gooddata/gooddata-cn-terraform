@@ -122,7 +122,7 @@ gdcn_orgs = [
 # StarRocks (optional)
 ###
 # Uncomment to deploy StarRocks
-# enable_starrocks = true
+# enable_ai_lake = true
 
 ###
 # EKS & infrastructure sizing (optional)
