@@ -124,7 +124,7 @@ variable "enable_observability" {
   default     = false
 }
 
-variable "enable_starrocks" {
+variable "enable_ai_lake" {
   description = "Enable StarRocks deployment for analytics query acceleration"
   type        = bool
   default     = false

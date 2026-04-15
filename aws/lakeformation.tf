@@ -19,14 +19,14 @@ data "aws_iam_session_context" "current" {
 # local-exec provisioners below can call lakeformation grant-permissions on the
 # S3 Tables federated catalog (which requires admin status).
 resource "aws_lakeformation_data_lake_settings" "this" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   admins                                = [data.aws_iam_session_context.current.issuer_arn]
   allow_full_table_external_data_access = true
 }
 
 data "aws_iam_policy_document" "s3tables_assume_role" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   version = "2012-10-17"
 
@@ -54,7 +54,7 @@ data "aws_iam_policy_document" "s3tables_assume_role" {
 }
 
 data "aws_iam_policy_document" "s3tables_data_access" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   version = "2012-10-17"
 
@@ -122,7 +122,7 @@ data "aws_iam_policy_document" "s3tables_data_access" {
 }
 
 resource "aws_iam_role" "s3tables_lakeformation" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name               = "${var.deployment_name}-LakeFormationS3TablesServiceRole"
   assume_role_policy = data.aws_iam_policy_document.s3tables_assume_role[0].json
@@ -134,7 +134,7 @@ resource "aws_iam_role" "s3tables_lakeformation" {
 }
 
 resource "aws_iam_role_policy" "s3tables_lakeformation" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name_prefix = "S3TablesPolicyForLakeFormation-"
   role        = aws_iam_role.s3tables_lakeformation[0].id
@@ -142,7 +142,7 @@ resource "aws_iam_role_policy" "s3tables_lakeformation" {
 }
 
 resource "aws_lakeformation_resource" "s3tables" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   arn                    = "arn:aws:s3tables:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/*"
   role_arn               = aws_iam_role.s3tables_lakeformation[0].arn
@@ -161,7 +161,7 @@ resource "aws_lakeformation_resource" "s3tables" {
 # Workaround: Use AWS CLI to create Glue catalog until Terraform supports it
 # https://github.com/hashicorp/terraform-provider-aws/issues/43340
 resource "terraform_data" "s3tables_glue_catalog" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   # Store values needed for destroy-time provisioner
   input = {
@@ -213,7 +213,7 @@ resource "terraform_data" "s3tables_glue_catalog" {
 # hashicorp/terraform-provider-aws#46233 adds catalog_resource_id support to
 # aws_lakeformation_permissions.
 resource "terraform_data" "s3tables_lakeformation_permissions" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   input = {
     principal_arn       = aws_iam_user.starrocks_s3_tables[0].arn
@@ -319,7 +319,7 @@ resource "terraform_data" "s3tables_lakeformation_permissions" {
 ###
 
 data "aws_iam_policy_document" "s3tables_ailake_assume_role" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   statement {
     effect  = "Allow"
@@ -333,7 +333,7 @@ data "aws_iam_policy_document" "s3tables_ailake_assume_role" {
 }
 
 data "aws_iam_policy_document" "s3tables_ailake_access" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   statement {
     sid    = "S3TablesNamespaceManagement"
@@ -410,7 +410,7 @@ data "aws_iam_policy_document" "s3tables_ailake_access" {
 }
 
 resource "aws_iam_role" "s3tables_ailake" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name               = "${var.deployment_name}-s3tables-ailake"
   assume_role_policy = data.aws_iam_policy_document.s3tables_ailake_assume_role[0].json
@@ -418,7 +418,7 @@ resource "aws_iam_role" "s3tables_ailake" {
 }
 
 resource "aws_iam_role_policy" "s3tables_ailake" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name   = "${var.deployment_name}-S3TablesAILakeAccess"
   role   = aws_iam_role.s3tables_ailake[0].id
@@ -426,7 +426,7 @@ resource "aws_iam_role_policy" "s3tables_ailake" {
 }
 
 data "aws_iam_policy_document" "glue_etl_job_assume_role" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   statement {
     effect  = "Allow"
@@ -440,7 +440,7 @@ data "aws_iam_policy_document" "glue_etl_job_assume_role" {
 }
 
 data "aws_iam_policy_document" "glue_etl_job_access" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   statement {
     sid       = "LakeFormationDataAccess"
@@ -575,7 +575,7 @@ data "aws_iam_policy_document" "glue_etl_job_access" {
 }
 
 resource "aws_iam_role" "glue_etl_job_assume_role" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name               = "${var.deployment_name}-glue-etl-job-role"
   assume_role_policy = data.aws_iam_policy_document.glue_etl_job_assume_role[0].json
@@ -583,7 +583,7 @@ resource "aws_iam_role" "glue_etl_job_assume_role" {
 }
 
 resource "aws_iam_role_policy" "glue_etl_job_assume_role" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name   = "${var.deployment_name}-GlueETLJobAccess"
   role   = aws_iam_role.glue_etl_job_assume_role[0].id

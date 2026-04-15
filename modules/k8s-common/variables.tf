@@ -58,8 +58,8 @@ variable "enable_observability" {
   default     = false
 }
 
-variable "enable_starrocks" {
-  description = "Enable StarRocks deployment for analytics query acceleration (AWS only)"
+variable "enable_ai_lake" {
+  description = "Enable AI lake services for analytics query acceleration (AWS only)"
   type        = bool
   default     = false
 }

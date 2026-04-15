@@ -85,7 +85,7 @@ locals {
 ###
 
 resource "aws_s3_bucket" "starrocks" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   bucket        = substr("${local.bucket_prefix}-starrocks", 0, 63)
   force_destroy = true
@@ -94,7 +94,7 @@ resource "aws_s3_bucket" "starrocks" {
 }
 
 resource "aws_s3_bucket_public_access_block" "starrocks" {
-  count  = var.enable_starrocks ? 1 : 0
+  count  = var.enable_ai_lake ? 1 : 0
   bucket = aws_s3_bucket.starrocks[0].id
 
   block_public_acls       = true
@@ -104,7 +104,7 @@ resource "aws_s3_bucket_public_access_block" "starrocks" {
 }
 
 resource "aws_s3_bucket_versioning" "starrocks" {
-  count  = var.enable_starrocks ? 1 : 0
+  count  = var.enable_ai_lake ? 1 : 0
   bucket = aws_s3_bucket.starrocks[0].id
 
   versioning_configuration {
@@ -113,7 +113,7 @@ resource "aws_s3_bucket_versioning" "starrocks" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "starrocks" {
-  count  = var.enable_starrocks ? 1 : 0
+  count  = var.enable_ai_lake ? 1 : 0
   bucket = aws_s3_bucket.starrocks[0].id
 
   rule {
@@ -124,7 +124,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "starrocks" {
 }
 
 resource "aws_iam_policy" "starrocks_s3_access" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name        = "${var.deployment_name}-StarRocksS3Access"
   description = "Allow StarRocks workloads to use S3 bucket for shared-data storage."
@@ -163,12 +163,12 @@ resource "aws_iam_policy" "starrocks_s3_access" {
 ###
 
 resource "aws_s3tables_table_bucket" "starrocks_tables" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
   name  = "${var.deployment_name}-starrocks-tables"
 }
 
 resource "aws_s3tables_namespace" "starrocks_tables" {
-  count            = var.enable_starrocks ? 1 : 0
+  count            = var.enable_ai_lake ? 1 : 0
   namespace        = replace(var.deployment_name, "-", "_")
   table_bucket_arn = aws_s3tables_table_bucket.starrocks_tables[0].arn
 }
@@ -177,7 +177,7 @@ resource "aws_s3tables_namespace" "starrocks_tables" {
 # itself. StarRocks creates tables at runtime that Terraform doesn't manage, so
 # the namespace would otherwise fail to delete with "not empty" error.
 resource "terraform_data" "starrocks_tables_cleanup" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   input = {
     table_bucket_arn = aws_s3tables_table_bucket.starrocks_tables[0].arn
@@ -216,13 +216,13 @@ resource "terraform_data" "starrocks_tables_cleanup" {
 # secret-access-key properties. IRSA (STS) cannot be used because the Glue REST
 # endpoint requires SigV4 signing with static credentials, not role-based auth.
 resource "aws_iam_user" "starrocks_s3_tables" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
   name  = "${var.deployment_name}-starrocks-s3-tables"
   tags  = local.common_tags
 }
 
 resource "aws_iam_policy" "starrocks_s3_tables_access" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
 
   name        = "${var.deployment_name}-StarRocksS3TablesAccess"
   description = "Allow StarRocks Iceberg REST catalog to access S3 Table Bucket via Glue and Lake Formation."
@@ -265,13 +265,13 @@ resource "aws_iam_policy" "starrocks_s3_tables_access" {
 }
 
 resource "aws_iam_user_policy_attachment" "starrocks_s3_tables" {
-  count      = var.enable_starrocks ? 1 : 0
+  count      = var.enable_ai_lake ? 1 : 0
   user       = aws_iam_user.starrocks_s3_tables[0].name
   policy_arn = aws_iam_policy.starrocks_s3_tables_access[0].arn
 }
 
 resource "aws_iam_access_key" "starrocks_s3_tables" {
-  count = var.enable_starrocks ? 1 : 0
+  count = var.enable_ai_lake ? 1 : 0
   user  = aws_iam_user.starrocks_s3_tables[0].name
 }
 
