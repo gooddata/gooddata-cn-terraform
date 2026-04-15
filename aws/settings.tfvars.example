@@ -119,9 +119,9 @@ gdcn_orgs = [
 # dockerhub_access_token = "myaccesstoken"
 
 ###
-# StarRocks (optional)
+# AI lake and Starrocks (optional)
 ###
-# Uncomment to deploy StarRocks
+# Uncomment to deploy AI lake and StarRocks
 # enable_ai_lake = true
 
 ###
