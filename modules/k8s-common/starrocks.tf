@@ -38,6 +38,27 @@ resource "kubernetes_secret_v1" "starrocks_root_password" {
   }
 }
 
+resource "kubernetes_secret_v1" "starrocks_admin_password" {
+  count = var.enable_ai_lake ? 1 : 0
+
+  metadata {
+    name      = "starrocks-admin-password"
+    namespace = var.gdcn_namespace
+  }
+
+  data = {
+    STARROCKS_ADMIN_PASSWORD = random_password.starrocks_root[0].result
+  }
+
+  lifecycle {
+    ignore_changes = [data]
+  }
+
+  depends_on = [
+    kubernetes_namespace_v1.gdcn,
+  ]
+}
+
 resource "random_password" "starrocks_catalog_user" {
   count = var.enable_ai_lake ? 1 : 0
 

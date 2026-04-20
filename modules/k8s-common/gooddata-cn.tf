@@ -162,17 +162,17 @@ resource "helm_release" "gooddata_cn" {
       gdcn_irsa_role_arn         = var.gdcn_irsa_role_arn
     }) : null,
     var.cloud == "aws" && var.enable_ai_lake ? templatefile("${path.module}/templates/gdcn-ai-lake.yaml.tftpl", {
-      aws_region                           = var.aws_region
-      aws_account_id                       = var.aws_account_id
-      deployment_name                      = var.deployment_name
-      organization_ids                     = local.org_ids
+      aws_region       = var.aws_region
+      organization_ids = local.org_ids
+
       starrocks_fe_endpoint                = "kube-starrocks-fe-service.starrocks.svc.cluster.local"
-      starrocks_admin_password_secret_name = "starrocks-admin-password"
-      starrocks_admin_password_secret_key  = "STARROCKS_ADMIN_PASSWORD"
-      s3_tables_bucket_arn                 = ""
-      ailake_role_arn                      = ""
-      glue_etl_role_arn                    = ""
-      starrocks_s3_tables_iam_user_arn     = ""
+      starrocks_admin_password_secret_name = var.starrocks_admin_password_secret_name != "" ? var.starrocks_admin_password_secret_name : kubernetes_secret_v1.starrocks_admin_password[0].metadata[0].name
+      starrocks_admin_password_secret_key  = var.starrocks_admin_password_secret_key != "" ? var.starrocks_admin_password_secret_key : "STARROCKS_ADMIN_PASSWORD"
+
+      s3_tables_bucket_arn             = var.s3_tables_bucket_arn
+      ailake_role_arn                  = var.ailake_role_arn
+      glue_etl_role_arn                = var.glue_etl_role_arn
+      starrocks_s3_tables_iam_user_arn = var.starrocks_s3_tables_iam_user_arn
     }) : null,
     var.enable_observability ? templatefile("${path.module}/templates/gdcn-observability.yaml.tftpl", {
       observability_namespace = kubernetes_namespace_v1.observability[0].metadata[0].name

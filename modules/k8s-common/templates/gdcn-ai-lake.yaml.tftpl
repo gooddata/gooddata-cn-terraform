@@ -18,29 +18,38 @@ aiLake:
   infrastructure:
     extraConfig:
       override.toml: |
-        [global]
-        aws_region = "${aws_region}"
-        aws_account_id = "${aws_account_id}"
-        deployment_name = "${deployment_name}"
-        starrocks_fe_endpoint = "${starrocks_fe_endpoint}"
-        s3_tables_bucket_arn = "${s3_tables_bucket_arn}"
-        ailake_role_arn = "${ailake_role_arn}"
+%{ for org_id in organization_ids ~}
+        # StarRocks cluster for ${org_id} org
+        [compute_clusters.${org_id}]
+        name = "starrocks-${org_id}"
+        organization_id = "${org_id}"
+        host = "${starrocks_fe_endpoint}"
+        port = 9030
+        http_port = 8030
+        admin_user = "root"
+        admin_password_env = "STARROCKS_ADMIN_PASSWORD"
+
+        [[compute_clusters.${org_id}.storages]]
+        object_storage = "${org_id}"
+        iceberg_catalog = "${org_id}"
+
+        # Object storage for ${org_id} org (AWS S3 Tables)
+        [object_storage.${org_id}]
+        name = "storage-${org_id}"
+        organization_id = "${org_id}"
+        type = "s3_tables"
+        table_bucket_arn = "${s3_tables_bucket_arn}"
+        region = "${aws_region}"
         glue_etl_role_arn = "${glue_etl_role_arn}"
-        starrocks_s3_tables_iam_user_arn = "${starrocks_s3_tables_iam_user_arn}"
+        role_arn = "${ailake_role_arn}"
+        starrocks_user_arn = "${starrocks_s3_tables_iam_user_arn}"
 
-        %{ for org_id in organization_ids ~}
-        [compute_clusters."${org_id}"]
+        # Iceberg catalog for ${org_id} org (AWS S3 Tables)
+        [iceberg_catalogs.${org_id}]
+        name = "iceberg-${org_id}"
         organization_id = "${org_id}"
-        starrocks_fe_endpoint = "${starrocks_fe_endpoint}"
-        ailake_role_arn = "${ailake_role_arn}"
+        type = "s3_tables"
+        table_bucket_arn = "${s3_tables_bucket_arn}"
+        region = "${aws_region}"
 
-        [object_storage."${org_id}"]
-        organization_id = "${org_id}"
-        s3_tables_bucket_arn = "${s3_tables_bucket_arn}"
-        starrocks_s3_tables_iam_user_arn = "${starrocks_s3_tables_iam_user_arn}"
-
-        [iceberg_catalogs."${org_id}"]
-        organization_id = "${org_id}"
-        s3_tables_bucket_arn = "${s3_tables_bucket_arn}"
-        glue_etl_role_arn = "${glue_etl_role_arn}"
-        %{ endfor ~}
+%{ endfor ~}

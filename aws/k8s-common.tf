@@ -87,6 +87,12 @@ module "k8s_common" {
   starrocks_s3_tables_access_key_id     = var.enable_ai_lake ? aws_iam_access_key.starrocks_s3_tables[0].id : ""
   starrocks_s3_tables_secret_access_key = var.enable_ai_lake ? aws_iam_access_key.starrocks_s3_tables[0].secret : ""
   starrocks_s3_tables_bucket_name       = var.enable_ai_lake ? aws_s3tables_table_bucket.starrocks_tables[0].name : ""
+  s3_tables_bucket_arn                  = var.enable_ai_lake ? aws_s3tables_table_bucket.starrocks_tables[0].arn : ""
+  ailake_role_arn                       = var.enable_ai_lake ? aws_iam_role.s3tables_ailake[0].arn : ""
+  glue_etl_role_arn                     = var.enable_ai_lake ? aws_iam_role.glue_etl_job_assume_role[0].arn : ""
+  starrocks_s3_tables_iam_user_arn      = var.enable_ai_lake ? aws_iam_user.starrocks_s3_tables[0].arn : ""
+  starrocks_admin_password_secret_name  = var.enable_ai_lake ? "starrocks-admin-password" : ""
+  starrocks_admin_password_secret_key   = var.enable_ai_lake ? "STARROCKS_ADMIN_PASSWORD" : ""
   aws_account_id                        = data.aws_caller_identity.current.account_id
 
   db_hostname = module.rds_postgresql.db_instance_address
