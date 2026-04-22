@@ -115,6 +115,8 @@ module "k8s_common" {
     null_resource.alb_cleanup_wait,
     aws_iam_role_policy_attachment.gdcn_irsa_s3_access,
     aws_iam_role_policy_attachment.starrocks_irsa_s3_access,
+    aws_iam_role_policy.ai_lake_pod_identity,
+    aws_eks_pod_identity_association.ai_lake,
     terraform_data.s3tables_lakeformation_permissions,
   ]
 }
