@@ -45,13 +45,14 @@ module "rds_postgresql" {
   version = "~> 7.0"
 
   # Identifier & engine
-  identifier        = var.deployment_name
-  engine            = "postgres"
-  engine_version    = data.aws_rds_engine_version.default.version
-  family            = "postgres${split(".", data.aws_rds_engine_version.default.version)[0]}"
-  instance_class    = var.rds_instance_class
-  allocated_storage = 20
-  apply_immediately = true
+  identifier                  = var.deployment_name
+  engine                      = "postgres"
+  engine_version              = data.aws_rds_engine_version.default.version
+  family                      = "postgres${split(".", data.aws_rds_engine_version.default.version)[0]}"
+  instance_class              = var.rds_instance_class
+  allocated_storage           = 20
+  apply_immediately           = true
+  allow_major_version_upgrade = var.rds_allow_major_version_upgrade
 
   # Database name & credentials
   username                    = local.db_username
