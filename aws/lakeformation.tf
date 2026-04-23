@@ -21,7 +21,10 @@ data "aws_iam_session_context" "current" {
 resource "aws_lakeformation_data_lake_settings" "this" {
   count = var.enable_ai_lake ? 1 : 0
 
-  admins                                = [data.aws_iam_session_context.current.issuer_arn]
+  admins = [
+    data.aws_iam_session_context.current.issuer_arn,
+    aws_iam_role.s3tables_ailake[0].arn,
+  ]
   allow_full_table_external_data_access = true
 }
 
@@ -326,8 +329,11 @@ data "aws_iam_policy_document" "s3tables_ailake_assume_role" {
     actions = ["sts:AssumeRole", "sts:TagSession"]
 
     principals {
-      type        = "AWS"
-      identifiers = [aws_iam_role.starrocks_irsa[0].arn]
+      type = "AWS"
+      identifiers = [
+        aws_iam_role.starrocks_irsa[0].arn,
+        aws_iam_role.ai_lake_pod_identity[0].arn,
+      ]
     }
   }
 }

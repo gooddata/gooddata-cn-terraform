@@ -415,13 +415,13 @@ variable "size_profile" {
 variable "starrocks_cn_image_tag" {
   description = "Docker image tag for StarRocks CN nodes"
   type        = string
-  default     = "4.0.6-20260316-144911-c04d0d6"
+  default     = "4.0.6-20260331-133035-9d97473"
 }
 
 variable "starrocks_fe_image_tag" {
   description = "Docker image tag for StarRocks FE nodes"
   type        = string
-  default     = "4.0.6-20260316-144911-c04d0d6"
+  default     = "4.0.6-20260331-133035-9d97473"
 }
 
 variable "tls_mode" {

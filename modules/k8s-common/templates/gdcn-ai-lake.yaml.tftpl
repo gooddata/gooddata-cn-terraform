@@ -1,0 +1,55 @@
+deployAILake: true
+aiLake:
+  service:
+    extraEnvVars:
+      - name: STARROCKS_ADMIN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: ${starrocks_admin_password_secret_name}
+            key: ${starrocks_admin_password_secret_key}
+  worker:
+    extraEnvVars:
+      - name: STARROCKS_ADMIN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: ${starrocks_admin_password_secret_name}
+            key: ${starrocks_admin_password_secret_key}
+  infrastructureConfigPaths: ""
+  infrastructure:
+    extraConfig:
+      override.toml: |
+%{ for org_id in organization_ids ~}
+        # StarRocks cluster for ${org_id} org
+        [compute_clusters.${org_id}]
+        name = "starrocks-${org_id}"
+        organization_id = "${org_id}"
+        host = "${starrocks_fe_endpoint}"
+        port = 9030
+        http_port = 8030
+        admin_user = "root"
+        admin_password_env = "STARROCKS_ADMIN_PASSWORD"
+
+        [[compute_clusters.${org_id}.storages]]
+        object_storage = "${org_id}"
+        iceberg_catalog = "${org_id}"
+
+        # Object storage for ${org_id} org (AWS S3 Tables)
+        [object_storage.${org_id}]
+        name = "storage-${org_id}"
+        organization_id = "${org_id}"
+        type = "s3_tables"
+        table_bucket_arn = "${s3_tables_bucket_arn}"
+        region = "${aws_region}"
+        glue_etl_role_arn = "${glue_etl_role_arn}"
+        role_arn = "${ailake_role_arn}"
+        starrocks_user_arn = "${starrocks_s3_tables_iam_user_arn}"
+
+        # Iceberg catalog for ${org_id} org (AWS S3 Tables)
+        [iceberg_catalogs.${org_id}]
+        name = "iceberg-${org_id}"
+        organization_id = "${org_id}"
+        type = "s3_tables"
+        table_bucket_arn = "${s3_tables_bucket_arn}"
+        region = "${aws_region}"
+
+%{ endfor ~}

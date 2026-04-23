@@ -64,6 +64,42 @@ variable "enable_ai_lake" {
   default     = false
 }
 
+variable "s3_tables_bucket_arn" {
+  description = "ARN of the AWS S3 Tables bucket used by AI Lake."
+  type        = string
+  default     = ""
+}
+
+variable "ailake_role_arn" {
+  description = "ARN of the IAM role assumed by AI Lake for data access."
+  type        = string
+  default     = ""
+}
+
+variable "glue_etl_role_arn" {
+  description = "ARN of the IAM role used by Glue ETL jobs created for AI Lake."
+  type        = string
+  default     = ""
+}
+
+variable "starrocks_s3_tables_iam_user_arn" {
+  description = "ARN of the IAM user used by StarRocks to access AWS S3 Tables."
+  type        = string
+  default     = ""
+}
+
+variable "starrocks_admin_password_secret_name" {
+  description = "Kubernetes secret name in the GoodData.CN namespace that stores STARROCKS_ADMIN_PASSWORD."
+  type        = string
+  default     = ""
+}
+
+variable "starrocks_admin_password_secret_key" {
+  description = "Secret key used to read STARROCKS_ADMIN_PASSWORD from starrocks_admin_password_secret_name."
+  type        = string
+  default     = "STARROCKS_ADMIN_PASSWORD"
+}
+
 variable "gdcn_irsa_role_arn" {
   type    = string
   default = ""

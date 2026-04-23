@@ -76,3 +76,53 @@ resource "aws_iam_role_policy_attachment" "starrocks_irsa_s3_access" {
   policy_arn = aws_iam_policy.starrocks_s3_access[0].arn
 }
 
+###
+# IAM role for AI Lake service account (EKS Pod Identity)
+###
+
+data "aws_iam_policy_document" "ai_lake_pod_identity_assume_role" {
+  count = var.enable_ai_lake ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "ai_lake_pod_identity_access" {
+  count = var.enable_ai_lake ? 1 : 0
+
+  statement {
+    sid    = "AssumeS3TablesAilakeBucketRoles"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession",
+    ]
+    resources = [
+      aws_iam_role.s3tables_ailake[0].arn,
+    ]
+  }
+}
+
+resource "aws_iam_role" "ai_lake_pod_identity" {
+  count = var.enable_ai_lake ? 1 : 0
+
+  name               = "${var.deployment_name}-ai-lake"
+  assume_role_policy = data.aws_iam_policy_document.ai_lake_pod_identity_assume_role[0].json
+  tags               = local.common_tags
+}
+
+resource "aws_iam_role_policy" "ai_lake_pod_identity" {
+  count = var.enable_ai_lake ? 1 : 0
+
+  name   = "${var.deployment_name}-AILakePodIdentityAccess"
+  role   = aws_iam_role.ai_lake_pod_identity[0].id
+  policy = data.aws_iam_policy_document.ai_lake_pod_identity_access[0].json
+}
+
