@@ -380,6 +380,12 @@ variable "rds_deletion_protection" {
   default     = false
 }
 
+variable "rds_allow_major_version_upgrade" {
+  description = "Allow RDS engine major version upgrades when engine_version changes across major versions."
+  type        = bool
+  default     = false
+}
+
 variable "rds_instance_class" {
   description = "RDS PostgreSQL instance class"
   type        = string
