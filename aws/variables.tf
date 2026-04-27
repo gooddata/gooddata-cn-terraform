@@ -219,7 +219,7 @@ variable "helm_cluster_autoscaler_version" {
   description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
   type        = string
   # renovate: depName=cluster-autoscaler registryUrl=https://kubernetes.github.io/autoscaler
-  default = "9.56.0"
+  default = "9.57.0"
 }
 
 variable "helm_external_dns_version" {
