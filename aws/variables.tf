@@ -226,7 +226,7 @@ variable "helm_external_dns_version" {
   description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
   type        = string
   # renovate: depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
-  default = "1.20.0"
+  default = "1.21.1"
 }
 
 variable "helm_gdcn_version" {
