@@ -183,7 +183,7 @@ variable "helm_pulsar_version" {
   description = "Version of the pulsar Helm chart to deploy."
   type        = string
   # renovate: depName=pulsar registryUrl=https://pulsar.apache.org/charts
-  default = "4.5.0"
+  default = "4.6.0"
 }
 
 variable "helm_tempo_version" {
