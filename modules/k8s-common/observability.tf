@@ -366,22 +366,7 @@ resource "helm_release" "grafana" {
               uid       = "prometheus"
               url       = "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090"
               access    = "proxy"
-              isDefault = false
-            },
-            {
-              name      = "Mimir"
-              type      = "prometheus"
-              uid       = "GDMIMIR"
-              url       = "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090"
-              access    = "proxy"
               isDefault = true
-            },
-            {
-              name   = "Loki"
-              type   = "loki"
-              uid    = "loki"
-              url    = "http://loki.observability.svc.cluster.local:3100"
-              access = "proxy"
             },
             {
               name      = "GD Loki"
