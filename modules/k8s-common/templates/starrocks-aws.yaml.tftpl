@@ -31,6 +31,7 @@ starrocks:
       aws_s3_region = ${aws_region}
       aws_s3_endpoint = https://s3.${aws_region}.amazonaws.com
       aws_s3_use_aws_sdk_default_behavior = true
+      enable_udf = true
     # NOTE: This sidecarsMap block fully replaces the base template's sidecarsMap.
     # Keep common logic (wait loop, global settings, health-check) in sync
     # with starrocks-base.yaml.tftpl.
@@ -57,6 +58,27 @@ starrocks:
               sleep 5
             done
             echo "Global settings applied."
+            echo "Provisioning Presto HLL UDFs..."
+            mysql --connect-timeout=5 -h 127.0.0.1 -P 9030 -u root <<'EOUDF'
+              CREATE OR REPLACE GLOBAL FUNCTION presto_hll_cardinality(STRING)
+              RETURNS BIGINT
+              PROPERTIES (
+                "symbol" = "com.gooddata.starrocks.udf.prestohll.PrestoHllCardinality",
+                "type" = "StarrocksJar",
+                "file" = "file:///opt/starrocks/lib/udf/presto-hll-udf.jar"
+              );
+              CREATE OR REPLACE GLOBAL AGGREGATE FUNCTION presto_hll_merge(STRING)
+              RETURNS STRING
+              PROPERTIES (
+                "analytic" = "false",
+                "symbol" = "com.gooddata.starrocks.udf.prestohll.PrestoHllMerge",
+                "type" = "StarrocksJar",
+                "file" = "file:///opt/starrocks/lib/udf/presto-hll-udf.jar"
+              );
+              GRANT USAGE ON GLOBAL FUNCTION presto_hll_cardinality(STRING) TO ROLE public;
+              GRANT USAGE ON GLOBAL FUNCTION presto_hll_merge(STRING) TO ROLE public;
+            EOUDF
+            echo "Presto HLL UDFs provisioned."
 %{ if s3_tables_credentials_secret != "" ~}
             echo "Configuring Iceberg catalog and catalog user..."
             mysql --connect-timeout=5 -h 127.0.0.1 -P 9030 -u root <<EOSQL
