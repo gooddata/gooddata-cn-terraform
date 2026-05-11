@@ -9,6 +9,25 @@ operator:
 
 starrocks:
   starrocksFESpec:
+    # Bind FE pods to the dedicated StarRocks managed node group
+    # (matches taint workload=starrocks:NoSchedule applied in aws/eks.tf).
+    nodeSelector:
+      workload: ${node_workload_label}
+    tolerations:
+      - key: workload
+        operator: Equal
+        value: ${node_workload_label}
+        effect: NoSchedule
+    # Forbid FE from co-scheduling with CN pods so heavy CN workload
+    # does not contend with FE resources. Cluster autoscaler will provision
+    # an extra node if no FE-only node is available.
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.starrocks.ownerreference/name: kube-starrocks-cn
     # NOTE: This config block fully replaces the base template's config.
     # Keep common settings in sync with starrocks-base.yaml.tftpl.
     config: |
@@ -155,3 +174,14 @@ starrocks:
           limits:
             cpu: 100m
             memory: 256Mi
+
+  starrocksCnSpec:
+    # Bind CN pods to the dedicated StarRocks managed node group
+    # (matches taint workload=starrocks:NoSchedule applied in aws/eks.tf).
+    nodeSelector:
+      workload: ${node_workload_label}
+    tolerations:
+      - key: workload
+        operator: Equal
+        value: ${node_workload_label}
+        effect: NoSchedule

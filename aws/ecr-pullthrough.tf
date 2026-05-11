@@ -61,6 +61,16 @@ resource "aws_secretsmanager_secret_version" "dockerio" {
   })
 }
 
+# ECR validates the secret ARN against an eventually-consistent index; the
+# secret can be visible to GetSecretValue while CreatePullThroughCacheRule
+# still returns SecretNotFoundException. Wait for propagation.
+resource "time_sleep" "dockerio_secret_propagation" {
+  count = var.enable_image_cache ? 1 : 0
+
+  depends_on      = [aws_secretsmanager_secret_version.dockerio]
+  create_duration = "30s"
+}
+
 resource "aws_ecr_pull_through_cache_rule" "dockerio" {
   count = var.enable_image_cache ? 1 : 0
 
@@ -68,7 +78,7 @@ resource "aws_ecr_pull_through_cache_rule" "dockerio" {
   upstream_registry_url = local.upstream_registry_dockerio
   credential_arn        = aws_secretsmanager_secret.dockerio[0].arn
 
-  depends_on = [aws_secretsmanager_secret.dockerio]
+  depends_on = [time_sleep.dockerio_secret_propagation]
 }
 resource "aws_ecr_pull_through_cache_rule" "quayio" {
   count = var.enable_image_cache ? 1 : 0
