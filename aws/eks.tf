@@ -43,6 +43,22 @@ locals {
 
   eks_node_types           = coalesce(var.eks_node_types, local.eks_node_type_presets[var.size_profile])
   eks_starrocks_node_types = coalesce(var.eks_starrocks_node_types, local.eks_starrocks_node_type_presets[coalesce(var.starrocks_size_profile, var.size_profile)])
+
+  # Per-AZ node groups for StarRocks so the cluster autoscaler can scale
+  # nodes in the AZ where the FE/CN EBS volume lives (EBS is zonal).
+  starrocks_ng_pairs = {
+    for pair in setproduct(local.eks_starrocks_node_types, local.private_subnet_ids) :
+    "sr-${replace(pair[0], ".", "-")}-${substr(data.aws_subnet.private[pair[1]].availability_zone, length(data.aws_subnet.private[pair[1]].availability_zone) - 1, 1)}" => {
+      instance_type = pair[0]
+      subnet_id     = pair[1]
+      az            = data.aws_subnet.private[pair[1]].availability_zone
+    }
+  }
+}
+
+data "aws_subnet" "private" {
+  for_each = toset(local.private_subnet_ids)
+  id       = each.value
 }
 
 module "eks" {
@@ -114,12 +130,13 @@ module "eks" {
       }
     },
     {
-      for instance_type in local.eks_starrocks_node_types : "sr-${replace(instance_type, ".", "-")}" => {
+      for ng_name, ng in local.starrocks_ng_pairs : ng_name => {
         create                     = true
         ami_type                   = "BOTTLEROCKET_x86_64"
-        instance_types             = [instance_type]
+        instance_types             = [ng.instance_type]
         use_custom_launch_template = false
         disk_size                  = 100
+        subnet_ids                 = [ng.subnet_id]
 
         labels = {
           workload = "starrocks"
@@ -135,10 +152,11 @@ module "eks" {
         tags = merge(
           local.common_tags,
           {
-            "k8s.io/cluster-autoscaler/enabled"                      = "true"
-            "k8s.io/cluster-autoscaler/${var.deployment_name}"       = "owned"
-            "k8s.io/cluster-autoscaler/node-template/label/workload" = "starrocks"
-            "k8s.io/cluster-autoscaler/node-template/taint/workload" = "starrocks:NoSchedule"
+            "k8s.io/cluster-autoscaler/enabled"                                       = "true"
+            "k8s.io/cluster-autoscaler/${var.deployment_name}"                        = "owned"
+            "k8s.io/cluster-autoscaler/node-template/label/workload"                  = "starrocks"
+            "k8s.io/cluster-autoscaler/node-template/label/topology.kubernetes.io/zone" = ng.az
+            "k8s.io/cluster-autoscaler/node-template/taint/workload"                  = "starrocks:NoSchedule"
           }
         )
 
