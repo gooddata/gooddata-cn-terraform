@@ -18,6 +18,16 @@ starrocks:
         operator: Equal
         value: ${node_workload_label}
         effect: NoSchedule
+    # Forbid FE from co-scheduling with CN pods so heavy CN workload
+    # does not contend with FE resources. Cluster autoscaler will provision
+    # an extra node if no FE-only node is available.
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.starrocks.ownerreference/name: kube-starrocks-cn
     # NOTE: This config block fully replaces the base template's config.
     # Keep common settings in sync with starrocks-base.yaml.tftpl.
     config: |
