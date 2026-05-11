@@ -127,7 +127,7 @@ resource "helm_release" "starrocks" {
       enable_observability      = var.enable_observability
       starrocks_fe_image_tag    = var.starrocks_fe_image_tag
       starrocks_cn_image_tag    = var.starrocks_cn_image_tag
-      fe_java_heap_mb           = local.starrocks_fe_heap_mb[var.size_profile]
+      fe_java_heap_mb           = local.starrocks_fe_heap_mb[var.starrocks_size_profile]
     }),
     var.cloud == "aws" ? templatefile("${path.module}/templates/starrocks-aws.yaml.tftpl", {
       starrocks_irsa_role_arn      = var.starrocks_irsa_role_arn
@@ -138,10 +138,10 @@ resource "helm_release" "starrocks" {
       aws_account_id               = var.aws_account_id
       starrocks_s3_bucket_id       = var.starrocks_s3_bucket_id
       s3_tables_bucket_name        = var.starrocks_s3_tables_bucket_name
-      fe_java_heap_mb              = local.starrocks_fe_heap_mb[var.size_profile]
+      fe_java_heap_mb              = local.starrocks_fe_heap_mb[var.starrocks_size_profile]
       node_workload_label          = "starrocks"
     }) : null,
-    templatefile("${path.module}/templates/starrocks-size-${var.size_profile}.yaml.tftpl", {}),
+    templatefile("${path.module}/templates/starrocks-size-${var.starrocks_size_profile}.yaml.tftpl", {}),
   ])
 
   wait          = true

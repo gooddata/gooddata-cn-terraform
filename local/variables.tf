@@ -280,6 +280,16 @@ variable "size_profile" {
   }
 }
 
+variable "starrocks_size_profile" {
+  description = "Sizing profile for StarRocks (FE/CN pods). If null, falls back to size_profile."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.starrocks_size_profile == null || contains(["dev"], coalesce(var.starrocks_size_profile, "dev"))
+    error_message = "starrocks_size_profile must be \"dev\" for local installs."
+  }
+}
+
 variable "tls_mode" {
   description = "TLS management mode for local installs. Use selfsigned for cert-manager self-signed certificates."
   type        = string

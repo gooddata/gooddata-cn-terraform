@@ -44,14 +44,15 @@ module "k8s_common" {
     external   = external
   }
 
-  deployment_name    = var.deployment_name
-  gdcn_namespace     = var.gdcn_namespace
-  gdcn_license_key   = var.gdcn_license_key
-  gdcn_orgs          = var.gdcn_orgs
-  size_profile       = var.size_profile
-  cloud              = "aws"
-  ingress_controller = var.ingress_controller
-  gdcn_irsa_role_arn = aws_iam_role.gdcn_irsa.arn
+  deployment_name        = var.deployment_name
+  gdcn_namespace         = var.gdcn_namespace
+  gdcn_license_key       = var.gdcn_license_key
+  gdcn_orgs              = var.gdcn_orgs
+  size_profile           = var.size_profile
+  starrocks_size_profile = coalesce(var.starrocks_size_profile, var.size_profile)
+  cloud                  = "aws"
+  ingress_controller     = var.ingress_controller
+  gdcn_irsa_role_arn     = aws_iam_role.gdcn_irsa.arn
 
   letsencrypt_email       = var.letsencrypt_email
   auth_hostname           = var.auth_hostname

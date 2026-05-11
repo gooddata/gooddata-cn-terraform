@@ -244,6 +244,8 @@ variable "starrocks_s3_bucket_id" {
 
 variable "size_profile" { type = string }
 
+variable "starrocks_size_profile" { type = string }
+
 variable "starrocks_cn_image_tag" {
   type    = string
   default = "4.0.6"

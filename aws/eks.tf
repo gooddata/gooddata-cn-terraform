@@ -42,7 +42,7 @@ locals {
   }
 
   eks_node_types           = coalesce(var.eks_node_types, local.eks_node_type_presets[var.size_profile])
-  eks_starrocks_node_types = coalesce(var.eks_starrocks_node_types, local.eks_starrocks_node_type_presets[var.size_profile])
+  eks_starrocks_node_types = coalesce(var.eks_starrocks_node_types, local.eks_starrocks_node_type_presets[coalesce(var.starrocks_size_profile, var.size_profile)])
 }
 
 module "eks" {

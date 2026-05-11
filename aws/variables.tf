@@ -101,7 +101,7 @@ variable "eks_node_types" {
 }
 
 variable "eks_starrocks_node_types" {
-  description = "EC2 instance types for the StarRocks-dedicated EKS pool (taint workload=starrocks). If null, defaults to a preset chosen by size_profile."
+  description = "EC2 instance types for the StarRocks-dedicated EKS pool (taint workload=starrocks). If null, defaults to a preset chosen by starrocks_size_profile (or size_profile when unset)."
   type        = list(string)
   default     = null
 }
@@ -421,6 +421,16 @@ variable "size_profile" {
   validation {
     condition     = contains(["dev", "prod-small", "prod-xl"], var.size_profile)
     error_message = "size_profile must be one of: dev, prod-small, prod-xl."
+  }
+}
+
+variable "starrocks_size_profile" {
+  description = "Sizing profile for StarRocks (FE/CN pods and dedicated EKS node pool). If null, falls back to size_profile."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.starrocks_size_profile == null || contains(["dev", "prod-small", "prod-xl"], coalesce(var.starrocks_size_profile, "dev"))
+    error_message = "starrocks_size_profile must be one of: dev, prod-small, prod-xl."
   }
 }
 
