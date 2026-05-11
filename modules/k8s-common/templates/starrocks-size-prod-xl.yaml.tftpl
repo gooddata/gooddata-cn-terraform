@@ -1,4 +1,6 @@
-# StarRocks sizing: prod-small (HA FE, production resources)
+# StarRocks sizing: prod-xl (HA FE, XL production CN)
+# Modeled on pdx1/ringcentral with spill bumped to 500Gi per Bohuslav (Slack 2026-05-11):
+# 3 CN nodes x 32 vCPU x 256 GiB memory, ~0.5 TB spill and data cache.
 
 starrocks:
   starrocksFESpec:
@@ -6,10 +8,10 @@ starrocks:
     resources:
       requests:
         cpu: 1500m
-        memory: 6Gi
+        memory: 12Gi
       limits:
         cpu: 2
-        memory: 8Gi
+        memory: 16Gi
     storageSpec:
       name: fe
       storageSize: 10Gi
@@ -23,17 +25,17 @@ starrocks:
             app.starrocks.ownerreference/name: kube-starrocks-fe
 
   starrocksCnSpec:
-    replicas: 1
+    replicas: 3
     resources:
       requests:
-        cpu: 3
-        memory: 24Gi
+        cpu: 24
+        memory: 192Gi
       limits:
-        cpu: 4
-        memory: 32Gi
+        cpu: 32
+        memory: 256Gi
     storageSpec:
       name: cn
       storageSize: 500Gi
       storageClassName: gp3-perf
       logStorageSize: 10Gi
-      spillStorageSize: 100Gi
+      spillStorageSize: 500Gi

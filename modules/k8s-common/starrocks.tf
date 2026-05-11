@@ -106,6 +106,7 @@ locals {
   starrocks_fe_heap_mb = {
     dev        = 4096
     prod-small = 4096
+    prod-xl    = 8192
   }
 }
 
