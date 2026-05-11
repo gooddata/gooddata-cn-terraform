@@ -95,9 +95,15 @@ variable "eks_max_nodes" {
 }
 
 variable "eks_node_types" {
-  description = "List of EC2 instance types for EKS worker nodes"
+  description = "EC2 instance types for the shared EKS worker pool. If null, defaults to a preset chosen by size_profile."
   type        = list(string)
-  default     = ["m6i.xlarge", "m6i.2xlarge", "m6i.4xlarge"]
+  default     = null
+}
+
+variable "eks_starrocks_node_types" {
+  description = "EC2 instance types for the StarRocks-dedicated EKS pool (taint workload=starrocks). If null, defaults to a preset chosen by size_profile."
+  type        = list(string)
+  default     = null
 }
 
 variable "eks_version" {
@@ -413,8 +419,8 @@ variable "size_profile" {
   type        = string
   default     = "prod-small"
   validation {
-    condition     = contains(["dev", "prod-small"], var.size_profile)
-    error_message = "size_profile must be one of: dev, prod-small."
+    condition     = contains(["dev", "prod-small", "prod-xl"], var.size_profile)
+    error_message = "size_profile must be one of: dev, prod-small, prod-xl."
   }
 }
 

@@ -9,6 +9,15 @@ operator:
 
 starrocks:
   starrocksFESpec:
+    # Bind FE pods to the dedicated StarRocks managed node group
+    # (matches taint workload=starrocks:NoSchedule applied in aws/eks.tf).
+    nodeSelector:
+      workload: ${node_workload_label}
+    tolerations:
+      - key: workload
+        operator: Equal
+        value: ${node_workload_label}
+        effect: NoSchedule
     # NOTE: This config block fully replaces the base template's config.
     # Keep common settings in sync with starrocks-base.yaml.tftpl.
     config: |
@@ -155,3 +164,14 @@ starrocks:
           limits:
             cpu: 100m
             memory: 256Mi
+
+  starrocksCnSpec:
+    # Bind CN pods to the dedicated StarRocks managed node group
+    # (matches taint workload=starrocks:NoSchedule applied in aws/eks.tf).
+    nodeSelector:
+      workload: ${node_workload_label}
+    tolerations:
+      - key: workload
+        operator: Equal
+        value: ${node_workload_label}
+        effect: NoSchedule

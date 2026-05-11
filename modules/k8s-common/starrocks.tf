@@ -139,6 +139,7 @@ resource "helm_release" "starrocks" {
       starrocks_s3_bucket_id       = var.starrocks_s3_bucket_id
       s3_tables_bucket_name        = var.starrocks_s3_tables_bucket_name
       fe_java_heap_mb              = local.starrocks_fe_heap_mb[var.size_profile]
+      node_workload_label          = "starrocks"
     }) : null,
     templatefile("${path.module}/templates/starrocks-size-${var.size_profile}.yaml.tftpl", {}),
   ])
