@@ -33,7 +33,9 @@ resource "helm_release" "kube_prometheus_stack" {
         image = { registry = var.registry_k8sio }
       }
       "prometheus-node-exporter" = {
-        image = { registry = var.registry_quayio }
+        # distroless=false: v85 enables distroless by default; private registry
+        # mirror does not carry distroless-tagged variants.
+        image = { registry = var.registry_quayio, distroless = false }
       }
 
       prometheusOperator = {
@@ -54,7 +56,9 @@ resource "helm_release" "kube_prometheus_stack" {
 
       prometheus = {
         prometheusSpec = {
-          image = { registry = var.registry_quayio }
+          # tag pinned to non-distroless: v85 defaults to v3.11.3-distroless;
+          # private registry mirror does not carry distroless-tagged variants.
+          image = { registry = var.registry_quayio, tag = "v3.11.3" }
           externalLabels = {
             cluster_name = var.deployment_name
           }
