@@ -56,9 +56,7 @@ resource "helm_release" "kube_prometheus_stack" {
 
       prometheus = {
         prometheusSpec = {
-          # tag pinned to non-distroless: v85 defaults to v3.11.3-distroless;
-          # private registry mirror does not carry distroless-tagged variants.
-          image = { registry = var.registry_quayio, tag = "v3.11.3" }
+          image = { registry = var.registry_quayio }
           externalLabels = {
             cluster_name = var.deployment_name
           }
