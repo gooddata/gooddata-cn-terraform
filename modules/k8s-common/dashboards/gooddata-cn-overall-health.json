@@ -4313,13 +4313,13 @@
       {
         "current": {
           "selected": false,
-          "text": "GDMIMIR",
-          "value": "GDMIMIR"
+          "text": "prometheus",
+          "value": "prometheus"
         },
         "hide": 2,
         "label": "Prometheus",
         "name": "DS_PROMETHEUS",
-        "query": "GDMIMIR",
+        "query": "prometheus",
         "type": "constant"
       },
       {
