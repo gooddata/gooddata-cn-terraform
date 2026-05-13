@@ -46,18 +46,21 @@ locals {
 
   # Per-AZ node groups for StarRocks so the cluster autoscaler can scale
   # nodes in the AZ where the FE/CN EBS volume lives (EBS is zonal).
-  starrocks_ng_pairs = {
-    for pair in setproduct(local.eks_starrocks_node_types, local.private_subnet_ids) :
-    "sr-${replace(pair[0], ".", "-")}-${substr(data.aws_subnet.private[pair[1]].availability_zone, length(data.aws_subnet.private[pair[1]].availability_zone) - 1, 1)}" => {
+  # Keyed by subnet index (known at plan time) — subnet IDs from a freshly
+  # created VPC are unknown until apply, so they cannot appear in map keys
+  # or in for_each sets.
+  starrocks_ng_pairs = var.enable_ai_lake ? {
+    for pair in setproduct(local.eks_starrocks_node_types, range(length(local.private_subnet_ids))) :
+    "sr-${replace(pair[0], ".", "-")}-az${pair[1]}" => {
       instance_type = pair[0]
-      subnet_id     = pair[1]
-      az            = data.aws_subnet.private[pair[1]].availability_zone
+      subnet_id     = local.private_subnet_ids[pair[1]]
+      az            = data.aws_subnet.private[tostring(pair[1])].availability_zone
     }
-  }
+  } : {}
 }
 
 data "aws_subnet" "private" {
-  for_each = toset(local.private_subnet_ids)
+  for_each = var.enable_ai_lake ? { for idx, id in local.private_subnet_ids : idx => id } : {}
   id       = each.value
 }
 
