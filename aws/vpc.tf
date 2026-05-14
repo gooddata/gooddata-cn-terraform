@@ -37,7 +37,7 @@ locals {
   ]
 
   private_subnet_cidrs = [
-    for idx in range(length(local.azs)) : cidrsubnet(local.vpc_cidr, 8, idx + length(local.azs))
+    for idx in range(length(local.azs)) : cidrsubnet(local.vpc_cidr, 4, idx + length(local.azs))
   ]
 }
 
