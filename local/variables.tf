@@ -104,7 +104,7 @@ variable "helm_cnpg_version" {
   description = "Version of the CloudNativePG Helm chart to deploy."
   type        = string
   # renovate: depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
-  default = "0.28.0"
+  default = "0.28.2"
 }
 
 variable "helm_gdcn_version" {
