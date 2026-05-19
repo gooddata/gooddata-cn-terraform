@@ -4313,25 +4313,25 @@
       {
         "current": {
           "selected": false,
-          "text": "GDMIMIR",
-          "value": "GDMIMIR"
+          "text": "prometheus",
+          "value": "prometheus"
         },
         "hide": 2,
         "label": "Prometheus",
         "name": "DS_PROMETHEUS",
-        "query": "GDMIMIR",
+        "query": "prometheus",
         "type": "constant"
       },
       {
         "current": {
           "selected": false,
-          "text": "GDLOKI",
-          "value": "GDLOKI"
+          "text": "loki",
+          "value": "loki"
         },
         "hide": 2,
         "label": "Loki",
         "name": "DS_LOKI",
-        "query": "GDLOKI",
+        "query": "loki",
         "type": "constant"
       },
       {
