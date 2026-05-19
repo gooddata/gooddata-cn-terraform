@@ -369,12 +369,11 @@ resource "helm_release" "grafana" {
               isDefault = true
             },
             {
-              name      = "GD Loki"
-              type      = "loki"
-              uid       = "GDLOKI"
-              url       = "http://loki.observability.svc.cluster.local:3100"
-              access    = "proxy"
-              isDefault = false
+              name   = "Loki"
+              type   = "loki"
+              uid    = "loki"
+              url    = "http://loki.observability.svc.cluster.local:3100"
+              access = "proxy"
             },
             {
               name   = "Tempo"
@@ -387,7 +386,7 @@ resource "helm_release" "grafana" {
                   enabled = true
                 }
                 tracesToLogsV2 = {
-                  datasourceUid = "GDLOKI"
+                  datasourceUid = "loki"
                 }
                 streamingEnabled = {
                   search = false

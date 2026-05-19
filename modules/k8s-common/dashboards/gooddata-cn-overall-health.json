@@ -4325,13 +4325,13 @@
       {
         "current": {
           "selected": false,
-          "text": "GDLOKI",
-          "value": "GDLOKI"
+          "text": "loki",
+          "value": "loki"
         },
         "hide": 2,
         "label": "Loki",
         "name": "DS_LOKI",
-        "query": "GDLOKI",
+        "query": "loki",
         "type": "constant"
       },
       {
