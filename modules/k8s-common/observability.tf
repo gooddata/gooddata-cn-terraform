@@ -212,7 +212,7 @@ resource "helm_release" "tempo" {
   values = [
     yamlencode({
       tempo = {
-        registry = var.registry_dockerio
+        image = { registry = var.registry_dockerio }
         receivers = {
           jaeger = {
             protocols = {
