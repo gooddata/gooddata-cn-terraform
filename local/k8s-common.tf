@@ -37,12 +37,6 @@ resource "helm_release" "prometheus_operator_crds" {
   depends_on = [null_resource.k3d_cluster]
 }
 
-# The release used to be conditional on enable_observability (count-indexed).
-moved {
-  from = helm_release.prometheus_operator_crds[0]
-  to   = helm_release.prometheus_operator_crds
-}
-
 module "k8s_local" {
   source = "../modules/k8s-local"
 
