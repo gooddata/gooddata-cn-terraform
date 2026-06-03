@@ -41,3 +41,7 @@ terraform.rc
 
 # Local k3d generated config (created by terraform apply)
 local/k3d-config.generated.yaml
+
+# Claude Code local state
+.claude/worktrees/
+.claude/settings.local.json
