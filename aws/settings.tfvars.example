@@ -32,6 +32,8 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # Size profile controls replicas/resources across services:
 # - dev: lowest footprint, not HA
 # - prod-small: HA (>= 2 replica per service), resources for services increased
+# - prod-large: HA, sized for large/high-traffic deployments (more replicas +
+#   CPU/memory for the hot-path services than prod-small)
 # NOTE: switching size profile after deploying isn't supported since persistent
 # volume sizes can't be automatically adjusted in-place.
 size_profile = "prod-small"

@@ -1,0 +1,437 @@
+# Apply GoodData.CN "prod-large" size profile
+# last updated: 2026-06-05
+#
+# Large production sizing profile, modeled on a high-traffic multi-tenant
+# GoodData.CN deployment. Compared to prod-small it runs more replicas of the
+# hot-path services (metadataApi, sqlExecutor, calcique, afmExecApi,
+# visualExporter, export-builder) and gives them substantially more CPU/memory,
+# enables dedicated Quiver policy nodes, and uses a larger result cache.
+#
+# NOTE on StarRocks (AI Lake): there is no prod-large StarRocks profile. When
+# size_profile = "prod-large" the StarRocks sizing falls back to prod-xl. Set
+# var.starrocks_size_profile explicitly if you want different StarRocks sizing.
+
+replicaCount: 2
+
+platform_limits:
+  max_column_size: 2000
+  max_dimension_size: 1000000
+  max_result_bytes: 500000000
+  max_result_cell_count: 50000000
+  # Double the limit of page size in AFM so that tabular-exporter can still
+  # load 1000 row pages even with the new 2000 column limit.
+  max_afm_result_page_bytes: 10485760
+  # Increase the export timeout to 7 minutes from the default 5: some exports can
+  # take as much as a little over 6 minutes to complete (XLSX most often).
+  export_result_timeout_seconds: 420
+
+# Deploy dedicated Quiver policy nodes so policy handling load is taken off the
+# cache nodes. Prevents hiccups during high load and/or releases.
+deployDedicatedPolicyNodes: true
+# Deploy the Quiver datasource filesystem nodes.
+deployQuiverDatasourceFs: true
+# Run the in-cluster GoodData etcd (paired with customEtcd.enabled below).
+useInternalGDEtcd: true
+
+afmExecApi:
+  jvmOptions: -Xmx1700M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 3100Mi
+    requests:
+      cpu: 200m
+      memory: 3100Mi
+analyticalDesigner:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+apiDocs:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+apiGateway:
+  jvmOptions: -Xmx225M -XX:MaxMetaspaceSize=128M -XX:MaxDirectMemorySize=512M
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 1Gi
+authService:
+  jvmOptions: -Xmx256M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 820Mi
+    requests:
+      cpu: 100m
+      memory: 820Mi
+calcique:
+  jvmOptions: -Xmx1024M -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 1500m
+      memory: 2800Mi
+    requests:
+      cpu: 300m
+      memory: 2800Mi
+customEtcd:
+  enabled: true
+  resources:
+    requests:
+      cpu: 300m
+      memory: 1024Mi
+    limits:
+      cpu: 600m
+      memory: 1536Mi
+dashboards:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+exportController:
+  jvmOptions: -Xmx1024M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1792Mi
+    requests:
+      cpu: 250m
+      memory: 1024Mi
+# GenAI services (only deployed when AI features are enabled).
+# Safe to leave in place when AI features are off.
+genAiService:
+  fastembed:
+    metadata_sync_workers: 10
+  pulsar:
+    metadataSync:
+      max_consumer_concurrency: 100
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 7168Mi
+    requests:
+      cpu: 2000m
+      memory: 5120Mi
+genAi:
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 6144Mi
+    requests:
+      cpu: 2000m
+      memory: 3072Mi
+genAiMetadataSync:
+  resources:
+    limits:
+      cpu: 3000m
+      memory: 6144Mi
+    requests:
+      cpu: 1500m
+      memory: 4096Mi
+homeUi:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 45Mi
+    requests:
+      cpu: 50m
+      memory: 15Mi
+ldmModeler:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 60Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+measureEditor:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+metadataApi:
+  jvmOptions: -Xmx6000M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -XX:ActiveProcessorCount=6 -Dkotlinx.coroutines.io.parallelism=16
+  pulsar:
+    metadataSync:
+      messageTTL: 3600
+  replicaCount: 4
+  resources:
+    limits:
+      # metadataApi is the busiest service; give it generous CPU headroom.
+      cpu: 4150m
+      memory: 7300Mi
+    requests:
+      cpu: 1650m
+      memory: 7300Mi
+organizationController:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 384Mi
+    requests:
+      cpu: 100m
+      memory: 200Mi
+pdfStaplerService:
+  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=128M -XX:MaxDirectMemorySize=32M
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1500Mi
+    requests:
+      cpu: 100m
+      memory: 1500Mi
+qdrant:
+  persistence:
+    size: 30Gi
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 6000Mi
+    requests:
+      cpu: 1000m
+      memory: 3500Mi
+quiver:
+  limitFlightCount: 90000
+  # Increase concurrent put requests to prevent issues with the
+  # collectLabelElements APIs under load.
+  concurrentPutRequests: 32
+  s3DurableStorage:
+    durableS3WritesInProgress: 32
+  storage:
+    # The server work dir stores the flight catalog (SQLite database); as the
+    # total flight limit grows the workdir must be large enough to hold it.
+    serverWorkDirSize: 512Mi
+    cache:
+      diskCacheSize: 25Gi
+      diskSize: 30Gi
+  replicaCount:
+    xtab: 4
+  resources:
+    cache:
+      limits:
+        cpu: 1500m
+        memory: 2048Mi
+        ephemeral-storage: 30Gi
+      requests:
+        cpu: 600m
+        memory: 2048Mi
+        ephemeral-storage: 30Gi
+    xtab:
+      limits:
+        cpu: 1500m
+        memory: 7680Mi
+      requests:
+        cpu: 750m
+        memory: 2560Mi
+    ml:
+      limits:
+        cpu: 700m
+        memory: 5120Mi
+      requests:
+        cpu: 400m
+        memory: 2560Mi
+    policy:
+      limits:
+        cpu: 2100m
+        memory: 768Mi
+      requests:
+        cpu: 600m
+        memory: 768Mi
+  extraEnvVarsCache:
+    - name: QUIVER_ETCD_NEW_EVENT_READER
+      value: "1"
+  extraEnvVarsDatasource:
+    - name: QUIVER_ETCD_NEW_EVENT_READER
+      value: "1"
+  extraEnvVarsMl:
+    - name: QUIVER_ETCD_NEW_EVENT_READER
+      value: "1"
+  extraEnvVarsPolicy:
+    - name: QUIVER_ETCD_NEW_EVENT_READER
+      value: "1"
+  extraEnvVarsXtab:
+    - name: QUIVER_ETCD_NEW_EVENT_READER
+      value: "1"
+redis-ha:
+  replicas: 3
+  configmapTest:
+    resources:
+      limits:
+        cpu: 50m
+        memory: 40Mi
+      requests:
+        cpu: 20m
+        memory: 40Mi
+  exporter:
+    resources:
+      limits:
+        cpu: 200m
+        memory: 20Mi
+      requests:
+        cpu: 30m
+        memory: 20Mi
+  redis:
+    config:
+      maxmemory: 7300m
+    resources:
+      limits:
+        cpu: 1500m
+        memory: 9125Mi
+      requests:
+        cpu: 700m
+        memory: 9125Mi
+  sentinel:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 35Mi
+      requests:
+        cpu: 50m
+        memory: 35Mi
+  splitBrainDetection:
+    resources:
+      requests:
+        memory: 64Mi
+        cpu: 30m
+      limits:
+        memory: 64Mi
+        cpu: 150m
+resultCache:
+  jvmOptions: -Xmx2100M -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 3200Mi
+    requests:
+      cpu: 500m
+      memory: 3200Mi
+  pulsar:
+    executionFinish:
+      # bump the number of execution finish messages the pod can handle at once
+      maxConcurrentMessages: 96
+  # Large total result-cache size limit (512 GiB).
+  totalCacheLimit: 549755813888
+scanModel:
+  jvmOptions: -Xmx220M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
+  resources:
+    limits:
+      cpu: 500m
+      memory: 700Mi
+    requests:
+      cpu: 100m
+      memory: 700Mi
+sqlExecutor:
+  jvmOptions: -Xmx2048M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=256M
+    -XX:ActiveProcessorCount=6
+  replicaCount: 5
+  resources:
+    limits:
+      cpu: 1500m
+      memory: 4096Mi
+    requests:
+      # Lower CPU request packs more sqlExecutor replicas per node.
+      cpu: 500m
+      memory: 3700Mi
+tabularExporter:
+  resources:
+    limits:
+      cpu: 1500m
+      memory: 7500Mi
+    requests:
+      cpu: 1000m
+      memory: 7500Mi
+visualExporterChromium:
+  resources:
+    limits:
+      cpu: 1200m
+      memory: 4Gi
+    requests:
+      cpu: 200m
+      memory: 4Gi
+visualExporterProxy:
+  resources:
+    limits:
+      cpu: 300m
+      memory: 300Mi
+    requests:
+      cpu: 100m
+      memory: 215Mi
+visualExporterService:
+  extraEnvVars:
+    - name: SERVER_TOMCAT_THREADS_MAX
+      value: "2"
+    - name: SERVER_TOMCAT_ACCEPTCOUNT
+      value: "500"
+  jvmOptions: -Xmx432M -XX:MaxMetaspaceSize=192M -XX:MaxDirectMemorySize=16M
+  replicaCount: 4
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1280Mi
+    requests:
+      cpu: 500m
+      memory: 640Mi
+webComponents:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 45Mi
+    requests:
+      cpu: 20m
+      memory: 15Mi
+exportBuilder:
+  replicaCount: 4
+  # Chromium in standalone container within export-builder pod
+  # export-builder connects to Chromium using Chrome DevTools Protocol (CDP)
+  playwright:
+    browser:
+      type: "cdp"
+  # These settings must be aligned with resource.limits.memory value
+  # The minimum memory limit in MeBiBytes is (codecachesize+Xmx+metaspace+175)*1.024
+  jvmOptions: -XX:ReservedCodeCacheSize=60M -Xmx1500M -XX:MaxMetaspaceSize=210M -XX:MaxDirectMemorySize=128M
+  resources:
+    limits:
+      cpu: 2000m
+      # Additional 500Mi for Chromium
+      memory: 2500Mi
+    requests:
+      cpu: 200m
+      memory: 550Mi
+apiGw:
+  database:
+    pool:
+      # Wider apiGw DB connection pool for higher concurrency.
+      maxSize: 32
+      minIdle: 4
+      maxAcquireTime: 30000
+  resources:
+    limits:
+      cpu: 1400m
+      memory: 3000Mi
+    requests:
+      cpu: 280m
+      memory: 3000Mi
+  # -- Custom JVM options
+  # These settings must be aligned with resource.limits.memory value
+  jvmOptions: "-Xms1500m -Xmx1500m -XX:ActiveProcessorCount=2 -XX:MaxDirectMemorySize=256m"

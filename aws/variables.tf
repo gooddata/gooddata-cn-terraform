@@ -419,8 +419,8 @@ variable "size_profile" {
   type        = string
   default     = "prod-small"
   validation {
-    condition     = contains(["dev", "prod-small", "prod-xl"], var.size_profile)
-    error_message = "size_profile must be one of: dev, prod-small, prod-xl."
+    condition     = contains(["dev", "prod-small", "prod-xl", "prod-large"], var.size_profile)
+    error_message = "size_profile must be one of: dev, prod-small, prod-xl, prod-large."
   }
 }
 

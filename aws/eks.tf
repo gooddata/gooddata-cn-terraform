@@ -32,6 +32,7 @@ locals {
   eks_node_type_presets = {
     dev        = ["m6a.xlarge", "m6a.2xlarge"]
     prod-small = ["m8a.xlarge", "m8a.2xlarge"]
+    prod-large = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
     prod-xl    = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
   }
 
@@ -41,8 +42,12 @@ locals {
     prod-xl    = ["r8a.large", "r8a.8xlarge"]
   }
 
+  # There is no dedicated prod-large StarRocks profile; fall back to prod-xl
+  # StarRocks sizing when size_profile is prod-large (see gdcn-size-prod-large).
+  starrocks_size_profile_effective = coalesce(var.starrocks_size_profile, var.size_profile == "prod-large" ? "prod-xl" : var.size_profile)
+
   eks_node_types           = coalesce(var.eks_node_types, local.eks_node_type_presets[var.size_profile])
-  eks_starrocks_node_types = coalesce(var.eks_starrocks_node_types, local.eks_starrocks_node_type_presets[coalesce(var.starrocks_size_profile, var.size_profile)])
+  eks_starrocks_node_types = coalesce(var.eks_starrocks_node_types, local.eks_starrocks_node_type_presets[local.starrocks_size_profile_effective])
 
   # Per-AZ node groups for StarRocks so the cluster autoscaler can scale
   # nodes in the AZ where the FE/CN EBS volume lives (EBS is zonal).
@@ -155,11 +160,11 @@ module "eks" {
         tags = merge(
           local.common_tags,
           {
-            "k8s.io/cluster-autoscaler/enabled"                                       = "true"
-            "k8s.io/cluster-autoscaler/${var.deployment_name}"                        = "owned"
-            "k8s.io/cluster-autoscaler/node-template/label/workload"                  = "starrocks"
+            "k8s.io/cluster-autoscaler/enabled"                                         = "true"
+            "k8s.io/cluster-autoscaler/${var.deployment_name}"                          = "owned"
+            "k8s.io/cluster-autoscaler/node-template/label/workload"                    = "starrocks"
             "k8s.io/cluster-autoscaler/node-template/label/topology.kubernetes.io/zone" = ng.az
-            "k8s.io/cluster-autoscaler/node-template/taint/workload"                  = "starrocks:NoSchedule"
+            "k8s.io/cluster-autoscaler/node-template/taint/workload"                    = "starrocks:NoSchedule"
           }
         )
 

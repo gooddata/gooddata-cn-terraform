@@ -1,0 +1,59 @@
+# Apply Pulsar "prod-large" size profile
+# last updated: 2026-06-05
+#
+# Pulsar sizing for the large production profile. Replica counts stay at the
+# HA-minimum (odd numbers); Pulsar is a message bus and is not the primary
+# scaling bottleneck - it is scaled mainly by giving the bookies more memory
+# and larger journals/ledgers.
+
+autorecovery:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 384Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+bookkeeper:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 300m
+      memory: 704Mi
+  volumes:
+    journal:
+      name: journal
+      size: 10Gi
+    ledgers:
+      name: ledgers
+      size: 10Gi
+broker:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 300m
+      memory: 512Mi
+  configData:
+    managedLedgerDefaultEnsembleSize: "3"
+    managedLedgerDefaultWriteQuorum: "2"
+    managedLedgerDefaultAckQuorum: "2"
+zookeeper:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 200m
+      memory: 768Mi
+    requests:
+      cpu: 100m
+      memory: 384Mi
+  volumes:
+    data:
+      name: data
+      size: 5Gi
