@@ -20,9 +20,9 @@ resource "random_password" "local_postgres_password" {
   override_special = "_-"
 }
 
+# Always installed: deleting these CRDs while installed releases still
+# reference ServiceMonitor/PodMonitor objects breaks helm upgrades.
 resource "helm_release" "prometheus_operator_crds" {
-  count = var.enable_observability ? 1 : 0
-
   name             = "prometheus-operator-crds"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "prometheus-operator-crds"
@@ -56,7 +56,7 @@ module "k8s_local" {
   kubeconfig_context     = local.kubeconfig_context
   registry_dockerio      = var.registry_dockerio
 
-  prometheus_crds_ready = var.enable_observability ? helm_release.prometheus_operator_crds[0].name : ""
+  prometheus_crds_ready = helm_release.prometheus_operator_crds.name
 
   depends_on = [
     null_resource.k3d_cluster,
