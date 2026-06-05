@@ -1,4 +1,8 @@
 # Apply GoodData.CN "prod-small" size profile
+# last updated: 2026-06-05
+#
+# Smallest production-grade size profile. The global replicaCount below keeps
+# the services HA at 2 replicas.
 
 replicaCount: 2
 
@@ -14,7 +18,7 @@ platform_limits:
   # take as much as a little over 6 minutes to complete (XLSX most often).
   export_result_timeout_seconds: 420
 afmExecApi:
-  jvmOptions: -Xmx480M -XX:MaxMetaspaceSize=192M -XX:MaxDirectMemorySize=96M
+  jvmOptions: -Xmx480M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M
   resources:
     limits:
       cpu: 1000m
@@ -65,6 +69,14 @@ calcique:
     requests:
       cpu: 200m
       memory: 1700Mi
+customEtcd:
+  resources:
+    requests:
+      cpu: 300m
+      memory: 512Mi
+    limits:
+      cpu: 600m
+      memory: 1024Mi
 dashboards:
   resources:
     limits:
@@ -74,14 +86,14 @@ dashboards:
       cpu: 20m
       memory: 15Mi
 exportController:
-  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=192M -XX:MaxDirectMemorySize=128M
+  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M
   resources:
     limits:
       cpu: 500m
-      memory: 1024Mi
+      memory: 1280Mi
     requests:
       cpu: 100m
-      memory: 700Mi
+      memory: 1280Mi
 homeUi:
   resources:
     limits:
@@ -147,7 +159,7 @@ quiver:
         ephemeral-storage: 30Gi
         cpu: 350m
         memory: 1000Mi
-    # CQ-1112: memory increased 3-fold instead of 5-fold due to low traffic on most tiny clusters.
+    # Memory tuned for low-traffic clusters.
     xtab:
       limits:
         cpu: 1500m
@@ -155,7 +167,7 @@ quiver:
       requests:
         cpu: 750m
         memory: 2100Mi
-    # CQ-1112: memory increased 3-fold instead of 5-fold due to low traffic on most tiny clusters.
+    # Memory tuned for low-traffic clusters.
     ml:
       limits:
         cpu: 700m
@@ -166,10 +178,10 @@ quiver:
     policy:
       limits:
         cpu: 950m
-        memory: 1000Mi
+        memory: 512Mi
       requests:
         cpu: 350m
-        memory: 1000Mi
+        memory: 512Mi
 redis-ha:
   replicas: 3
   configmapTest:
@@ -206,6 +218,14 @@ redis-ha:
       requests:
         cpu: 50m
         memory: 35Mi
+  splitBrainDetection:
+    resources:
+      requests:
+        memory: 64Mi
+        cpu: 30m
+      limits:
+        memory: 64Mi
+        cpu: 150m
 resultCache:
   jvmOptions: -Xmx2000M -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M
   resources:
