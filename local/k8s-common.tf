@@ -74,12 +74,13 @@ module "k8s_common" {
     external   = external
   }
 
-  deployment_name        = var.deployment_name
-  gdcn_license_key       = var.gdcn_license_key
-  gdcn_namespace         = var.gdcn_namespace
-  gdcn_orgs              = var.gdcn_orgs
-  size_profile           = var.size_profile
-  starrocks_size_profile = coalesce(var.starrocks_size_profile, var.size_profile)
+  deployment_name  = var.deployment_name
+  gdcn_license_key = var.gdcn_license_key
+  gdcn_namespace   = var.gdcn_namespace
+  gdcn_orgs        = var.gdcn_orgs
+  size_profile     = var.size_profile
+  # There is no prod-large StarRocks profile; fall back to prod-xl sizing.
+  starrocks_size_profile = coalesce(var.starrocks_size_profile, var.size_profile == "prod-large" ? "prod-xl" : var.size_profile)
   cloud                  = "local"
   ingress_controller     = var.ingress_controller
 

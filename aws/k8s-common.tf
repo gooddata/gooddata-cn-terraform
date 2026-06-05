@@ -49,7 +49,7 @@ module "k8s_common" {
   gdcn_license_key       = var.gdcn_license_key
   gdcn_orgs              = var.gdcn_orgs
   size_profile           = var.size_profile
-  starrocks_size_profile = coalesce(var.starrocks_size_profile, var.size_profile)
+  starrocks_size_profile = local.starrocks_size_profile_effective
   cloud                  = "aws"
   ingress_controller     = var.ingress_controller
   gdcn_irsa_role_arn     = aws_iam_role.gdcn_irsa.arn
