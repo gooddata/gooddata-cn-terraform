@@ -118,6 +118,12 @@ variable "enable_ai_features" {
   default     = true
 }
 
+variable "enable_experimental_features" {
+  description = "Enable experimental AI features in the gooddata-cn chart. These are subject to change and the set of features may evolve over time."
+  type        = bool
+  default     = false
+}
+
 variable "enable_image_cache" {
   description = "Enable image caching (ECR pull-through cache). If false, images are pulled from upstream registries directly."
   type        = bool

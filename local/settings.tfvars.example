@@ -25,6 +25,9 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # Deploys and enables GoodData generative AI services
 # enable_ai_features = true
 
+# Enable experimental AI features (subject to change; the set of features may evolve over time)
+# enable_experimental_features = true
+
 # Size profile controls replicas/resources across services:
 # - dev: lowest footprint, not HA
 # NOTE: switching size profile after deploying isn't supported since persistent
