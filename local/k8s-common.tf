@@ -88,11 +88,12 @@ module "k8s_common" {
   tls_mode                = var.tls_mode
   ingress_nginx_behind_l7 = var.ingress_nginx_behind_l7
 
-  enable_ai_features = var.enable_ai_features
-  enable_image_cache = false
-  registry_dockerio  = var.registry_dockerio
-  registry_quayio    = var.registry_quayio
-  registry_k8sio     = var.registry_k8sio
+  enable_ai_features           = var.enable_ai_features
+  enable_experimental_features = var.enable_experimental_features
+  enable_image_cache           = false
+  registry_dockerio            = var.registry_dockerio
+  registry_quayio              = var.registry_quayio
+  registry_k8sio               = var.registry_k8sio
 
   helm_cert_manager_version          = var.helm_cert_manager_version
   helm_gdcn_version                  = var.helm_gdcn_version

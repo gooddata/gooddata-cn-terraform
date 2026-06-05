@@ -38,6 +38,12 @@ variable "enable_ai_features" {
   default     = true
 }
 
+variable "enable_experimental_features" {
+  description = "Enable experimental AI features in the gooddata-cn chart. These are subject to change and the set of features may evolve over time."
+  type        = bool
+  default     = false
+}
+
 variable "enable_observability" {
   description = "Enable observability stack (Prometheus, Loki, Tempo, Grafana)"
   type        = bool

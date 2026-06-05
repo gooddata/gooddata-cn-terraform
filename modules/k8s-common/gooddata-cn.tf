@@ -140,7 +140,9 @@ resource "helm_release" "gooddata_cn" {
     local.use_istio_gateway ? templatefile("${path.module}/templates/gdcn-istio.yaml.tftpl", {
       existing_gateway = "istio-ingress/${local.istio_public_gateway_name}"
     }) : null,
-    var.enable_ai_features ? templatefile("${path.module}/templates/gdcn-ai-features.yaml.tftpl", {}) : null,
+    var.enable_ai_features ? templatefile("${path.module}/templates/gdcn-ai-features.yaml.tftpl", {
+      enable_experimental_features = var.enable_experimental_features
+    }) : null,
     var.enable_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
       registry_dockerio = var.registry_dockerio,
       registry_quayio   = var.registry_quayio

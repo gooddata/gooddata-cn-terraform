@@ -50,6 +50,8 @@ variable "dex_ingress_annotations_override" {
 
 variable "enable_ai_features" { type = bool }
 
+variable "enable_experimental_features" { type = bool }
+
 variable "enable_image_cache" { type = bool }
 
 variable "enable_observability" {

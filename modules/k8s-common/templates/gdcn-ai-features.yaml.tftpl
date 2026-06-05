@@ -7,3 +7,29 @@ deployQdrant: true
 deployMCPServer: true
 enableAiAgenticConversations: true
 enableGenAIMemory: true
+
+%{ if enable_experimental_features ~}
+# Enable experimental features
+enableAiHub: true
+enableGenAiMetricSkill: true
+enableGenAiVisualizationSummarySkill: true
+enableGenAiDashboardSummarySkill: true
+enableGenAiHeadlessSummary: true
+enableGenAiKdaSkill: true
+enableGenAiWhatifSkill: true
+enableGenAiAlertSkill: true
+enableGenAiVisualizationSkill: true
+enableGenAiForecastingSkill: true
+enableGenAiAnomalySkill: true
+enableGenAiClusteringSkill: true
+enableGenAiMemoryAgent: true
+enableAIKnowledge: true
+enableScheduledExportSkill: true
+enableGenAiAgentSwitching: true
+enableGenAIPromptRedesign: true
+enableMultilingualAIAssistant: true
+enableGenAIReasoningVisibility: true
+enableGenAiAiModuleGating: true
+enableGenAiAlerts: true
+enableAIDataSetting: true
+%{ endif ~}
