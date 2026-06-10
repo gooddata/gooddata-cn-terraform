@@ -290,12 +290,22 @@ quiver:
     xtab: 16
   resources:
     cache:
+      # The mid-test collapse root cause: at peak write-rate the quiver-cache
+      # node serving this org's hot flight-cluster pins its CPU limit and its
+      # single-threaded etcd-view-apply loop falls behind the live revision.
+      # Flight reads carry an x-quiver-sync-rev consistency header, so once the
+      # local view lags, every read blocks 5s and times out
+      # (FlightTimedOutError "waited for local views to reach revision N") and
+      # retries — turning a 1.7ms cross-tab into a 9-14s stall and backing up
+      # result.xtab. The view-apply loop needs a full core even while flight
+      # serving / durable sync / reclaim threads are busy, so the 1.5-core limit
+      # starved it. Give cache real CPU headroom.
       limits:
-        cpu: 1500m
+        cpu: 4000m
         memory: 2048Mi
         ephemeral-storage: 30Gi
       requests:
-        cpu: 600m
+        cpu: 2000m
         memory: 2048Mi
         ephemeral-storage: 30Gi
     xtab:
@@ -347,19 +357,21 @@ quiver:
   extraEnvVarsXtab:
     - name: QUIVER_ETCD_NEW_EVENT_READER
       value: "1"
-    # The chart's quiver-xtab.conf.toml hardcodes dataframe_task_threads=2 and
-    # dataframe_task_workers=1. task_threads sizes the ThreadPoolExecutor that
-    # ALL dataframe tasks run through (quiver_module/tasks/thread_task_executor.py),
-    # so per-pod task concurrency is 2 regardless of CPU/replicas — under load
-    # tasks queued ~60s in that pool while the crosstab op itself took ~2ms.
-    # Raise the executor pool (task_threads), the worker subprocesses that
-    # execute the ops (task_workers), and the input-fetch pool (gather_threads).
+    # Per-pod cross-tab throughput is gated by these concurrency knobs, NOT by
+    # CPU or replica count. Each cross-tab task holds a worker ~0.15s but is
+    # almost entirely Flight I/O (read input result + write output); the polars
+    # compute is ~2ms, so pods sit at ~0.17 cores while task_workers=8 caps
+    # throughput at ~50/s/pod and tasks queue 20-30s under load. Because the
+    # work is I/O-bound with idle CPU and only ~1.5Gi of the 7.68Gi memory used,
+    # the right lever is more workers per pod (each worker is a subprocess
+    # ~180Mi), not more pods. Tripling the pools lifts per-pod throughput to
+    # ~150/s at trivial CPU cost; memory lands ~4.3Gi, well under the limit.
     - name: QUIVER_DATAFRAME_TASK_THREADS
-      value: "16"
+      value: "48"
     - name: QUIVER_DATAFRAME_TASK_WORKERS
-      value: "8"
+      value: "24"
     - name: QUIVER_DATAFRAME_GATHER_THREADS
-      value: "8"
+      value: "24"
 redis-ha:
   replicas: 3
   configmapTest:
