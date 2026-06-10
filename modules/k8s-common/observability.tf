@@ -243,6 +243,18 @@ resource "helm_release" "tempo" {
         # Trace retention enforced by the block-storage compactor. The 5Gi PVC
         # still caps total size, so traces may be evicted before this period.
         retention = var.tempo_retention_period
+        # Raise per-tenant ingestion limits above Tempo's defaults (15MB/s rate,
+        # 20MB burst). The defaults were rejecting trace pushes during peak
+        # windows with "RATE_LIMITED: ingestion rate limit ... exceeded" errors.
+        # Strategy stays "local" (single-binary deployment, no global ring).
+        overrides = {
+          defaults = {
+            ingestion = {
+              rate_limit_bytes = 30000000 # 30 MB/s (default: 15 MB/s)
+              burst_size_bytes = 45000000 # 45 MB   (default: 20 MB)
+            }
+          }
+        }
       }
       persistence = {
         enabled = true
@@ -399,7 +411,24 @@ resource "helm_release" "grafana" {
                   enabled = true
                 }
                 tracesToLogsV2 = {
-                  datasourceUid = "loki"
+                  datasourceUid      = "loki"
+                  spanStartTimeShift = "-5m"
+                  spanEndTimeShift   = "5m"
+                  filterByTraceID    = false
+                  filterBySpanID     = false
+                  customQuery        = true
+                  # Every GoodData.CN microservice logs under a single Loki stream
+                  # (namespace/app/service_name = gdcn_namespace), while spans carry
+                  # per-service service.name values, so no span-tag-to-Loki-label
+                  # mapping lines up and the default query has no usable stream
+                  # selector. Instead scope to the namespace and match on both the
+                  # trace ID and span ID, which GoodData.CN writes into every
+                  # structured log line ("traceId":"<id>","spanId":"<id>"). Matching
+                  # the span ID narrows "Logs for this span" to the clicked span's
+                  # service/operation rather than the whole trace. The $${...}
+                  # escapes Grafana provisioning env-var expansion so the Tempo data
+                  # source interpolates the IDs at query time.
+                  query = "{namespace=\"${var.gdcn_namespace}\"} |= \"$$${__span.traceId}\" |= \"$$${__span.spanId}\""
                 }
                 streamingEnabled = {
                   search = false
