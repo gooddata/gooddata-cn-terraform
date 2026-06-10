@@ -34,15 +34,25 @@ deployQuiverDatasourceFs: true
 useInternalGDEtcd: true
 
 afmExecApi:
-  jvmOptions: -Xmx1700M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M
-  replicaCount: 2
+  # afm-exec-api is reactive (Netty/WebFlux) and dispatches blocking downstream
+  # calls (gRPC to calcique/result-cache, Pulsar) onto the Kotlin Dispatchers.IO
+  # pool. That pool defaults to only 64 threads/pod, which caps each pod at ~50
+  # concurrent in-flight requests regardless of CPU (pods sit at ~20% CPU while
+  # thousands of requests queue at the gateway). Raise io.parallelism and the
+  # perceived processor count to unlock per-pod concurrency, and scale out.
+  jvmOptions: -Xmx1700M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=128
+  # Sizing note: trimming to 4 replicas (with result-cache also trimmed)
+  # regressed widget execute latency from ~80ms to ~5s at 40 dashboard-loads/s;
+  # the gateway feeds up to ~1600 concurrent forwards and the execute path
+  # needs 8 pods' worth of dispatcher threads to absorb that.
+  replicaCount: 8
   resources:
     limits:
-      cpu: 1000m
-      memory: 3100Mi
+      cpu: 3000m
+      memory: 3600Mi
     requests:
-      cpu: 200m
-      memory: 3100Mi
+      cpu: 1000m
+      memory: 3600Mi
 analyticalDesigner:
   resources:
     limits:
@@ -79,9 +89,16 @@ authService:
     requests:
       cpu: 100m
       memory: 820Mi
+automation:
+  # Same dead-Zipkin-exporter issue as metadata-api (see metadataApi block):
+  # automation's image does not disable the zipkin exporter, which throttles
+  # span export and drops traces under load.
+  extraEnvVars:
+    - name: MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED
+      value: "false"
 calcique:
   jvmOptions: -Xmx1024M -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M
-  replicaCount: 2
+  replicaCount: 4
   resources:
     limits:
       cpu: 1500m
@@ -91,13 +108,21 @@ calcique:
       memory: 2800Mi
 customEtcd:
   enabled: true
+  # This 3-node etcd is the coordination layer for the whole Quiver cluster
+  # (~20 pods register flights here on every DoPut). Under load test, etcd held
+  # the flight catalog plus the large range-scan buffers (5000-key/~1.3MB reads)
+  # and climbed past the old 1536Mi limit, OOMKilling 2 of 3 members within
+  # seconds — quorum was lost, all flight writes blocked, and sql-executor
+  # stalled with the sql.select queue spiking to ~3000 while it sat idle.
+  # Fix is VERTICAL (more memory + CPU), NOT more replicas: etcd is Raft, so a
+  # 5th member only enlarges the write quorum and slows commits. Stay at 3.
   resources:
     requests:
-      cpu: 300m
-      memory: 1024Mi
+      cpu: 500m
+      memory: 2048Mi
     limits:
-      cpu: 600m
-      memory: 1536Mi
+      cpu: 2000m
+      memory: 4096Mi
 dashboards:
   resources:
     limits:
@@ -171,7 +196,27 @@ measureEditor:
       cpu: 20m
       memory: 15Mi
 metadataApi:
-  jvmOptions: -Xmx6000M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -XX:ActiveProcessorCount=6 -Dkotlinx.coroutines.io.parallelism=16
+  # Under load every pod pins hikaricp_connections_active at the app default
+  # maximum-pool-size=16 with ~0 pending, because io.parallelism=16 saturates
+  # first (16 blocking JDBC coroutine threads == 16 busy connections; callers
+  # suspend upstream). gRPC latency then climbs to ~1s while the pod uses <1
+  # CPU core. Raise both limits together; the metadata RDS (max_connections
+  # ~420 on db.t4g.medium) has room for 4 pods x 48 burst with minimumIdle
+  # keeping the steady-state footprint small.
+  extraEnvVars:
+    - name: SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE
+      value: "48"
+    - name: SPRING_DATASOURCE_HIKARI_MINIMUMIDLE
+      value: "8"
+    # metadata-api's image (unlike most services) does not disable the
+    # auto-configured Zipkin span exporter, so every span batch first retries
+    # localhost:9411 (connection refused), throttling the shared export worker
+    # until its queue overflows and silently drops spans — preferentially
+    # during load bursts, which is why slow-request traces were missing their
+    # downstream spans in Tempo.
+    - name: MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED
+      value: "false"
+  jvmOptions: -Xmx6000M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -XX:ActiveProcessorCount=6 -Dkotlinx.coroutines.io.parallelism=48
   pulsar:
     metadataSync:
       messageTTL: 3600
@@ -213,11 +258,16 @@ qdrant:
       memory: 3500Mi
 quiver:
   limitFlightCount: 90000
-  # Increase concurrent put requests to prevent issues with the
-  # collectLabelElements APIs under load.
-  concurrentPutRequests: 32
+  # The cache-miss write path bottleneck: sql-executor streams results into
+  # quiver-cache via DoPut, and each put is gated by these two limits. Under
+  # load test, quiver_durable_writes_in_progress pinned at the limit on every
+  # cache pod while RDS executed queries in 1ms and sql-executor's fetch
+  # blocked ~6s per query waiting for a put slot, backing up sql.select by
+  # thousands of messages. Size puts and durable S3 writes well above the
+  # sustained cache-miss rate.
+  concurrentPutRequests: 64
   s3DurableStorage:
-    durableS3WritesInProgress: 32
+    durableS3WritesInProgress: 128
   storage:
     # The server work dir stores the flight catalog (SQLite database); as the
     # total flight limit grows the workdir must be large enough to hold it.
@@ -226,7 +276,18 @@ quiver:
       diskCacheSize: 25Gi
       diskSize: 30Gi
   replicaCount:
-    xtab: 4
+    # quiver-cache serves DoGet for every result fetch AND absorbs DoPut +
+    # durable S3 writes for every cache miss; two pods saturated their put
+    # pipeline under load while everything else idled.
+    cache: 4
+    # quiver-xtab (cross-tabulation): the chart-hardcoded dataframe_task_threads=2
+    # caps each pod at 2 concurrent tasks; the env overrides below raise that to
+    # 16. Sizing note: under heavy cache-miss load each pod's 16 task threads are
+    # held on Flight input-I/O (reading the source result from quiver-cache), so
+    # effective per-pod cross-tab throughput is far below the 16-thread nominal
+    # and tasks queued 22-33s (run itself is ~0.15s). The lever that scales that
+    # I/O-bound work is pods. 16 replicas clears the queue at 40 loads/s.
+    xtab: 16
   resources:
     cache:
       limits:
@@ -238,11 +299,15 @@ quiver:
         memory: 2048Mi
         ephemeral-storage: 30Gi
     xtab:
+      # CPU restored to the known-passing 4000m. The compute is bursty (8 worker
+      # subprocesses doing short polars ops), so headroom matters even though the
+      # 2-min-average CPU looks low; this is the exact xtab config from the
+      # p95<5s passing run.
       limits:
-        cpu: 1500m
+        cpu: 4000m
         memory: 7680Mi
       requests:
-        cpu: 750m
+        cpu: 2000m
         memory: 2560Mi
     ml:
       limits:
@@ -261,6 +326,15 @@ quiver:
   extraEnvVarsCache:
     - name: QUIVER_ETCD_NEW_EVENT_READER
       value: "1"
+    # durableS3WritesInProgress only caps how many durable writes may be
+    # admitted; the actual S3 uploads are drained by a background pool of
+    # storage_durable_sync_threads, which defaults to 4 per pod. Under
+    # sustained 40 iter/s load the admitted-writes gauge pins at the cap while
+    # 4 threads/pod drain it, so the buffer fills after a few minutes and
+    # backpressures DoPut (and with it the whole cache-miss path). S3 PUTs are
+    # cheap I/O; widen the drain.
+    - name: QUIVER_STORAGE_DURABLE_SYNC_THREADS
+      value: "16"
   extraEnvVarsDatasource:
     - name: QUIVER_ETCD_NEW_EVENT_READER
       value: "1"
@@ -273,6 +347,19 @@ quiver:
   extraEnvVarsXtab:
     - name: QUIVER_ETCD_NEW_EVENT_READER
       value: "1"
+    # The chart's quiver-xtab.conf.toml hardcodes dataframe_task_threads=2 and
+    # dataframe_task_workers=1. task_threads sizes the ThreadPoolExecutor that
+    # ALL dataframe tasks run through (quiver_module/tasks/thread_task_executor.py),
+    # so per-pod task concurrency is 2 regardless of CPU/replicas — under load
+    # tasks queued ~60s in that pool while the crosstab op itself took ~2ms.
+    # Raise the executor pool (task_threads), the worker subprocesses that
+    # execute the ops (task_workers), and the input-fetch pool (gather_threads).
+    - name: QUIVER_DATAFRAME_TASK_THREADS
+      value: "16"
+    - name: QUIVER_DATAFRAME_TASK_WORKERS
+      value: "8"
+    - name: QUIVER_DATAFRAME_GATHER_THREADS
+      value: "8"
 redis-ha:
   replicas: 3
   configmapTest:
@@ -318,20 +405,39 @@ redis-ha:
         memory: 64Mi
         cpu: 150m
 resultCache:
-  jvmOptions: -Xmx2100M -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M
+  # result-cache runs the execution plan for every AFM (even cache hits: resolve
+  # metadata -> compute cache key -> fetch from quiver). It is Kotlin and sizes its
+  # coroutine dispatchers from the perceived processor count; with ActiveProcessorCount
+  # unset and io.parallelism at the default 64, under load ~200 concurrent executions
+  # per pod contend for ~6 Dispatchers.Default threads, so each execution is
+  # descheduled mid-flight (multi-second gaps at ~23% CPU) and takes ~4.7s instead of
+  # ~0.3s. That latency is what holds api-gw's bounded forward pool open and backs the
+  # gateway up. Widen the dispatchers and scale out so executions stay sub-second.
+  jvmOptions: -Xmx2100M -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=256
+  # Sizing note: trimming to 4 replicas / 2000m regressed widget execute
+  # latency from ~80ms to ~5s at 40 dashboard-loads/s (runExecution is on the
+  # hot path of every execute, and ActiveProcessorCount=8 needs the CPU limit
+  # to back it). 6 replicas @ 4000m is the proven-passing configuration.
+  replicaCount: 6
   resources:
     limits:
-      cpu: 1000m
-      memory: 3200Mi
+      cpu: 4000m
+      memory: 3600Mi
     requests:
-      cpu: 500m
-      memory: 3200Mi
+      cpu: 2000m
+      memory: 3600Mi
   pulsar:
     executionFinish:
       # bump the number of execution finish messages the pod can handle at once
-      maxConcurrentMessages: 96
+      maxConcurrentMessages: 200
   # Large total result-cache size limit (512 GiB).
   totalCacheLimit: 549755813888
+  # Same dead-Zipkin-exporter issue as metadata-api (see metadataApi block):
+  # result-cache's image does not disable the zipkin exporter, which throttles
+  # span export and drops traces under load.
+  extraEnvVars:
+    - name: MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED
+      value: "false"
 scanModel:
   jvmOptions: -Xmx220M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
   resources:
@@ -342,9 +448,17 @@ scanModel:
       cpu: 100m
       memory: 700Mi
 sqlExecutor:
-  jvmOptions: -Xmx2048M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=256M
-    -XX:ActiveProcessorCount=6
-  replicaCount: 5
+  jvmOptions: -Xmx2048M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=512M -XX:ActiveProcessorCount=32
+  # sql-executor pods idle even under full load (the cache-miss gate was the
+  # quiver-cache DoPut/durable-write pipeline, since fixed); 8 pods x
+  # receiverQueueSize 6 = 48 in-flight SQL, well above the sustained miss rate.
+  replicaCount: 8
+  pulsar:
+    sqlSelect:
+      # Limit pre-fetch queue depth to match pool size: prevents cascade when
+      # JDBC connections are exhausted by ensuring each pod won't accept more
+      # work than it has connections for.
+      receiverQueueSize: 6
   resources:
     limits:
       cpu: 1500m
@@ -419,19 +533,36 @@ exportBuilder:
       cpu: 200m
       memory: 550Mi
 apiGw:
+  # api-gw is the Ktor front-door gateway. It forwards each request over a
+  # Ktor CIO HTTP client whose per-route connection pool (~100 conns/route/pod,
+  # bare CIO.create() in CallForwarder.kt) is NOT exposed in the chart, so total
+  # forward concurrency = ~100 x replicas, each connection held for the full
+  # backend execution. This only becomes the system ceiling when backend latency
+  # is high (every "request sits in api-gw" symptom during load testing traced
+  # to slow backends holding the pool, not to api-gw itself — its own
+  # processing time stays ~1ms). Sizing note: trimming to 6 pods (600 slots)
+  # collapsed under the load-test ramp — cache-miss result GETs legitimately
+  # hold their forward connection for 1-3s while long-polling until the SQL
+  # pipeline finishes, so in-flight demand bursts past 3000; 16 pods
+  # (~1600 slots) absorb the burst and drain. api-gw is CPU-cheap (~5% under
+  # full load), so the extra replicas cost little.
+  replicaCount: 16
   database:
     pool:
-      # Wider apiGw DB connection pool for higher concurrency.
+      # Wider apiGw DB connection pool for higher concurrency (matches prod).
       maxSize: 32
       minIdle: 4
       maxAcquireTime: 30000
   resources:
     limits:
-      cpu: 1400m
+      cpu: 3000m
       memory: 3000Mi
     requests:
-      cpu: 280m
+      cpu: 1000m
       memory: 3000Mi
   # -- Custom JVM options
-  # These settings must be aligned with resource.limits.memory value
-  jvmOptions: "-Xms1500m -Xmx1500m -XX:ActiveProcessorCount=2 -XX:MaxDirectMemorySize=256m"
+  # These settings must be aligned with resource.limits.memory value.
+  # Note: -Dkotlinx.coroutines.io.parallelism was tried here and proven to have
+  # zero effect — api-gw's forward path is async CIO, not Dispatchers.IO; the
+  # forward pool above is the relevant limit.
+  jvmOptions: "-Xms1500m -Xmx1500m -XX:ActiveProcessorCount=8 -XX:MaxDirectMemorySize=512m"
