@@ -58,7 +58,7 @@ resource "helm_release" "kube_prometheus_stack" {
           externalLabels = {
             cluster_name = var.deployment_name
           }
-          retention = "2d"
+          retention = var.prometheus_retention_period
           resources = {
             requests = { cpu = "100m", memory = "256Mi" }
             limits   = { cpu = "500m", memory = "1Gi" }
@@ -117,6 +117,16 @@ resource "helm_release" "loki" {
               period = "24h"
             }
           }]
+        }
+        # Retention is enforced by the compactor loop below. retention_period
+        # caps log age; the 5Gi PVC still caps total size, so at high log volume
+        # data may be evicted before this period is reached.
+        limits_config = {
+          retention_period = var.loki_retention_period
+        }
+        compactor = {
+          retention_enabled    = true
+          delete_request_store = "filesystem"
         }
         auth_enabled = false
       }
@@ -230,6 +240,9 @@ resource "helm_release" "tempo" {
           }
           zipkin = { endpoint = "0.0.0.0:9411" }
         }
+        # Trace retention enforced by the block-storage compactor. The 5Gi PVC
+        # still caps total size, so traces may be evicted before this period.
+        retention = var.tempo_retention_period
       }
       persistence = {
         enabled = true
