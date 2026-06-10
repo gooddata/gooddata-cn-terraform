@@ -26,6 +26,15 @@ deployment_name   = "gooddata-cn"
 # GoodData.CN license key
 gdcn_license_key = "key/asdf==" # provided by GoodData
 
+# Additional Helm values appended LAST to the gooddata-cn chart values, so these
+# override the templated defaults. Use to set chart/sub-chart options not exposed
+# as Terraform variables. Provide raw YAML as a string (heredoc recommended).
+# gdcn_helm_extra_values = <<-EOT
+#   service:
+#     someComponent:
+#       replicaCount: 3
+# EOT
+
 # Deploys and enables GoodData generative AI services
 # enable_ai_features = true
 

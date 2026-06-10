@@ -128,6 +128,12 @@ variable "enable_observability" {
   default     = false
 }
 
+variable "gdcn_helm_extra_values" {
+  description = "Additional Helm values YAML string appended to the gooddata-cn chart values. Use to override sub-chart settings not exposed as Terraform variables."
+  type        = string
+  default     = ""
+}
+
 variable "gdcn_license_key" {
   description = "GoodData.CN license key (provided by your GoodData contact)"
   type        = string
