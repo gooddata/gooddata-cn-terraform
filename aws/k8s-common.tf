@@ -48,6 +48,7 @@ module "k8s_common" {
   gdcn_namespace         = var.gdcn_namespace
   gdcn_license_key       = var.gdcn_license_key
   gdcn_orgs              = var.gdcn_orgs
+  gdcn_helm_extra_values = var.gdcn_helm_extra_values
   size_profile           = var.size_profile
   starrocks_size_profile = local.starrocks_size_profile_effective
   cloud                  = "aws"
