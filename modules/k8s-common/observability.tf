@@ -9,6 +9,46 @@ resource "kubernetes_namespace_v1" "observability" {
   }
 }
 
+locals {
+  # Memory requests/limits for the observability stack, scaled by size_profile.
+  # CPU is intentionally left flat per-service (metrics show these components are
+  # memory-bound, not CPU-bound at our scale). prod-xl mirrors prod-large.
+  observability_memory = {
+    dev = {
+      prometheus = { request = "256Mi", limit = "1Gi" }
+      loki       = { request = "256Mi", limit = "1Gi" }
+      tempo      = { request = "128Mi", limit = "512Mi" }
+      grafana    = { request = "128Mi", limit = "512Mi" }
+      promtail   = { request = "64Mi", limit = "256Mi" }
+    }
+    prod-small = {
+      prometheus = { request = "512Mi", limit = "2Gi" }
+      loki       = { request = "512Mi", limit = "2Gi" }
+      tempo      = { request = "256Mi", limit = "1Gi" }
+      grafana    = { request = "256Mi", limit = "1Gi" }
+      promtail   = { request = "128Mi", limit = "256Mi" }
+    }
+    prod-large = {
+      prometheus = { request = "1Gi", limit = "4Gi" }
+      loki       = { request = "1Gi", limit = "4Gi" }
+      # Higher request/limit gives the single-binary Tempo headroom for the
+      # raised ingestion limits (see helm_release.tempo overrides) so the
+      # larger live-trace buffer does not OOM under peak trace volume.
+      tempo    = { request = "1Gi", limit = "3Gi" }
+      grafana  = { request = "256Mi", limit = "1Gi" }
+      promtail = { request = "128Mi", limit = "512Mi" }
+    }
+  }
+
+  # prod-xl uses prod-large sizing; fall back to prod-small for any other
+  # unmapped profile.
+  obs_mem = lookup(
+    local.observability_memory,
+    var.size_profile == "prod-xl" ? "prod-large" : var.size_profile,
+    local.observability_memory["prod-small"],
+  )
+}
+
 resource "helm_release" "kube_prometheus_stack" {
   count = var.enable_observability ? 1 : 0
 
@@ -60,8 +100,8 @@ resource "helm_release" "kube_prometheus_stack" {
           }
           retention = var.prometheus_retention_period
           resources = {
-            requests = { cpu = "100m", memory = "256Mi" }
-            limits   = { cpu = "500m", memory = "1Gi" }
+            requests = { cpu = "100m", memory = local.obs_mem.prometheus.request }
+            limits   = { cpu = "500m", memory = local.obs_mem.prometheus.limit }
           }
           storageSpec = {
             volumeClaimTemplate = {
@@ -139,11 +179,11 @@ resource "helm_release" "loki" {
         resources = {
           requests = {
             cpu    = "100m"
-            memory = "256Mi"
+            memory = local.obs_mem.loki.request
           }
           limits = {
             cpu    = "500m"
-            memory = "1Gi"
+            memory = local.obs_mem.loki.limit
           }
         }
       }
@@ -193,11 +233,11 @@ resource "helm_release" "promtail" {
       resources = {
         requests = {
           cpu    = "50m"
-          memory = "64Mi"
+          memory = local.obs_mem.promtail.request
         }
         limits = {
           cpu    = "200m"
-          memory = "256Mi"
+          memory = local.obs_mem.promtail.limit
         }
       }
     })
@@ -263,11 +303,11 @@ resource "helm_release" "tempo" {
       resources = {
         requests = {
           cpu    = "50m"
-          memory = "128Mi"
+          memory = local.obs_mem.tempo.request
         }
         limits = {
           cpu    = "200m"
-          memory = "512Mi"
+          memory = local.obs_mem.tempo.limit
         }
       }
     })
@@ -304,11 +344,11 @@ resource "helm_release" "grafana" {
       resources = {
         requests = {
           cpu    = "50m"
-          memory = "128Mi"
+          memory = local.obs_mem.grafana.request
         }
         limits = {
           cpu    = "200m"
-          memory = "512Mi"
+          memory = local.obs_mem.grafana.limit
         }
       }
       "grafana.ini" = {
