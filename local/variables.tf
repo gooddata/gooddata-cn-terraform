@@ -247,6 +247,24 @@ variable "kubeconfig_path" {
   default     = "~/.kube/config"
 }
 
+variable "loki_retention_period" {
+  description = "Loki log retention period (Go duration; multiple of 24h, e.g. 168h = 7 days)."
+  type        = string
+  default     = "168h"
+}
+
+variable "prometheus_retention_period" {
+  description = "Prometheus metrics retention period (e.g. 168h = 7 days)."
+  type        = string
+  default     = "168h"
+}
+
+variable "tempo_retention_period" {
+  description = "Tempo trace retention period (Go duration, e.g. 168h = 7 days)."
+  type        = string
+  default     = "168h"
+}
+
 variable "observability_hostname" {
   description = "Hostname for Grafana"
   type        = string

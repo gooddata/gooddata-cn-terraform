@@ -207,6 +207,12 @@ variable "local_s3_secret_key" {
   sensitive   = true
 }
 
+variable "loki_retention_period" {
+  description = "Loki log retention period (Go duration; must be a multiple of 24h, e.g. 168h = 7 days). Enables the compactor retention loop."
+  type        = string
+  default     = "168h"
+}
+
 variable "observability_hostname" {
   description = "Hostname for Grafana"
   type        = string
@@ -216,6 +222,12 @@ variable "observability_hostname" {
     condition     = var.enable_observability ? length(trimspace(var.observability_hostname)) > 0 : true
     error_message = "observability_hostname must be provided when enable_observability is true."
   }
+}
+
+variable "prometheus_retention_period" {
+  description = "Prometheus metrics retention period (e.g. 168h = 7 days)."
+  type        = string
+  default     = "168h"
 }
 
 variable "registry_dockerio" { type = string }
@@ -283,6 +295,12 @@ variable "starrocks_fe_image_tag" {
 variable "starrocks_irsa_role_arn" {
   type    = string
   default = ""
+}
+
+variable "tempo_retention_period" {
+  description = "Tempo trace retention period (Go duration, e.g. 168h = 7 days). Sets the block-storage compactor retention."
+  type        = string
+  default     = "168h"
 }
 
 variable "tls_mode" { type = string }

@@ -79,8 +79,11 @@ module "k8s_common" {
   helm_tempo_version                 = var.helm_tempo_version
   helm_grafana_version               = var.helm_grafana_version
 
-  enable_observability   = var.enable_observability
-  observability_hostname = var.observability_hostname
+  enable_observability        = var.enable_observability
+  observability_hostname      = var.observability_hostname
+  loki_retention_period       = var.loki_retention_period
+  prometheus_retention_period = var.prometheus_retention_period
+  tempo_retention_period      = var.tempo_retention_period
 
   enable_ai_lake                        = var.enable_ai_lake
   starrocks_s3_bucket_id                = var.enable_ai_lake ? aws_s3_bucket.starrocks[0].id : ""

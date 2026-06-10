@@ -107,8 +107,11 @@ module "k8s_common" {
   helm_tempo_version                 = var.helm_tempo_version
   helm_grafana_version               = var.helm_grafana_version
 
-  enable_observability   = var.enable_observability
-  observability_hostname = var.observability_hostname
+  enable_observability        = var.enable_observability
+  observability_hostname      = var.observability_hostname
+  loki_retention_period       = var.loki_retention_period
+  prometheus_retention_period = var.prometheus_retention_period
+  tempo_retention_period      = var.tempo_retention_period
 
   gdcn_helm_extra_values = var.gdcn_helm_extra_values
 
