@@ -15,6 +15,13 @@ size_profile       = "dev"
 enable_ai_features = true
 
 ###
+# Self-hosted inference (GPU pool for vLLM/SIE — see deploy/k8s/vllm-qwen.yaml)
+###
+enable_inference_gpu_pool   = true
+inference_gpu_instance_type = "g6e.xlarge" # 1x L40S 48GB; needs G-instance quota
+inference_gpu_max_nodes     = 1
+
+###
 # DNS
 ###
 dns_provider    = "route53"

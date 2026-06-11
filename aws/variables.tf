@@ -465,3 +465,21 @@ variable "tls_mode" {
     error_message = "tls_mode=\"acm\" requires ingress_controller=\"alb\"; tls_mode=\"letsencrypt\" requires ingress_controller=\"ingress-nginx\" or \"istio_gateway\"."
   }
 }
+
+variable "enable_inference_gpu_pool" {
+  description = "Create a GPU node group (taint workload=inference) for self-hosted LLM inference servers (vLLM, SIE). Requires EC2 G-instance quota in the region."
+  type        = bool
+  default     = false
+}
+
+variable "inference_gpu_instance_type" {
+  description = "EC2 instance type for the inference GPU pool. g6e.xlarge = 1x L40S 48GB (fits a ~27B model with FP8 quantization)."
+  type        = string
+  default     = "g6e.xlarge"
+}
+
+variable "inference_gpu_max_nodes" {
+  description = "Maximum number of nodes in the inference GPU pool."
+  type        = number
+  default     = 1
+}

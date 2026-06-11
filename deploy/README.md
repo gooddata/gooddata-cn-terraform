@@ -83,15 +83,38 @@ docker buildx build --platform linux/amd64 \
   --push microservices/gen-ai/
 ```
 
+## Self-hosted inference (GPU pool + vLLM)
+
+The whole point of this environment: generative inference runs **inside our
+cluster**, next to GoodData CN — no external inference dependency.
+
+`jan-inference` enables a GPU node group (`enable_inference_gpu_pool = true`,
+`g6e.xlarge` = 1x L40S 48 GB, taint `workload=inference`). **Prerequisite: EC2
+G-instance vCPU quota in us-east-1** (Service Quotas → "Running On-Demand G and
+VT instances" ≥ 4) — request early, approval takes days.
+
+Deploy the inference server after the cluster is up:
+
+```bash
+./deploy/deploy.sh jan-inference kubectl
+kubectl apply -f deploy/k8s/vllm-qwen.yaml
+# first start downloads the model — 10-20 min before Ready
+kubectl -n inference get pods -w
+```
+
+In-cluster endpoint: `http://vllm.inference.svc.cluster.local:8000/v1`
+(vLLM is started with `--enable-auto-tool-choice`, so function calling works —
+the full agentic flow is available through the LOCAL provider).
+
 ## Registering a local/BYOLLM provider
 
 After deployment, register any OpenAI-compatible Chat Completions server
-(SIE, vLLM, TGI…) against the org:
+against the org — the in-cluster vLLM, or an external one (SIE, TGI…):
 
 ```bash
-PROVIDER_ID=sie-llm \
-LLM_BASE_URL=http://<inference-host>:8080/v1 \
-LLM_API_KEY=SL-... \
+PROVIDER_ID=vllm-qwen \
+LLM_BASE_URL=http://vllm.inference.svc.cluster.local:8000/v1 \
+LLM_API_KEY=local \
 LLM_MODEL=Qwen/Qwen3.6-27B \
 TIGER_ENDPOINT=https://gooddata.jan-inference.dev11.devgdc.com \
 TIGER_API_TOKEN=<org-api-token> \

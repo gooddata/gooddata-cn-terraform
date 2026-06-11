@@ -178,6 +178,48 @@ module "eks" {
         desired_size = 0
       }
     },
+    # Optional GPU pool for self-hosted LLM inference (vLLM, SIE). Bottlerocket
+    # NVIDIA variant ships the NVIDIA device plugin; the taint keeps general
+    # workloads off the expensive nodes.
+    var.enable_inference_gpu_pool ? {
+      inference-gpu = {
+        create                     = true
+        ami_type                   = "BOTTLEROCKET_x86_64_NVIDIA"
+        instance_types             = [var.inference_gpu_instance_type]
+        use_custom_launch_template = false
+        disk_size                  = 300
+
+        labels = {
+          workload = "inference"
+        }
+        taints = {
+          inference = {
+            key    = "workload"
+            value  = "inference"
+            effect = "NO_SCHEDULE"
+          }
+        }
+
+        tags = merge(
+          local.common_tags,
+          {
+            "k8s.io/cluster-autoscaler/enabled"                      = "true"
+            "k8s.io/cluster-autoscaler/${var.deployment_name}"       = "owned"
+            "k8s.io/cluster-autoscaler/node-template/label/workload" = "inference"
+            "k8s.io/cluster-autoscaler/node-template/taint/workload" = "inference:NoSchedule"
+          }
+        )
+
+        iam_role_additional_policies = merge({
+          AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+          AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
+        }, local.ecr_pull_through_cache_policy)
+
+        min_size     = 0
+        max_size     = var.inference_gpu_max_nodes
+        desired_size = 1
+      }
+    } : {},
   )
 
   node_security_group_additional_rules = var.ingress_controller == "istio_gateway" ? {
