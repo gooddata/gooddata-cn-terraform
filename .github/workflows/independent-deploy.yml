@@ -1,0 +1,129 @@
+name: Independent Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform"
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, destroy]
+      environment:
+        description: "Environment to deploy (deploy/envs/<env>)"
+        required: true
+        default: jan-inference
+        type: choice
+        options: [jan-inference]
+      gdc_nas_repository:
+        description: "gdc-nas repository to build gen-ai from (org/repo)"
+        required: false
+        default: "janpansky/gdc-nas"
+      gdc_nas_branch:
+        description: "gdc-nas branch to build gen-ai from (leave empty to use chart default)"
+        required: false
+        default: ""
+      image_tag:
+        description: "Docker image tag (required when gdc_nas_branch is set)"
+        required: false
+        default: ""
+
+jobs:
+  build-and-push:
+    name: Build & push custom gen-ai image
+    if: ${{ inputs.action == 'deploy' && inputs.gdc_nas_branch != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout gdc-nas branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.gdc_nas_repository }}
+          ref: ${{ inputs.gdc_nas_branch }}
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Configure AWS credentials (infra1 ECR)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ECR_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 \
+            | docker login --username AWS --password-stdin \
+              020413372491.dkr.ecr.us-east-1.amazonaws.com
+
+      - name: Build and push gen-ai image
+        run: |
+          docker build -t gen-ai:${{ inputs.image_tag }} microservices/gen-ai/
+          docker tag gen-ai:${{ inputs.image_tag }} \
+            020413372491.dkr.ecr.us-east-1.amazonaws.com/dev/mark43-ai:${{ inputs.image_tag }}
+          docker push \
+            020413372491.dkr.ecr.us-east-1.amazonaws.com/dev/mark43-ai:${{ inputs.image_tag }}
+
+  terraform:
+    name: Terraform ${{ inputs.action }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: ${{ always() && !failure() }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (dev panther)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Write work tfvars
+        run: |
+          cp deploy/envs/${{ inputs.environment }}/settings.tfvars aws/work.tfvars
+
+          # Inject license key from secret (replace in place — appending a second
+          # assignment would be a duplicate-attribute error in HCL)
+          sed -i -E "s|^(gdcn_license_key[[:space:]]*=[[:space:]]*)\"\"|\1\"${{ secrets.GDCN_LICENSE_KEY }}\"|" \
+            aws/work.tfvars
+
+          # Inject custom gen-ai image override if branch was specified.
+          # Inserted INSIDE the existing gdcn_helm_extra_values heredoc (before its
+          # closing EOT) — a second gdcn_helm_extra_values assignment would either
+          # error out or silently drop the env's feature flags.
+          if [ -n "${{ inputs.gdc_nas_branch }}" ]; then
+            awk -v tag="${{ inputs.image_tag }}" '
+              /^EOT$/ && !done {
+                print "  services:"
+                print "    genAi:"
+                print "      image:"
+                print "        repositoryPrefix: \"020413372491.dkr.ecr.us-east-1.amazonaws.com/dev\""
+                print "        name: \"mark43-ai\""
+                print "        tag: \"" tag "\""
+                done=1
+              }
+              { print }
+            ' aws/work.tfvars > /tmp/work.tfvars
+            mv /tmp/work.tfvars aws/work.tfvars
+          fi
+
+      - name: Terraform init
+        working-directory: aws
+        run: terraform init -backend-config="key=independent-deploy/${{ inputs.environment }}/terraform.tfstate"
+
+      - name: Terraform apply
+        if: ${{ inputs.action == 'deploy' }}
+        working-directory: aws
+        run: terraform apply -var-file=work.tfvars -auto-approve
+
+      - name: Terraform destroy
+        if: ${{ inputs.action == 'destroy' }}
+        working-directory: aws
+        run: terraform destroy -var-file=work.tfvars -auto-approve

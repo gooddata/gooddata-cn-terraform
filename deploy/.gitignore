@@ -1,0 +1,3 @@
+# Parent .gitignore excludes *.tfvars (secrets). Env definitions here are
+# committed intentionally — license keys are injected via GDCN_LICENSE_KEY.
+!envs/*/settings.tfvars

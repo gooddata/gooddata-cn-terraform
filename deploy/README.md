@@ -1,0 +1,132 @@
+# Independent GoodData CN deployment
+
+Deploys GoodData CN on AWS (EKS + RDS + S3) using the terraform module in this
+repo (`../aws`), for **local inference / BYOLLM testing** with a custom gen-ai
+image. ~$15/day per environment — destroy when not in use.
+
+Based on the approach from `Tomkess/gdc-cn-independent-deploy`, restructured to
+live next to the terraform module (no external clone) and support multiple
+environments.
+
+## Environments
+
+Each environment lives in `deploy/envs/<env>/settings.tfvars` and has its own
+Terraform state in S3 (`independent-deploy/<env>/terraform.tfstate`), its own
+hostname, and its own feature-flag set.
+
+| Environment | URL | Purpose |
+|---|---|---|
+| `jan-inference` | https://gooddata.jan-inference.dev11.devgdc.com | local inference testing (SIE / vLLM / BYOLLM) |
+
+**Inference-server testing note:** different inference servers (SIE, vLLM, TGI…)
+do NOT need separate environments — the server lives outside the cluster.
+Register each as a separate LLM provider entity (distinct `PROVIDER_ID`) in one
+environment and switch between them. A new environment is only warranted per
+*person*, to avoid stepping on each other's state.
+
+## Prerequisites
+
+- Terraform, AWS CLI (SSO profile `aws-panther-dev`), kubectl, helm
+- tinkey + GNU coreutils (`brew install coreutils`)
+
+## Quick start
+
+```bash
+# 1. License key (committed tfvars keep it empty on purpose)
+export GDCN_LICENSE_KEY="key/..."
+
+# 2. Initialize Terraform for your environment (once, or when switching envs)
+./deploy/deploy.sh jan-inference init
+
+# 3. Deploy (~35 min)
+./deploy/deploy.sh jan-inference apply
+```
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `./deploy.sh <env> init` | Initialize Terraform for `<env>` — run once, or when switching environments |
+| `./deploy.sh <env> apply` | Deploy / update the environment |
+| `./deploy.sh <env> destroy` | Tear down all resources |
+| `./deploy.sh <env> status` | Show Terraform outputs (URLs, cluster name) |
+| `./deploy.sh <env> kubectl` | Reconfigure kubectl for the deployed cluster |
+
+The script handles SSO refresh automatically and refuses to `apply`/`destroy`
+an environment other than the one Terraform is currently initialized for
+(state-safety guard — re-run `init` to switch).
+
+## Feature flags
+
+Configured per environment in `deploy/envs/<env>/settings.tfvars` under
+`gdcn_helm_extra_values`. Toggle and re-run `apply` (~2 min, no infra
+recreation). The four core AI flags (`enableSemanticSearch`, `enableGenAIChat`,
+`enableAiAgenticConversations`, `enableGenAIMemory`) must stay `true`.
+
+`jan-inference` additionally enables: `enableAIKnowledge`,
+`enableSemanticSearchInChat`, `enableAiHub`, `enableGenAiVisualizationSkill`,
+`enableGenAiVisualizationSummarySkill`, `enableGenAiDashboardSummarySkill`,
+`enableGenAIReasoningVisibility`.
+
+## Custom gen-ai image
+
+To test a gdc-nas branch build (e.g. `jan/local-inference` with the LOCAL
+provider + Chat Completions adapter), uncomment the `services.genAi.image`
+block at the bottom of the env's `gdcn_helm_extra_values` and re-run `apply`.
+The image must already exist in ECR — build via the GitHub Actions workflow
+(below), or locally:
+
+```bash
+cd gdc-nas
+docker buildx build --platform linux/amd64 \
+  -t 020413372491.dkr.ecr.us-east-1.amazonaws.com/dev/mark43-ai:<tag> \
+  --push microservices/gen-ai/
+```
+
+## Registering a local/BYOLLM provider
+
+After deployment, register any OpenAI-compatible Chat Completions server
+(SIE, vLLM, TGI…) against the org:
+
+```bash
+PROVIDER_ID=sie-llm \
+LLM_BASE_URL=http://<inference-host>:8080/v1 \
+LLM_API_KEY=SL-... \
+LLM_MODEL=Qwen/Qwen3.6-27B \
+TIGER_ENDPOINT=https://gooddata.jan-inference.dev11.devgdc.com \
+TIGER_API_TOKEN=<org-api-token> \
+  bash microservices/gen-ai/tools/local_provider.sh
+```
+
+Use distinct `PROVIDER_ID`s to register multiple inference servers side by side
+and A/B test between them.
+
+## GitHub Actions
+
+`independent-deploy.yml` (manual dispatch):
+- **action**: `deploy` or `destroy`
+- **environment**: which `deploy/envs/<env>` to deploy
+- **gdc_nas_repository**: repo to build gen-ai from (default `janpansky/gdc-nas`)
+- **gdc_nas_branch**: empty = default chart images; set = build custom gen-ai image
+- **image_tag**: required when `gdc_nas_branch` is set
+
+### Required secrets (not yet configured in this fork)
+
+| Secret | Description |
+|---|---|
+| `GDCN_LICENSE_KEY` | GoodData CN license key |
+| `GH_TOKEN` | GitHub PAT to checkout gdc-nas (read access to `gdc_nas_repository`) |
+| `ECR_ROLE_ARN` | OIDC role ARN for ECR push (infra1 account) |
+| `TERRAFORM_ROLE_ARN` | OIDC role ARN for Terraform (dev panther account) |
+
+**OIDC caveat:** the existing AWS OIDC roles trust `Tomkess/gdc-cn-independent-deploy`.
+Running this workflow from this fork requires adding
+`repo:janpansky/gooddata-cn-terraform:*` to the roles' trust policies (or
+creating equivalent roles). Until then, deploy locally via `deploy.sh` (SSO)
+and build the image locally via `docker buildx --push`.
+
+## State backend
+
+State lives in the existing `gdc-cn-independent-deploy-tfstate` S3 bucket
+(same AWS account, distinct key prefix `independent-deploy/<env>/`). No
+interference with other users' state.
