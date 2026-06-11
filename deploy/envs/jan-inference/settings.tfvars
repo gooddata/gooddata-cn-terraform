@@ -235,10 +235,10 @@ gdcn_helm_extra_values = <<-EOT
   # ChatCompletionsLlmAdapter for OpenAI-compatible servers: SIE/vLLM/TGI).
   # Uncomment AFTER the image is pushed to ECR (CI build-and-push job, or
   # docker buildx --platform linux/amd64 + push), then re-run apply (~2 min).
-  # services:
-  #   genAi:
-  #     image:
-  #       repositoryPrefix: "020413372491.dkr.ecr.us-east-1.amazonaws.com/dev"
-  #       name: "mark43-ai"
-  #       tag: "jan-local-inference"
+  services:
+    genAi:
+      image:
+        repositoryPrefix: "020413372491.dkr.ecr.us-east-1.amazonaws.com/dev"
+        name: "mark43-ai"
+        tag: "jan-local-inference"
 EOT
