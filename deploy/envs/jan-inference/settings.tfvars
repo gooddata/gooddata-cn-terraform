@@ -18,7 +18,10 @@ enable_ai_features = true
 # Self-hosted inference (GPU pool for vLLM/SIE — see deploy/k8s/vllm-qwen.yaml)
 ###
 enable_inference_gpu_pool   = true
-inference_gpu_instance_type = "g6e.xlarge" # 1x L40S 48GB; needs G-instance quota
+# Start small for pipeline testing: g6.xlarge = 1x L4 24GB, ~$0.80/h.
+# Upgrade path for the 27B model: g6e.xlarge (L40S 48GB, FP8) or
+# g6e.12xlarge (4x L40S, bf16 + --tensor-parallel-size 4).
+inference_gpu_instance_type = "g6.xlarge" # needs G-instance quota (4 vCPU)
 inference_gpu_max_nodes     = 1
 
 ###

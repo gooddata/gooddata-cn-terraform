@@ -89,22 +89,30 @@ The whole point of this environment: generative inference runs **inside our
 cluster**, next to GoodData CN — no external inference dependency.
 
 `jan-inference` enables a GPU node group (`enable_inference_gpu_pool = true`,
-`g6e.xlarge` = 1x L40S 48 GB, taint `workload=inference`). **Prerequisite: EC2
-G-instance vCPU quota in us-east-1** (Service Quotas → "Running On-Demand G and
-VT instances" ≥ 4) — request early, approval takes days.
+taint `workload=inference`). It starts **small on purpose** — `g6.xlarge`
+(1x L4 24 GB, ~$0.80/h) with Qwen3-4B — enough to prove the pipeline end to
+end (gen-ai → LOCAL provider → vLLM → tool calls) without paying for big
+GPUs. **Prerequisite: EC2 G-instance vCPU quota in us-east-1** (Service
+Quotas → "Running On-Demand G and VT instances" ≥ 4) — request early,
+approval takes days.
 
 Deploy the inference server after the cluster is up:
 
 ```bash
 ./deploy/deploy.sh jan-inference kubectl
 kubectl apply -f deploy/k8s/vllm-qwen.yaml
-# first start downloads the model — 10-20 min before Ready
+# first start downloads the model — a few minutes before Ready
 kubectl -n inference get pods -w
 ```
 
 In-cluster endpoint: `http://vllm.inference.svc.cluster.local:8000/v1`
 (vLLM is started with `--enable-auto-tool-choice`, so function calling works —
 the full agentic flow is available through the LOCAL provider).
+
+Cost control: `kubectl -n inference scale deploy/vllm --replicas=0` when not
+testing — the autoscaler removes the GPU node (~10 min). Upgrade path for
+quality benchmarks (Qwen3.6-27B): `g6e.xlarge` + FP8, or `g6e.12xlarge`
+(4x L40S) in bf16 — see notes in `deploy/k8s/vllm-qwen.yaml`.
 
 ## Registering a local/BYOLLM provider
 
@@ -115,7 +123,7 @@ against the org — the in-cluster vLLM, or an external one (SIE, TGI…):
 PROVIDER_ID=vllm-qwen \
 LLM_BASE_URL=http://vllm.inference.svc.cluster.local:8000/v1 \
 LLM_API_KEY=local \
-LLM_MODEL=Qwen/Qwen3.6-27B \
+LLM_MODEL=Qwen/Qwen3-4B \
 TIGER_ENDPOINT=https://gooddata.jan-inference.dev11.devgdc.com \
 TIGER_API_TOKEN=<org-api-token> \
   bash microservices/gen-ai/tools/local_provider.sh

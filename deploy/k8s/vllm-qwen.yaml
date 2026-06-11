@@ -1,16 +1,23 @@
-# vLLM serving Qwen3.6-27B (FP8) on the inference GPU pool.
+# vLLM on the inference GPU pool — small-model setup for PIPELINE testing
+# (gen-ai -> LOCAL provider -> vLLM -> tool calls). Model quality is not the
+# point here; Qwen3-4B fits a single L4 24GB (g6.xlarge) in bf16 and supports
+# function calling.
 #
 # Apply after the cluster is up:
 #   ./deploy/deploy.sh jan-inference kubectl
 #   kubectl apply -f deploy/k8s/vllm-qwen.yaml
 #
-# First start downloads the model (~30 GB) — expect 10-20 min before Ready.
+# First start downloads the model (~8 GB) — a few minutes before Ready.
 # In-cluster endpoint (use as LLM_BASE_URL for the LOCAL provider):
 #   http://vllm.inference.svc.cluster.local:8000/v1
 #
-# Sizing: g6e.xlarge = 1x L40S 48 GB. A 27B model needs FP8/AWQ quantization
-# to fit with usable KV cache; for bf16 use a multi-GPU instance type
-# (g6e.12xlarge, 4x L40S) and add --tensor-parallel-size 4.
+# Cost control: scale to zero when not testing — the autoscaler then removes
+# the GPU node (~10 min):
+#   kubectl -n inference scale deploy/vllm --replicas=0
+#
+# Upgrade path to Qwen3.6-27B (quality benchmarks): switch the GPU pool to
+# g6e.xlarge and add --quantization=fp8, or g6e.12xlarge (4x L40S) in bf16
+# with --tensor-parallel-size=4.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -43,9 +50,8 @@ spec:
         - name: vllm
           image: vllm/vllm-openai:latest
           args:
-            - --model=Qwen/Qwen3.6-27B
-            - --quantization=fp8
-            - --max-model-len=32768
+            - --model=Qwen/Qwen3-4B
+            - --max-model-len=16384
             - --enable-auto-tool-choice
             - --tool-call-parser=hermes
           ports:
@@ -55,7 +61,7 @@ spec:
               nvidia.com/gpu: 1
             requests:
               nvidia.com/gpu: 1
-              memory: 24Gi
+              memory: 12Gi
           volumeMounts:
             - name: model-cache
               mountPath: /root/.cache/huggingface
@@ -65,9 +71,9 @@ spec:
             httpGet:
               path: /health
               port: 8000
-            # model download + load can take ~20 min on first start
-            failureThreshold: 90
-            periodSeconds: 20
+            # model download + load on first start
+            failureThreshold: 60
+            periodSeconds: 15
           readinessProbe:
             httpGet:
               path: /health
@@ -76,11 +82,11 @@ spec:
       volumes:
         - name: model-cache
           emptyDir:
-            sizeLimit: 200Gi
+            sizeLimit: 60Gi
         - name: shm
           emptyDir:
             medium: Memory
-            sizeLimit: 8Gi
+            sizeLimit: 4Gi
 ---
 apiVersion: v1
 kind: Service
