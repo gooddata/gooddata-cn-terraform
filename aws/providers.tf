@@ -67,7 +67,7 @@ locals {
 }
 
 # Kubernetes and Helm providers will connect to the EKS cluster using its API endpoint and token.
-# These values are obtained from the EKS cluster data (set up in eks-cluster.tf).
+# These values are obtained from the EKS cluster data (set up in eks.tf).
 provider "kubernetes" {
   host                   = local.kube_host
   cluster_ca_certificate = local.kube_ca

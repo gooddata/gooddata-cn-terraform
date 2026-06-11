@@ -48,7 +48,7 @@ resource "helm_release" "pulsar" {
       enable_observability = var.enable_observability
     }),
     local.use_istio_gateway ? templatefile("${path.module}/templates/pulsar-istio.tftpl", {}) : null,
-    templatefile("${path.module}/templates/pulsar-size-${var.size_profile}.yaml.tftpl", {})
+    templatefile("${path.module}/templates/pulsar-size-${local.size_profile_template}.yaml.tftpl", {})
   ])
 
   depends_on = [

@@ -14,6 +14,10 @@ locals {
 
   cert_manager_cluster_issuer_name = local.use_self_signed ? "selfsigned" : "letsencrypt"
 
+  # GoodData.CN and Pulsar have no dedicated prod-xl sizing template; prod-xl
+  # reuses prod-large (matching the observability sizing in observability.tf).
+  size_profile_template = var.size_profile == "prod-xl" ? "prod-large" : var.size_profile
+
   # Reuse a single ingress class name throughout the module
   resolved_ingress_class_name = var.ingress_controller == "alb" ? "alb" : (
     var.ingress_controller == "istio_gateway" ? "" : "nginx"

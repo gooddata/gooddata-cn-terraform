@@ -68,11 +68,15 @@ load_tf_outputs() {
     return
   fi
 
-  if TF_OUTPUT_JSON=$(terraform output -json 2>/dev/null); then
+  local tf_err
+  tf_err=$(mktemp)
+  if TF_OUTPUT_JSON=$(terraform output -json 2>"${tf_err}"); then
     TF_OUTPUTS_LOADED=1
   else
-    warn "Failed to read Terraform outputs. Ensure you've run 'terraform apply' in this directory."
+    warn "Failed to read Terraform outputs: $(tr '\n' ' ' <"${tf_err}")"
+    warn "Ensure you've run 'terraform apply' in this directory."
   fi
+  rm -f "${tf_err}"
 }
 
 has_tf_outputs() {

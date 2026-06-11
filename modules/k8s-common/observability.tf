@@ -11,8 +11,8 @@ resource "kubernetes_namespace_v1" "observability" {
 
 locals {
   # Memory requests/limits for the observability stack, scaled by size_profile.
-  # CPU is intentionally left flat per-service (metrics show these components are
-  # memory-bound, not CPU-bound at our scale). prod-xl mirrors prod-large.
+  # CPU is intentionally left flat per-service (these components are memory-bound,
+  # not CPU-bound, at our scale).
   observability_memory = {
     dev = {
       prometheus = { request = "256Mi", limit = "1Gi" }
@@ -40,13 +40,23 @@ locals {
     }
   }
 
-  # prod-xl uses prod-large sizing; fall back to prod-small for any other
-  # unmapped profile.
+  # size_profile_template already maps prod-xl to prod-large; any other unmapped
+  # profile falls back to prod-small.
   obs_mem = lookup(
     local.observability_memory,
-    var.size_profile == "prod-xl" ? "prod-large" : var.size_profile,
+    local.size_profile_template,
     local.observability_memory["prod-small"],
   )
+
+  # dotdc Kubernetes dashboards loaded into Grafana (see dashboards block below).
+  grafana_kubernetes_dashboards = [
+    "k8s-system-api-server",
+    "k8s-system-coredns",
+    "k8s-views-global",
+    "k8s-views-namespaces",
+    "k8s-views-nodes",
+    "k8s-views-pods",
+  ]
 }
 
 resource "helm_release" "kube_prometheus_stack" {
@@ -395,28 +405,8 @@ resource "helm_release" "grafana" {
       }
       dashboards = {
         grafana-dashboards-kubernetes = {
-          k8s-system-api-server = {
-            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-system-api-server.json"
-            token = ""
-          }
-          k8s-system-coredns = {
-            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-system-coredns.json"
-            token = ""
-          }
-          k8s-views-global = {
-            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-global.json"
-            token = ""
-          }
-          k8s-views-namespaces = {
-            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-namespaces.json"
-            token = ""
-          }
-          k8s-views-nodes = {
-            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-nodes.json"
-            token = ""
-          }
-          k8s-views-pods = {
-            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-pods.json"
+          for name in local.grafana_kubernetes_dashboards : name => {
+            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/${name}.json"
             token = ""
           }
         }
