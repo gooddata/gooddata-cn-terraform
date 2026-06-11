@@ -1,13 +1,15 @@
-# vLLM on the inference GPU pool — small-model setup for PIPELINE testing
-# (gen-ai -> LOCAL provider -> vLLM -> tool calls). Model quality is not the
-# point here; Qwen3-4B fits a single L4 24GB (g6.xlarge) in bf16 and supports
-# function calling.
+# vLLM on the inference GPU pool — Qwen3.6-27B (open weights from Hugging
+# Face) running entirely IN OUR CLUSTER. The benchmark model (~GPT-5.2
+# quality), FP8-quantized on the fly to fit a single L40S 48GB (g6e.xlarge).
+# Function calling enabled -> full agentic flow through the LOCAL provider.
 #
 # Apply after the cluster is up:
 #   ./deploy/deploy.sh local-inference kubectl
 #   kubectl apply -f deploy/k8s/vllm-qwen.yaml
 #
-# First start downloads the model (~8 GB) — a few minutes before Ready.
+# First start downloads bf16 weights (~55 GB) and quantizes to FP8 —
+# expect 20-30 min before Ready. Subsequent starts on the same node reuse
+# the cache; after scale-to-zero the download repeats.
 # In-cluster endpoint (use as LLM_BASE_URL for the LOCAL provider):
 #   http://vllm.inference.svc.cluster.local:8000/v1
 #
@@ -50,8 +52,9 @@ spec:
         - name: vllm
           image: vllm/vllm-openai:latest
           args:
-            - --model=Qwen/Qwen3-4B
-            - --max-model-len=16384
+            - --model=Qwen/Qwen3.6-27B
+            - --quantization=fp8
+            - --max-model-len=32768
             - --enable-auto-tool-choice
             - --tool-call-parser=hermes
           ports:
@@ -61,7 +64,7 @@ spec:
               nvidia.com/gpu: 1
             requests:
               nvidia.com/gpu: 1
-              memory: 12Gi
+              memory: 24Gi
           volumeMounts:
             - name: model-cache
               mountPath: /root/.cache/huggingface
@@ -71,8 +74,8 @@ spec:
             httpGet:
               path: /health
               port: 8000
-            # model download + load on first start
-            failureThreshold: 60
+            # 55 GB download + FP8 quantization on first start
+            failureThreshold: 140
             periodSeconds: 15
           readinessProbe:
             httpGet:
@@ -82,11 +85,11 @@ spec:
       volumes:
         - name: model-cache
           emptyDir:
-            sizeLimit: 60Gi
+            sizeLimit: 150Gi
         - name: shm
           emptyDir:
             medium: Memory
-            sizeLimit: 4Gi
+            sizeLimit: 8Gi
 ---
 apiVersion: v1
 kind: Service
