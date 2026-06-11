@@ -114,23 +114,26 @@ testing — the autoscaler removes the GPU node (~10 min). Upgrade path for
 quality benchmarks (Qwen3.6-27B): `g6e.xlarge` + FP8, or `g6e.12xlarge`
 (4x L40S) in bf16 — see notes in `deploy/k8s/vllm-qwen.yaml`.
 
-## Registering a local/BYOLLM provider
+## Registering LLM providers (vLLM + SIE side by side)
 
-After deployment, register any OpenAI-compatible Chat Completions server
-against the org — the in-cluster vLLM, or an external one (SIE, TGI…):
+After deployment, register both inference backends as LOCAL providers for
+A/B testing — the in-cluster vLLM and the Superlinked SIE managed cluster:
 
 ```bash
-PROVIDER_ID=vllm-qwen \
-LLM_BASE_URL=http://vllm.inference.svc.cluster.local:8000/v1 \
-LLM_API_KEY=local \
-LLM_MODEL=Qwen/Qwen3-4B \
-TIGER_ENDPOINT=https://gooddata.jan-inference.dev11.devgdc.com \
-TIGER_API_TOKEN=<org-api-token> \
-  bash microservices/gen-ai/tools/local_provider.sh
+cp deploy/providers/providers.env.example deploy/providers/providers.env
+# fill in TIGER_API_TOKEN (org token) and SIE_API_KEY (SL-... token)
+./deploy/providers/register-providers.sh
 ```
 
-Use distinct `PROVIDER_ID`s to register multiple inference servers side by side
-and A/B test between them.
+Registers (idempotently):
+- `vllm-qwen` — in-cluster vLLM, `Qwen/Qwen3-4B`, no external dependency
+- `sie-llm` — Superlinked managed cluster (us-east-2), `Qwen/Qwen3.6-27B`;
+  expect long cold starts when their worker pool is down (25+ min measured)
+
+Toggle either with `REGISTER_VLLM`/`REGISTER_SIE` in `providers.env`. The
+in-cluster URL works because gen-ai calls the provider from inside the
+cluster. Equivalent generic script lives in gdc-nas:
+`microservices/gen-ai/tools/local_provider.sh`.
 
 ## GitHub Actions
 
