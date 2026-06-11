@@ -19,12 +19,15 @@ enable_ai_features = true
 eks_max_nodes = 6
 
 ###
-# Inference strategy: everything runs IN OUR CLUSTER — open-weights model
-# (Qwen3.6-27B from Hugging Face) served by vLLM on our GPU pool. Nothing
-# flows through Superlinked. See deploy/k8s/vllm-qwen.yaml.
-# GPU scales from zero: cost accrues only while an inference pod runs.
+# Inference phases:
+#   Phase 1 (NOW): Superlinked SIE managed cluster as the only provider —
+#     validates the gen-ai <-> OpenAI-compatible-server integration with no
+#     GPU cost on our side. GPU pool stays OFF.
+#   Phase 2: flip enable_inference_gpu_pool=true + apply (~2 min) + deploy
+#     deploy/k8s/vllm-qwen.yaml -> Qwen3.6-27B runs in OUR cluster (the
+#     sovereignty target).
 ###
-enable_inference_gpu_pool   = true
+enable_inference_gpu_pool   = false
 inference_gpu_instance_type = "g6e.xlarge" # 1x L40S 48GB ~$1.86/h — fits 27B in FP8
 inference_gpu_max_nodes     = 1
 

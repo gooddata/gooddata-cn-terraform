@@ -83,31 +83,37 @@ docker buildx build --platform linux/amd64 \
   --push microservices/gen-ai/
 ```
 
-## Inference strategy
+## Inference strategy — two phases
 
-**Everything runs in our cluster.** Open-weights **Qwen3.6-27B** (the
-benchmark model, ≈GPT-5.2 quality) downloaded from Hugging Face and served by
-**vLLM** on our GPU pool (`g6e.xlarge`, 1x L40S 48 GB, FP8 quantization).
-Nothing flows through Superlinked or any external inference service — this is
-the data-sovereignty story end to end.
+**Phase 1 (now): Superlinked SIE managed cluster as the only provider.**
+Qwen3.6-27B (the benchmark model, ≈GPT-5.2) on *their* GPUs — zero GPU cost
+on our side, validates the gen-ai ↔ OpenAI-compatible-server integration
+end to end. Registered as `sie-llm` via `providers/register-providers.sh`.
+
+Phase 1 caveats (known, measured):
+- **Cold start:** when their worker pool is down, provisioning takes 25+ min
+  and the endpoint returns HTTP 202 — the gen-ai adapter doesn't handle 202,
+  so **warm the cluster first** (curl a completion until it returns text)
+  before testing in the UI.
+- **Function calling:** deployed SIE config rejects `tools` → the adapter
+  falls back to text-only answers. Full agentic flow needs SIE's config
+  roll-forward (Superlinked agenda, ~Jun 22).
+- Plain HTTP to their ELB — pipeline testing only, no real data.
+
+**Phase 2: Qwen3.6-27B in OUR cluster** (the sovereignty target). Flip
+`enable_inference_gpu_pool = true` in the env tfvars, `apply` (~2 min — adds
+the `g6e.xlarge` L40S GPU pool, scale-from-zero), then:
 
 ```bash
 ./deploy/deploy.sh local-inference kubectl
 kubectl apply -f deploy/k8s/vllm-qwen.yaml
-# first start: ~55 GB weights download + FP8 quantization — 20-30 min
-kubectl -n inference get pods -w
+# first start: ~55 GB open weights from Hugging Face + FP8 quantization — 20-30 min
 ```
 
-In-cluster endpoint: `http://vllm.inference.svc.cluster.local:8000/v1` —
-function calling enabled (`--enable-auto-tool-choice`) → the full agentic
-flow works through the LOCAL provider. Scale to zero when idle:
-`kubectl -n inference scale deploy/vllm --replicas=0` (GPU node gone in
-~10 min; next start re-downloads the weights).
-
-**Optional A/B comparison: Superlinked SIE managed cluster** (their GPUs,
-`REGISTER_SIE=true` in providers.env). Caveats: 25+ min cold starts returning
-HTTP 202 that the adapter doesn't handle (warm with curl first), deployed
-config rejects `tools` (text-only fallback), plain HTTP.
+In-cluster endpoint `http://vllm.inference.svc.cluster.local:8000/v1`,
+function calling enabled → full agentic flow, nothing leaves the VPC.
+Set `REGISTER_VLLM=true` and re-run the provider script. Scale to zero when
+idle: `kubectl -n inference scale deploy/vllm --replicas=0`.
 
 ## Registering LLM providers (vLLM + SIE side by side)
 
@@ -165,7 +171,8 @@ Baseline with the GPU node **down** (scale-from-zero — the default state):
 | RDS db.t4g.medium (20 GB, single-AZ) | 1.60 |
 | NAT gateway (single) + ALB | 1.70 |
 | **Baseline total** | **~13–19** |
-| GPU g6e.xlarge (L40S) — **only while vLLM runs** | +1.86/h (~+15 per workday) |
+| Phase 1 — SIE inference (their GPUs) | **0** |
+| Phase 2 — GPU g6e.xlarge, only while vLLM runs | +1.86/h |
 
 Guardrails in place:
 - `eks_max_nodes = 6` (module default is 20 → a runaway workload could
