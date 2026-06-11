@@ -83,36 +83,37 @@ docker buildx build --platform linux/amd64 \
   --push microservices/gen-ai/
 ```
 
-## Self-hosted inference (GPU pool + vLLM)
+## Inference strategy
 
-The whole point of this environment: generative inference runs **inside our
-cluster**, next to GoodData CN — no external inference dependency.
+**Primary: Superlinked SIE managed cluster** — Qwen3.6-27B (benchmark: ≈GPT-5.2
+quality) on *their* GPUs. Zero GPU cost on our side; we pay only the CN
+baseline. Registered as the `sie-llm` provider (below).
 
-`local-inference` enables a GPU node group (`enable_inference_gpu_pool = true`,
-taint `workload=inference`). It starts **small on purpose** — `g6.xlarge`
-(1x L4 24 GB, ~$0.80/h) with Qwen3-4B — enough to prove the pipeline end to
-end (gen-ai → LOCAL provider → vLLM → tool calls) without paying for big
-GPUs. **Prerequisite: EC2 G-instance vCPU quota in us-east-1** (Service
-Quotas → "Running On-Demand G and VT instances" ≥ 4) — request early,
-approval takes days.
+Known SIE caveats:
+- **Cold start:** when their worker pool is down, provisioning takes 25+ min
+  (measured) and the endpoint returns HTTP 202 "provisioning" — the gen-ai
+  adapter does not yet handle this gracefully, so **warm the cluster first**
+  (curl the endpoint, wait for a real completion) before testing in the UI.
+- **Function calling:** the deployed SIE config rejects `tools` → the LOCAL
+  adapter falls back to text-only answers. Full agentic flow needs SIE's
+  config roll-forward (on the Superlinked agenda).
+- Plain HTTP to their ELB — fine for pipeline testing, not for real data.
 
-Deploy the inference server after the cluster is up:
+**Fallback: in-cluster vLLM** (optional, off by default). Set
+`enable_inference_gpu_pool = true` in the env tfvars, re-run `apply` (~2 min),
+then:
 
 ```bash
 ./deploy/deploy.sh local-inference kubectl
-kubectl apply -f deploy/k8s/vllm-qwen.yaml
-# first start downloads the model — a few minutes before Ready
-kubectl -n inference get pods -w
+kubectl apply -f deploy/k8s/vllm-qwen.yaml   # Qwen3-4B on g6.xlarge (~$0.80/h)
 ```
 
-In-cluster endpoint: `http://vllm.inference.svc.cluster.local:8000/v1`
-(vLLM is started with `--enable-auto-tool-choice`, so function calling works —
-the full agentic flow is available through the LOCAL provider).
-
-Cost control: `kubectl -n inference scale deploy/vllm --replicas=0` when not
-testing — the autoscaler removes the GPU node (~10 min). Upgrade path for
-quality benchmarks (Qwen3.6-27B): `g6e.xlarge` + FP8, or `g6e.12xlarge`
-(4x L40S) in bf16 — see notes in `deploy/k8s/vllm-qwen.yaml`.
+In-cluster endpoint: `http://vllm.inference.svc.cluster.local:8000/v1` —
+supports function calling (`--enable-auto-tool-choice`), no external
+dependency. Scale to zero when idle:
+`kubectl -n inference scale deploy/vllm --replicas=0`. For a 27B-class model
+in-cluster use `g6e.xlarge` + FP8 or `g6e.12xlarge` (4x L40S) bf16 — notes in
+`deploy/k8s/vllm-qwen.yaml`.
 
 ## Registering LLM providers (vLLM + SIE side by side)
 
@@ -170,7 +171,8 @@ Baseline with the GPU node **down** (scale-from-zero — the default state):
 | RDS db.t4g.medium (20 GB, single-AZ) | 1.60 |
 | NAT gateway (single) + ALB | 1.70 |
 | **Baseline total** | **~13–19** |
-| GPU g6.xlarge — **only while a vLLM pod runs** | +0.80/h (~+6 per workday) |
+| GPU g6.xlarge — only if vLLM fallback enabled | +0.80/h |
+| SIE inference (their GPUs) | **0** |
 
 Guardrails in place:
 - `eks_max_nodes = 6` (module default is 20 → a runaway workload could
