@@ -12,9 +12,9 @@ on:
       environment:
         description: "Environment to deploy (deploy/envs/<env>)"
         required: true
-        default: jan-inference
+        default: local-inference
         type: choice
-        options: [jan-inference]
+        options: [local-inference]
       gdc_nas_repository:
         description: "gdc-nas repository to build gen-ai from (org/repo)"
         required: false

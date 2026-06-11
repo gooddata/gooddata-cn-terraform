@@ -4,7 +4,7 @@
 # function calling.
 #
 # Apply after the cluster is up:
-#   ./deploy/deploy.sh jan-inference kubectl
+#   ./deploy/deploy.sh local-inference kubectl
 #   kubectl apply -f deploy/k8s/vllm-qwen.yaml
 #
 # First start downloads the model (~8 GB) — a few minutes before Ready.

@@ -28,7 +28,7 @@ fi
 # shellcheck source=/dev/null
 source "$ENV_FILE"
 
-: "${TIGER_ENDPOINT:?Set TIGER_ENDPOINT in providers.env (e.g. https://gooddata.jan-inference.dev11.devgdc.com)}"
+: "${TIGER_ENDPOINT:?Set TIGER_ENDPOINT in providers.env (e.g. https://gooddata.local-inference.dev11.devgdc.com)}"
 : "${TIGER_API_TOKEN:?Set TIGER_API_TOKEN in providers.env (org API token)}"
 
 register() {

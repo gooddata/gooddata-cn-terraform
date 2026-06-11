@@ -16,7 +16,7 @@ hostname, and its own feature-flag set.
 
 | Environment | URL | Purpose |
 |---|---|---|
-| `jan-inference` | https://gooddata.jan-inference.dev11.devgdc.com | local inference testing (SIE / vLLM / BYOLLM) |
+| `local-inference` | https://gooddata.local-inference.dev11.devgdc.com | local inference testing (SIE / vLLM / BYOLLM) |
 
 **Inference-server testing note:** different inference servers (SIE, vLLM, TGI…)
 do NOT need separate environments — the server lives outside the cluster.
@@ -36,10 +36,10 @@ environment and switch between them. A new environment is only warranted per
 export GDCN_LICENSE_KEY="key/..."
 
 # 2. Initialize Terraform for your environment (once, or when switching envs)
-./deploy/deploy.sh jan-inference init
+./deploy/deploy.sh local-inference init
 
 # 3. Deploy (~35 min)
-./deploy/deploy.sh jan-inference apply
+./deploy/deploy.sh local-inference apply
 ```
 
 ## Commands
@@ -63,7 +63,7 @@ Configured per environment in `deploy/envs/<env>/settings.tfvars` under
 recreation). The four core AI flags (`enableSemanticSearch`, `enableGenAIChat`,
 `enableAiAgenticConversations`, `enableGenAIMemory`) must stay `true`.
 
-`jan-inference` additionally enables: `enableAIKnowledge`,
+`local-inference` additionally enables: `enableAIKnowledge`,
 `enableSemanticSearchInChat`, `enableAiHub`, `enableGenAiVisualizationSkill`,
 `enableGenAiVisualizationSummarySkill`, `enableGenAiDashboardSummarySkill`,
 `enableGenAIReasoningVisibility`.
@@ -88,7 +88,7 @@ docker buildx build --platform linux/amd64 \
 The whole point of this environment: generative inference runs **inside our
 cluster**, next to GoodData CN — no external inference dependency.
 
-`jan-inference` enables a GPU node group (`enable_inference_gpu_pool = true`,
+`local-inference` enables a GPU node group (`enable_inference_gpu_pool = true`,
 taint `workload=inference`). It starts **small on purpose** — `g6.xlarge`
 (1x L4 24 GB, ~$0.80/h) with Qwen3-4B — enough to prove the pipeline end to
 end (gen-ai → LOCAL provider → vLLM → tool calls) without paying for big
@@ -99,7 +99,7 @@ approval takes days.
 Deploy the inference server after the cluster is up:
 
 ```bash
-./deploy/deploy.sh jan-inference kubectl
+./deploy/deploy.sh local-inference kubectl
 kubectl apply -f deploy/k8s/vllm-qwen.yaml
 # first start downloads the model — a few minutes before Ready
 kubectl -n inference get pods -w
@@ -159,7 +159,7 @@ Running this workflow from this fork requires adding
 creating equivalent roles). Until then, deploy locally via `deploy.sh` (SSO)
 and build the image locally via `docker buildx --push`.
 
-## Cost profile (jan-inference)
+## Cost profile (local-inference)
 
 Baseline with the GPU node **down** (scale-from-zero — the default state):
 
@@ -182,7 +182,7 @@ Guardrails in place:
 Habits that keep it cheap:
 - `kubectl -n inference scale deploy/vllm --replicas=0` after testing
   (GPU node gone in ~10 min)
-- `./deploy/deploy.sh jan-inference destroy` when not using the env for days —
+- `./deploy/deploy.sh local-inference destroy` when not using the env for days —
   recreate is ~35 min
 - Optional: set an AWS Budget alert in the panther-dev account, e.g.
   `aws budgets create-budget` with a monthly limit, to catch surprises

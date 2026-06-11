@@ -3,7 +3,7 @@
 ###
 aws_profile_name = "aws-panther-dev"
 aws_region       = "us-east-1"
-deployment_name  = "jan-inference"
+deployment_name  = "local-inference"
 
 ###
 # GoodData CN
@@ -43,7 +43,7 @@ tls_mode           = "acm"
 ###
 # Organization
 ###
-auth_hostname = "auth.jan-inference.dev11.devgdc.com"
+auth_hostname = "auth.local-inference.dev11.devgdc.com"
 
 gdcn_orgs = [
   {
@@ -51,7 +51,7 @@ gdcn_orgs = [
     name        = "Main"
     admin_user  = "admin"
     admin_group = "adminGroup"
-    hostname    = "gooddata.jan-inference.dev11.devgdc.com"
+    hostname    = "gooddata.local-inference.dev11.devgdc.com"
   }
 ]
 
