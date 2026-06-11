@@ -83,56 +83,56 @@ docker buildx build --platform linux/amd64 \
   --push microservices/gen-ai/
 ```
 
-## Inference strategy — two phases
+## Inference strategy: SIE self-hosted in OUR cluster
 
-**Phase 1 (now): Superlinked SIE managed cluster as the only provider.**
-Qwen3.6-27B (the benchmark model, ≈GPT-5.2) on *their* GPUs — zero GPU cost
-on our side, validates the gen-ai ↔ OpenAI-compatible-server integration
-end to end. Registered as `sie-llm` via `providers/register-providers.sh`.
-
-Phase 1 caveats (known, measured):
-- **Cold start:** when their worker pool is down, provisioning takes 25+ min
-  and the endpoint returns HTTP 202 — the gen-ai adapter doesn't handle 202,
-  so **warm the cluster first** (curl a completion until it returns text)
-  before testing in the UI.
-- **Function calling:** deployed SIE config rejects `tools` → the adapter
-  falls back to text-only answers. Full agentic flow needs SIE's config
-  roll-forward (Superlinked agenda, ~Jun 22).
-- Plain HTTP to their ELB — pipeline testing only, no real data.
-
-**Phase 2: Qwen3.6-27B in OUR cluster** (the sovereignty target). Flip
-`enable_inference_gpu_pool = true` in the env tfvars, `apply` (~2 min — adds
-the `g6e.xlarge` L40S GPU pool, scale-from-zero), then:
+**SIE (Superlinked Inference Engine) runs in our EKS on our GPU pool** —
+their engine, our infrastructure, nothing leaves the VPC. Their helm chart
+is public (`oci://ghcr.io/superlinked/charts/sie-cluster`, images on ghcr)
+and its AWS profile maps exactly to our `g6.xlarge` (NVIDIA L4) pool.
 
 ```bash
 ./deploy/deploy.sh local-inference kubectl
-kubectl apply -f deploy/k8s/vllm-qwen.yaml
-# first start: ~55 GB open weights from Hugging Face + FP8 quantization — 20-30 min
+./deploy/helm/install-sie.sh      # gateway + NATS + 1 warm L4 worker (sglang bundle)
 ```
 
-In-cluster endpoint `http://vllm.inference.svc.cluster.local:8000/v1`,
-function calling enabled → full agentic flow, nothing leaves the VPC.
-Set `REGISTER_VLLM=true` and re-run the provider script. Scale to zero when
-idle: `kubectl -n inference scale deploy/vllm --replicas=0`.
+In-cluster endpoint: `http://sie-gateway.sie.svc.cluster.local:8080/v1`
+(gateway auth `none`, ClusterIP only). Architecture: gateway → NATS
+JetStream → GPU worker; models load lazily from Hugging Face on first
+request (their docs: 3–7 min cold start; one warm worker is kept, so this
+applies only to the first request per model).
 
-## Registering LLM providers (vLLM + SIE side by side)
+**Model sizing on L4 (24 GB):** start with a small generative model from
+their bundle (e.g. `Qwen/Qwen3-0.6B`) to validate the pipeline.
+**Qwen3.6-27B via SIE needs `a100-80gb`-class hardware** (chart profiles:
+l4 / a100-40gb / a100-80gb; no FP8 profile for L40S exists today) — that's
+an agenda item with Superlinked (~Jun 22): FP8/quantized 27B bundle, or we
+add an A100 pool ($$$). For a 27B *today* on cheap HW, the vLLM alternative
+below does FP8 on a single L40S.
 
-After deployment, register both inference backends as LOCAL providers for
-A/B testing — the in-cluster vLLM and the Superlinked SIE managed cluster:
+**Alternative server on the same pool: vLLM** (`deploy/k8s/vllm-qwen.yaml`,
+Qwen3.6-27B FP8 on `g6e.xlarge`) — switch the pool instance type in tfvars,
+apply, and `REGISTER_VLLM=true`. Useful as an A/B server comparison
+(SIE vs vLLM), which is exactly the M1 evaluation track.
+
+## Registering LLM providers
+
+After deployment, register the inference backend(s) as LOCAL providers:
 
 ```bash
 cp deploy/providers/providers.env.example deploy/providers/providers.env
-# fill in TIGER_API_TOKEN (org token) and SIE_API_KEY (SL-... token)
+# fill in TIGER_API_TOKEN (org token)
 ./deploy/providers/register-providers.sh
 ```
 
-Registers (idempotently):
-- `vllm-qwen` — in-cluster vLLM, `Qwen/Qwen3.6-27B` (FP8), no external dependency
-- `sie-llm` — Superlinked managed cluster (us-east-2), `Qwen/Qwen3.6-27B`;
-  expect long cold starts when their worker pool is down (25+ min measured)
+Default registration (idempotent):
+- `sie-llm` — **SIE self-hosted in our cluster**
+  (`http://sie-gateway.sie.svc.cluster.local:8080/v1`, auth none)
+- `vllm-qwen` — off by default; alternative server on the same GPU pool for
+  A/B comparison (`REGISTER_VLLM=true`)
+- SIE *managed* cluster (Superlinked-hosted) — commented variant in
+  `providers.env.example` if an external comparison is ever needed
 
-Toggle either with `REGISTER_VLLM`/`REGISTER_SIE` in `providers.env`. The
-in-cluster URL works because gen-ai calls the provider from inside the
+The in-cluster URLs work because gen-ai calls the provider from inside the
 cluster. Equivalent generic script lives in gdc-nas:
 `microservices/gen-ai/tools/local_provider.sh`.
 
@@ -171,8 +171,7 @@ Baseline with the GPU node **down** (scale-from-zero — the default state):
 | RDS db.t4g.medium (20 GB, single-AZ) | 1.60 |
 | NAT gateway (single) + ALB | 1.70 |
 | **Baseline total** | **~13–19** |
-| Phase 1 — SIE inference (their GPUs) | **0** |
-| Phase 2 — GPU g6e.xlarge, only while vLLM runs | +1.86/h |
+| GPU g6.xlarge (L4, SIE worker) — 1 warm worker | +0.80/h (~19/day if always on) |
 
 Guardrails in place:
 - `eks_max_nodes = 6` (module default is 20 → a runaway workload could

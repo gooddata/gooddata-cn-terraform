@@ -1,0 +1,71 @@
+# Minimal SIE (Superlinked Inference Engine) self-hosted install for the
+# local-inference environment — SIE runs IN OUR CLUSTER on our GPU pool.
+#
+# Chart: oci://ghcr.io/superlinked/charts/sie-cluster
+# Install: ./install-sie.sh   (helm install with this values file)
+#
+# Philosophy: smallest thing that serves generation in-cluster. No KEDA, no
+# bundled Prometheus stack, no ingress (gateway is ClusterIP; only gen-ai
+# talks to it, from inside the cluster). One warm L4 worker (minReplicas=1)
+# instead of scale-to-zero — the GPU node itself scales via the cluster
+# autoscaler when the worker pod exists.
+
+fullnameOverride: sie
+
+keda:
+  install: false
+
+kube-prometheus-stack:
+  install: false
+
+observability:
+  logs:
+    install: false
+
+kubernetes-event-exporter:
+  install: false
+
+autoscaling:
+  enabled: false
+
+serviceMonitor:
+  enabled: false
+
+ingress:
+  enabled: false
+
+gateway:
+  auth:
+    mode: none # in-cluster only; never expose this service
+
+# Our GPU pool: g6.xlarge = 1x NVIDIA L4 24GB (same mapping as upstream
+# values-aws.yaml), nodes tainted workload=inference by the terraform module.
+machineProfiles:
+  l4:
+    gpuType: nvidia-l4
+    machineType: g6.xlarge
+    spot: false
+
+workers:
+  common:
+    platform: cuda12
+  pools:
+    l4:
+      enabled: true
+      machineProfile: l4
+      gpuType: l4
+      nodeSelector:
+        workload: inference
+      tolerations:
+        - key: workload
+          value: inference
+          effect: NoSchedule
+      gpu:
+        count: 1
+        product: NVIDIA-L4
+      # Generation bundle (sglang). minReplicas=1 = one warm worker; with
+      # autoscaling disabled this is the fixed replica count.
+      bundles:
+        sglang:
+          minReplicas: 1
+          maxReplicas: 1

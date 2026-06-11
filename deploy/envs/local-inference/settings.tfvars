@@ -19,16 +19,16 @@ enable_ai_features = true
 eks_max_nodes = 6
 
 ###
-# Inference phases:
-#   Phase 1 (NOW): Superlinked SIE managed cluster as the only provider —
-#     validates the gen-ai <-> OpenAI-compatible-server integration with no
-#     GPU cost on our side. GPU pool stays OFF.
-#   Phase 2: flip enable_inference_gpu_pool=true + apply (~2 min) + deploy
-#     deploy/k8s/vllm-qwen.yaml -> Qwen3.6-27B runs in OUR cluster (the
-#     sovereignty target).
+# Inference: SIE (Superlinked engine) SELF-HOSTED in our cluster on our GPU
+# pool — install via deploy/helm/install-sie.sh. g6.xlarge (1x L4 24GB,
+# ~$0.80/h) matches the SIE chart's "l4" machine profile; small generative
+# models first. Qwen3.6-27B via SIE needs a100-80gb class HW (or an FP8
+# bundle profile from Superlinked — agenda item). The vLLM manifest
+# (deploy/k8s/vllm-qwen.yaml) remains as an alternative server on the same
+# pool for comparison.
 ###
-enable_inference_gpu_pool   = false
-inference_gpu_instance_type = "g6e.xlarge" # 1x L40S 48GB ~$1.86/h — fits 27B in FP8
+enable_inference_gpu_pool   = true
+inference_gpu_instance_type = "g6.xlarge" # 1x L4 24GB — SIE chart "l4" profile
 inference_gpu_max_nodes     = 1
 
 ###
