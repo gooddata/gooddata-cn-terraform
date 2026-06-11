@@ -156,6 +156,34 @@ Running this workflow from this fork requires adding
 creating equivalent roles). Until then, deploy locally via `deploy.sh` (SSO)
 and build the image locally via `docker buildx --push`.
 
+## Cost profile (jan-inference)
+
+Baseline with the GPU node **down** (scale-from-zero — the default state):
+
+| Component | ~$/day |
+|---|---|
+| EKS control plane | 2.40 |
+| Worker nodes (2-4 small dev nodes, typical) | 7–13 |
+| RDS db.t4g.medium (20 GB, single-AZ) | 1.60 |
+| NAT gateway (single) + ALB | 1.70 |
+| **Baseline total** | **~13–19** |
+| GPU g6.xlarge — **only while a vLLM pod runs** | +0.80/h (~+6 per workday) |
+
+Guardrails in place:
+- `eks_max_nodes = 6` (module default is 20 → a runaway workload could
+  otherwise autoscale to ~$100+/day)
+- `inference_gpu_max_nodes = 1`, GPU group starts at 0 and scales from zero —
+  no pod, no GPU node, no GPU cost
+- StarRocks/AI-lake off, single NAT, single-AZ RDS
+
+Habits that keep it cheap:
+- `kubectl -n inference scale deploy/vllm --replicas=0` after testing
+  (GPU node gone in ~10 min)
+- `./deploy/deploy.sh jan-inference destroy` when not using the env for days —
+  recreate is ~35 min
+- Optional: set an AWS Budget alert in the panther-dev account, e.g.
+  `aws budgets create-budget` with a monthly limit, to catch surprises
+
 ## State backend
 
 State lives in the existing `gdc-cn-independent-deploy-tfstate` S3 bucket

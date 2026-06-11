@@ -215,9 +215,13 @@ module "eks" {
           AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
         }, local.ecr_pull_through_cache_policy)
 
+        # Scale-from-zero: the node only comes up when an inference pod is
+        # scheduled (autoscaler reads the node-template tags above) and is
+        # removed ~10 min after the last pod is gone. GPU cost accrues only
+        # while something is actually running.
         min_size     = 0
         max_size     = var.inference_gpu_max_nodes
-        desired_size = 1
+        desired_size = 0
       }
     } : {},
   )

@@ -14,6 +14,10 @@ gdcn_license_key  = "" # set via GDCN_LICENSE_KEY secret in CI, or fill in local
 size_profile       = "dev"
 enable_ai_features = true
 
+# Cost guardrail: the module default is 20 nodes max — a runaway workload
+# could autoscale to ~$100+/day. 6 small dev nodes is plenty for CN + AI.
+eks_max_nodes = 6
+
 ###
 # Self-hosted inference (GPU pool for vLLM/SIE — see deploy/k8s/vllm-qwen.yaml)
 ###
