@@ -68,7 +68,17 @@ workers:
           effect: NoSchedule
       gpu:
         count: 1
-        product: NVIDIA-L4
+        product: NVIDIA-L40S
+      # g6e.xlarge has exactly 4 vCPU — the chart default (requests cpu=4)
+      # can never fit after kube-reserved, so the autoscaler refuses to
+      # scale up the pool. Request less, burst to the limit.
+      resources:
+        requests:
+          cpu: "2"
+          memory: "12Gi"
+        limits:
+          cpu: "3500m"
+          memory: "24Gi"
       # Generation bundle (sglang). minReplicas=1 = one warm worker; with
       # autoscaling disabled this is the fixed replica count.
       bundles:
