@@ -23,9 +23,7 @@ deployment_name   = "gooddata-cn"
 # GoodData.CN license key
 gdcn_license_key = "key/asdf==" # provided by GoodData
 
-# Additional Helm values appended LAST to the gooddata-cn chart values, so these
-# override the templated defaults. Use to set chart/sub-chart options not exposed
-# as Terraform variables. Provide raw YAML as a string (heredoc recommended).
+# Additional gooddata-cn Helm values
 # gdcn_helm_extra_values = <<-EOT
 #   service:
 #     someComponent:
@@ -35,7 +33,7 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # Deploys and enables GoodData generative AI services
 # enable_ai_features = true
 
-# Enable experimental AI features (subject to change; the set of features may evolve over time)
+# Enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
 
 # Size profile controls replicas/resources across services:
@@ -103,7 +101,7 @@ gdcn_orgs = [
 # enable_observability = true
 # observability_hostname = "observability.gooddata.example.com"
 #
-# Telemetry retention (optional; defaults shown). Each signal has its own 5Gi
+# Observability data retention (optional; defaults shown). Each signal has its own 5Gi
 # PVC, so lower these to bound storage. Loki must be a multiple of 24h.
 # loki_retention_period       = "168h"
 # prometheus_retention_period = "168h"

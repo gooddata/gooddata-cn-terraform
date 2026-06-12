@@ -25,7 +25,6 @@ sudo chmod +x /usr/local/bin/tinkey
 sudo rm -f /tmp/tinkey.tgz
 
 # Install k9s CLI
-sudo apt-get update
 ARCH=$(dpkg --print-architecture)
 case "$ARCH" in
   amd64) PKG_ARCH="amd64" ;;
@@ -36,6 +35,7 @@ esac
 curl -fsSL -o /tmp/k9s.deb "https://github.com/derailed/k9s/releases/download/${K9S_VERSION}/k9s_linux_${PKG_ARCH}.deb"
 sudo dpkg -i /tmp/k9s.deb || sudo apt-get -y -f install
 sudo rm /tmp/k9s.deb
+command -v k9s >/dev/null || { echo "ERROR: k9s install failed" >&2; exit 1; }
 
 # Install kubelogin for AKS exec auth
 ARCH=$(dpkg --print-architecture)
