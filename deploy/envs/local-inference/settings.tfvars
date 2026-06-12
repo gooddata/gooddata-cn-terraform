@@ -28,7 +28,7 @@ eks_max_nodes = 6
 # pool for comparison.
 ###
 enable_inference_gpu_pool   = true
-inference_gpu_instance_type = "g6.xlarge" # 1x L4 24GB — SIE chart "l4" profile
+inference_gpu_instance_type = "g6e.xlarge" # 1x L40S 48GB — Qwen3.6-27B FP8 via vLLM
 inference_gpu_max_nodes     = 1
 
 ###
