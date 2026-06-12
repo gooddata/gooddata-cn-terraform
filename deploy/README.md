@@ -79,7 +79,7 @@ The image must already exist in ECR — build via the GitHub Actions workflow
 ```bash
 cd gdc-nas
 docker buildx build --platform linux/amd64 \
-  -t 020413372491.dkr.ecr.us-east-1.amazonaws.com/dev/mark43-ai:<tag> \
+  -t 972873489489.dkr.ecr.us-east-1.amazonaws.com/local-inference/gen-ai:<tag> \
   --push microservices/gen-ai/
 ```
 

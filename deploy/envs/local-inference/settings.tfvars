@@ -241,7 +241,7 @@ gdcn_helm_extra_values = <<-EOT
   services:
     genAi:
       image:
-        repositoryPrefix: "020413372491.dkr.ecr.us-east-1.amazonaws.com/dev"
-        name: "mark43-ai"
+        repositoryPrefix: "972873489489.dkr.ecr.us-east-1.amazonaws.com/local-inference"
+        name: "gen-ai"
         tag: "jan-local-inference"
 EOT

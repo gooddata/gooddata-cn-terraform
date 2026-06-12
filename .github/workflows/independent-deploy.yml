@@ -44,7 +44,7 @@ jobs:
           ref: ${{ inputs.gdc_nas_branch }}
           token: ${{ secrets.GH_TOKEN }}
 
-      - name: Configure AWS credentials (infra1 ECR)
+      - name: Configure AWS credentials (panther-dev ECR)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.ECR_ROLE_ARN }}
@@ -54,15 +54,15 @@ jobs:
         run: |
           aws ecr get-login-password --region us-east-1 \
             | docker login --username AWS --password-stdin \
-              020413372491.dkr.ecr.us-east-1.amazonaws.com
+              972873489489.dkr.ecr.us-east-1.amazonaws.com
 
       - name: Build and push gen-ai image
         run: |
           docker build -t gen-ai:${{ inputs.image_tag }} microservices/gen-ai/
           docker tag gen-ai:${{ inputs.image_tag }} \
-            020413372491.dkr.ecr.us-east-1.amazonaws.com/dev/mark43-ai:${{ inputs.image_tag }}
+            972873489489.dkr.ecr.us-east-1.amazonaws.com/local-inference/gen-ai:${{ inputs.image_tag }}
           docker push \
-            020413372491.dkr.ecr.us-east-1.amazonaws.com/dev/mark43-ai:${{ inputs.image_tag }}
+            972873489489.dkr.ecr.us-east-1.amazonaws.com/local-inference/gen-ai:${{ inputs.image_tag }}
 
   terraform:
     name: Terraform ${{ inputs.action }} (${{ inputs.environment }})
@@ -104,8 +104,8 @@ jobs:
                 print "  services:"
                 print "    genAi:"
                 print "      image:"
-                print "        repositoryPrefix: \"020413372491.dkr.ecr.us-east-1.amazonaws.com/dev\""
-                print "        name: \"mark43-ai\""
+                print "        repositoryPrefix: \"972873489489.dkr.ecr.us-east-1.amazonaws.com/local-inference\""
+                print "        name: \"gen-ai\""
                 print "        tag: \"" tag "\""
                 done=1
               }
