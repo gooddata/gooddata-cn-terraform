@@ -49,6 +49,20 @@ machineProfiles:
 workers:
   common:
     platform: cuda12
+    # Model load runs in the worker MAIN thread (adapter.requires_main_thread)
+    # and blocks the HTTP server for minutes — default liveness (3x30s) kills
+    # the container mid-load, causing an infinite load->SIGKILL loop.
+    # Tolerate ~5 min of unresponsiveness.
+    probes:
+      liveness:
+        initialDelaySeconds: 10
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 10
+      readiness:
+        periodSeconds: 5
+        timeoutSeconds: 10
+        failureThreshold: 60
     extraEnv:
       # The Qwen3-4B manifest loads with mem_fraction_static=0.85, which on a
       # 46GB L40S lands at ~86.6% VRAM — just above the default 85% pressure
