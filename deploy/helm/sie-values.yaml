@@ -49,6 +49,12 @@ machineProfiles:
 workers:
   common:
     platform: cuda12
+    # S3 model cache (terraform: aws/inference-cache.tf) — weights survive
+    # GPU scale-to-zero, workers fall back to Hugging Face on cache miss.
+    # Node-role credentials (no IRSA needed).
+    clusterCache:
+      enabled: true
+      url: s3://local-inference-model-cache-972873489489/models
   pools:
     l4:
       enabled: true

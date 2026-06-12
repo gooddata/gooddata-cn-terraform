@@ -213,6 +213,7 @@ module "eks" {
         iam_role_additional_policies = merge({
           AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
           AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
+          ModelCacheAccess                   = aws_iam_policy.model_cache_access[0].arn
         }, local.ecr_pull_through_cache_policy)
 
         # Scale-from-zero: the node only comes up when an inference pod is
