@@ -49,6 +49,14 @@ machineProfiles:
 workers:
   common:
     platform: cuda12
+    extraEnv:
+      # The Qwen3-4B manifest loads with mem_fraction_static=0.85, which on a
+      # 46GB L40S lands at ~86.6% VRAM — just above the default 85% pressure
+      # threshold, so the LRU monitor evicted the model right after every
+      # load (load -> evict -> reload loop on each request). 95% leaves the
+      # single-model deployment resident.
+      - name: SIE_MEMORY_PRESSURE_THRESHOLD_PERCENT
+        value: "95"
     # S3 model cache (terraform: aws/inference-cache.tf) — weights survive
     # GPU scale-to-zero, workers fall back to Hugging Face on cache miss.
     # Node-role credentials (no IRSA needed).
