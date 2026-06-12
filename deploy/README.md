@@ -71,7 +71,7 @@ recreation). The four core AI flags (`enableSemanticSearch`, `enableGenAIChat`,
 ## Custom gen-ai image
 
 To test a gdc-nas branch build (e.g. `jan/local-inference` with the LOCAL
-provider + Chat Completions adapter), uncomment the `services.genAi.image`
+provider + Chat Completions adapter), uncomment the `genAi.image`
 block at the bottom of the env's `gdcn_helm_extra_values` and re-run `apply`.
 The image must already exist in ECR — build via the GitHub Actions workflow
 (below), or locally:

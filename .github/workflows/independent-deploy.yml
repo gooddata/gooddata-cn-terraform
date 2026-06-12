@@ -101,12 +101,11 @@ jobs:
           if [ -n "${{ inputs.gdc_nas_branch }}" ]; then
             awk -v tag="${{ inputs.image_tag }}" '
               /^EOT$/ && !done {
-                print "  services:"
-                print "    genAi:"
-                print "      image:"
-                print "        repositoryPrefix: \"972873489489.dkr.ecr.us-east-1.amazonaws.com/local-inference\""
-                print "        name: \"gen-ai\""
-                print "        tag: \"" tag "\""
+                print "  genAi:"
+                print "    image:"
+                print "      repositoryPrefix: \"972873489489.dkr.ecr.us-east-1.amazonaws.com/local-inference\""
+                print "      name: \"gen-ai\""
+                print "      tag: \"" tag "\""
                 done=1
               }
               { print }

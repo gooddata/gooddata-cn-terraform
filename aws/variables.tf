@@ -483,3 +483,9 @@ variable "inference_gpu_max_nodes" {
   type        = number
   default     = 1
 }
+
+variable "gdcn_helm_extra_values" {
+  description = "Extra YAML values appended to the gooddata-cn Helm release (feature flags, per-service image overrides). Passed through to modules/k8s-common."
+  type        = string
+  default     = ""
+}
