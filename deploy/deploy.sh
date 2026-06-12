@@ -75,6 +75,12 @@ check_sso() {
         echo ">> SSO session expired. Refreshing..."
         aws sso login --profile "$AWS_PROFILE"
     fi
+    # Terraform's AWS SDK chokes on legacy-format SSO profiles even when the
+    # CLI session is valid ("failed to refresh cached credentials"). Export
+    # static credentials and bypass the profile in the provider instead.
+    eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env)"
+    unset AWS_PROFILE
+    TF_PROFILE_OVERRIDE=(-var aws_profile_name=)
 }
 
 # Guard: refuse to touch state if the working dir is initialized for another env.
@@ -123,7 +129,7 @@ case "$cmd" in
         write_work_tfvars
         echo ">> Running terraform apply for '$ENV_NAME' (~35 min on first run)..."
         cd "$TF_DIR"
-        terraform apply -var-file="$WORK_TFVARS" -auto-approve
+        terraform apply -var-file="$WORK_TFVARS" "${TF_PROFILE_OVERRIDE[@]}" -auto-approve
         echo ""
         echo ">> Configuring kubectl..."
         "$REPO_ROOT/scripts/configure-kubectl.sh"
@@ -141,7 +147,7 @@ case "$cmd" in
         write_work_tfvars
         echo ">> Running terraform destroy for '$ENV_NAME'..."
         cd "$TF_DIR"
-        terraform destroy -var-file="$WORK_TFVARS" -auto-approve
+        terraform destroy -var-file="$WORK_TFVARS" "${TF_PROFILE_OVERRIDE[@]}" -auto-approve
         echo ">> All resources of '$ENV_NAME' destroyed."
         ;;
 
@@ -157,7 +163,7 @@ case "$cmd" in
         check_env
         check_sso
         check_initialized_env
-        AWS_PROFILE="$AWS_PROFILE" "$REPO_ROOT/scripts/configure-kubectl.sh"
+        AWS_PROFILE="aws-panther-dev" "$REPO_ROOT/scripts/configure-kubectl.sh"
         ;;
 
     help|*)
