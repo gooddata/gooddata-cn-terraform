@@ -315,7 +315,7 @@ variable "helm_metrics_server_version" {
   description = "Version of the metrics-server Helm chart to deploy. https://artifacthub.io/packages/helm/metrics-server/metrics-server"
   type        = string
   # renovate: depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server/
-  default = "3.13.0"
+  default = "3.13.1"
 }
 
 variable "helm_kube_prometheus_stack_version" {
