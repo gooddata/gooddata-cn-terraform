@@ -71,6 +71,14 @@ workers:
       # single-model deployment resident.
       - name: SIE_MEMORY_PRESSURE_THRESHOLD_PERCENT
         value: "95"
+      # 27B (~54GB) download + FP8 quantize exceeds the default model-load
+      # startup window — raise it generously for cold 27B loads.
+      - name: SIE_MODEL_LOAD_TIMEOUT_S
+        value: "1800"
+      - name: SIE_ADAPTER_STARTUP_TIMEOUT_S
+        value: "1800"
+      - name: SIE_SERVER_STARTUP_TIMEOUT_S
+        value: "1800"
     # S3 model cache (terraform: aws/inference-cache.tf) — weights survive
     # GPU scale-to-zero, workers fall back to Hugging Face on cache miss.
     # Node-role credentials (no IRSA needed).
