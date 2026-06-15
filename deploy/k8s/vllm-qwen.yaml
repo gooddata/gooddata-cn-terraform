@@ -64,8 +64,7 @@ spec:
             - --enable-auto-tool-choice
             - --tool-call-parser=qwen3_coder
             - --reasoning-parser=qwen3
-            - --gpu-memory-utilization=0.95
-            - --enforce-eager
+            - --gpu-memory-utilization=0.90
           ports:
             - containerPort: 8000
           resources:
