@@ -242,5 +242,5 @@ gdcn_helm_extra_values = <<-EOT
     image:
       repositoryPrefix: "972873489489.dkr.ecr.us-east-1.amazonaws.com/local-inference"
       name: "gen-ai"
-      tag: "jan-local-inference-9"
+      tag: "jan-local-inference-10"
 EOT
