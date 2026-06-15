@@ -1,0 +1,1 @@
+{"id":"active-customers","dataset_name":"ecommerce","test_kind":"general_question","question":"How many active customers are there?","expected_output":"States there are 1205 active customers."}

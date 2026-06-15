@@ -1,0 +1,1 @@
+{"id":"search-revenue","dataset_name":"ecommerce","test_kind":"search_tool","question":"Which metrics relate to revenue in this workspace?","expected_output":{"tool_call":{"function_name":"search_objects","function_arguments":{"keywords":["revenue"],"object_types":["metric"],"limit":10}}}}

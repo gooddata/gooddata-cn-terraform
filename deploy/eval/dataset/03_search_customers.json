@@ -1,0 +1,1 @@
+{"id":"search-customers","dataset_name":"ecommerce","test_kind":"search_tool","question":"What customer-related attributes are available?","expected_output":{"tool_call":{"function_name":"search_objects","function_arguments":{"keywords":["customer"]}}}}

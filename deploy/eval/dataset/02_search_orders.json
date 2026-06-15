@@ -1,0 +1,1 @@
+{"id":"search-orders","dataset_name":"ecommerce","test_kind":"search_tool","question":"Find datasets and fields about orders.","expected_output":{"tool_call":{"function_name":"search_objects","function_arguments":{"keywords":["orders"]}}}}
