@@ -42,6 +42,9 @@ spec:
       labels:
         app: vllm
     spec:
+      # K8s injects VLLM_PORT=tcp://... for the "vllm" Service, which vLLM
+      # misreads as its own config and crashes. Disable service env injection.
+      enableServiceLinks: false
       nodeSelector:
         workload: inference
       tolerations:
