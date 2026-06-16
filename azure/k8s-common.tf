@@ -66,6 +66,10 @@ module "k8s_common" {
 
   depends_on = [
     azurerm_kubernetes_cluster.main,
+    # Premium SSD must be the default storage class before any Helm release
+    # provisions PVCs, so all persistent volumes land on premium SSDs.
+    kubernetes_storage_class_v1.premium_ssd,
+    kubernetes_annotations.demote_standardssd_default,
     azurerm_role_assignment.gdcn_blob_contrib,
     azurerm_federated_identity_credential.gdcn,
     # Image cache plumbing must outlive the helm releases: pre-delete hooks
