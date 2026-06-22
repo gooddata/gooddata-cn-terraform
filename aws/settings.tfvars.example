@@ -7,12 +7,12 @@ aws_profile_name = "my-profile"
 # Region to deploy resources to
 aws_region = "eu-central-1"
 
-# Use an existing VPC instead of creating a new one
+# Uncomment to use an existing VPC instead of creating a new one
 # existing_vpc_id             = "vpc-0123456789abcdef0"
 # existing_private_subnet_ids = ["subnet-aaa", "subnet-bbb"]
 # existing_public_subnet_ids  = ["subnet-ccc", "subnet-ddd"]
 
-# Additional tags to apply to all AWS resources
+# Uncomment to apply additional tags to all AWS resources
 # aws_additional_tags = {
 #   Environment = "dev"
 # }
@@ -26,26 +26,29 @@ deployment_name   = "gooddata-cn"
 # GoodData.CN license key
 gdcn_license_key = "key/asdf==" # provided by GoodData
 
-# Additional gooddata-cn Helm values
+# Uncomment to append extra gooddata-cn Helm values
 # gdcn_helm_extra_values = <<-EOT
 #   service:
 #     someComponent:
 #       replicaCount: 3
 # EOT
 
-# Deploys and enables GoodData generative AI services
+# Uncomment to deploy and enable GoodData generative AI services
 # enable_ai_features = true
 
-# Enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
+# Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
 
-# Size profile controls replicas/resources across services:
+# Size profile:
 # - dev: lowest footprint, not HA
-# - prod-small: HA (>= 2 replica per service), resources for services increased
-# - prod-large: HA, sized for large/high-traffic deployments (more replicas +
-#   CPU/memory for the hot-path services than prod-small)
-# NOTE: switching size profile after deploying isn't supported since persistent
-# volume sizes can't be automatically adjusted in-place.
+# - prod-small: HA (>= 2 replicas per service), increased resources
+# - prod-large: HA, sized for large/high-traffic deployments
+# It sets sensible defaults for the metadata DB tier/storage, worker node
+# sizes/counts, observability disk sizes, and GoodData.CN/subchart sizing, so you
+# don't set those individually. To override one default, add its variable here
+# yourself (e.g. rds_instance_class, eks_node_types); see variables.tf for the list.
+# NOTE: changing size_profile after deploying isn't supported (persistent volume
+# sizes can't be resized in place).
 size_profile = "prod-small"
 
 ###
@@ -77,7 +80,7 @@ tls_mode           = "acm"
 # tls_mode           = "letsencrypt"
 # letsencrypt_email  = "me@example.com"
 
-# When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
+# Uncomment when ingress-nginx sits behind another L7 proxy/load balancer.
 # ingress_nginx_behind_l7 = true
 
 # Option 3 — Istio Gateway + Let's Encrypt certificates (letsencrypt)
@@ -121,8 +124,8 @@ gdcn_orgs = [
 # Uncomment to enable the observability stack
 # enable_observability = true
 # observability_hostname = "observability.gooddata.example.com"
-#
-# Observability data retention (optional; defaults shown). Each signal has its own 5Gi
+
+# Uncomment to override data retention (defaults shown). Each signal has its own 5Gi
 # PVC, so lower these to bound storage. Loki must be a multiple of 24h.
 # loki_retention_period       = "168h"
 # prometheus_retention_period = "168h"
@@ -143,15 +146,14 @@ gdcn_orgs = [
 # enable_ai_lake = true
 
 ###
-# EKS & infrastructure sizing (optional)
+# EKS & infrastructure (optional)
 ###
+# Uncomment to override EKS defaults
 # eks_version                      = "1.35"
-# eks_node_types                   = ["m6i.xlarge"]
-# eks_max_nodes                    = 10
 # eks_endpoint_public_access       = true
 # eks_endpoint_public_access_cidrs = ["x.x.x.x/32"]
 # eks_endpoint_private_access      = false
 
-# rds_instance_class      = "db.t4g.medium"
+# Uncomment to override RDS defaults
 # rds_deletion_protection = false
 # rds_skip_final_snapshot = true

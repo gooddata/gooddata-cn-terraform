@@ -1,7 +1,7 @@
 ###
 # Azure subscription & location
 ###
-# Set if you want to override the subscription/tenant from `az login`.
+# Uncomment to override the subscription/tenant from `az login`.
 # Otherwise, Terraform uses your current Azure CLI session.
 # azure_subscription_id = "00000000-0000-0000-0000-000000000000"
 # azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
@@ -9,7 +9,7 @@
 # Region to deploy resources to
 azure_location = "East US"
 
-# Additional tags to apply to all Azure resources
+# Uncomment to apply additional tags to all Azure resources
 # azure_additional_tags = {
 #   Environment = "dev"
 # }
@@ -23,24 +23,29 @@ deployment_name   = "gooddata-cn"
 # GoodData.CN license key
 gdcn_license_key = "key/asdf==" # provided by GoodData
 
-# Additional gooddata-cn Helm values
+# Uncomment to append extra gooddata-cn Helm values
 # gdcn_helm_extra_values = <<-EOT
 #   service:
 #     someComponent:
 #       replicaCount: 3
 # EOT
 
-# Deploys and enables GoodData generative AI services
+# Uncomment to deploy and enable GoodData generative AI services
 # enable_ai_features = true
 
-# Enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
+# Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
 
-# Size profile controls replicas/resources across services:
+# Size profile:
 # - dev: lowest footprint, not HA
-# - prod-small: HA (>= 2 replica per service), resources for services increased
-# NOTE: switching size profile after deploying isn't supported since persistent
-# volume sizes can't be automatically adjusted in-place.
+# - prod-small: HA (>= 2 replicas per service), increased resources
+# - prod-large: HA, sized for large/high-traffic deployments
+# It sets sensible defaults for the metadata DB tier/storage, worker node
+# sizes/counts, observability disk sizes, and GoodData.CN/subchart sizing, so you
+# don't set those individually. To override one default, add its variable here
+# yourself (e.g. postgresql_sku_name, aks_node_vm_sizes); see variables.tf for the list.
+# NOTE: changing size_profile after deploying isn't supported (persistent volume
+# sizes can't be resized in place).
 size_profile = "prod-small"
 
 ###
@@ -59,7 +64,7 @@ ingress_controller = "ingress-nginx"
 tls_mode          = "letsencrypt"
 letsencrypt_email = "me@example.com"
 
-# When ingress-nginx sits behind another L7 proxy/load balancer, set this to true.
+# Uncomment when ingress-nginx sits behind another L7 proxy/load balancer.
 # ingress_nginx_behind_l7 = true
 
 # Option 2 — Istio Gateway + Let's Encrypt certificates (letsencrypt)
@@ -100,8 +105,8 @@ gdcn_orgs = [
 # Uncomment to enable the observability stack
 # enable_observability = true
 # observability_hostname = "observability.gooddata.example.com"
-#
-# Observability data retention (optional; defaults shown). Each signal has its own 5Gi
+
+# Uncomment to override data retention (defaults shown). Each signal has its own 5Gi
 # PVC, so lower these to bound storage. Loki must be a multiple of 24h.
 # loki_retention_period       = "168h"
 # prometheus_retention_period = "168h"
@@ -116,13 +121,8 @@ gdcn_orgs = [
 # dockerhub_access_token = "myaccesstoken"
 
 ###
-# AKS & infrastructure sizing (optional)
+# AKS & infrastructure (optional)
 ###
+# Uncomment to override AKS defaults
 # aks_version                         = "1.35"
-# aks_node_vm_size                    = "Standard_D4as_v6"
-# aks_min_nodes                       = 2
-# aks_max_nodes                       = 10
 # aks_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
-
-# postgresql_sku_name   = "GP_Standard_D2ds_v5"
-# postgresql_storage_mb = 32768
