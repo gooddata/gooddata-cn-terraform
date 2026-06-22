@@ -1,3 +1,15 @@
+variable "cnpg" {
+  description = "In-cluster metadata postgres (CNPG) sizing; resolved by local/size-profiles.tf."
+  type = object({
+    cpu                     = string
+    instances               = number
+    maintenance_work_mem_mb = number
+    memory                  = string
+    storage                 = string
+    work_mem_mb             = number
+  })
+}
+
 variable "db_password" {
   description = "PostgreSQL superuser password for the in-cluster (CloudNativePG) database."
   type        = string
@@ -19,12 +31,6 @@ variable "enable_observability" {
   description = "Whether observability (Prometheus, Grafana, etc.) is enabled. Controls PodMonitor creation for CNPG and PostgreSQL."
   type        = bool
   default     = false
-}
-
-variable "prometheus_crds_ready" {
-  description = "Name of the prometheus-operator-crds helm release. When non-empty, CNPG operator PodMonitor is enabled. Used as a dependency hint to ensure CRDs exist before CNPG applies them."
-  type        = string
-  default     = ""
 }
 
 variable "helm_cnpg_version" {
@@ -57,6 +63,18 @@ variable "postgres_image" {
   default     = "ghcr.io/cloudnative-pg/postgresql:16.4"
 }
 
+variable "prometheus_crds_ready" {
+  description = "Name of the prometheus-operator-crds helm release. When non-empty, CNPG operator PodMonitor is enabled. Used as a dependency hint to ensure CRDs exist before CNPG applies them."
+  type        = string
+  default     = ""
+}
+
+variable "registry_dockerio" {
+  description = "Docker Hub registry prefix (e.g. docker.io or a pull-through cache)."
+  type        = string
+  default     = "docker.io"
+}
+
 variable "s3_region" {
   description = "Region value used by S3 clients. (SeaweedFS ignores this but some clients require it.)"
   type        = string
@@ -85,12 +103,6 @@ variable "seaweedfs_release_name" {
   description = "Helm release name for SeaweedFS."
   type        = string
   default     = "seaweedfs"
-}
-
-variable "registry_dockerio" {
-  description = "Docker Hub registry prefix (e.g. docker.io or a pull-through cache)."
-  type        = string
-  default     = "docker.io"
 }
 
 variable "seaweedfs_storage_class" {

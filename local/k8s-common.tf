@@ -51,6 +51,7 @@ module "k8s_local" {
   enable_istio_injection = var.ingress_controller == "istio_gateway"
   enable_observability   = var.enable_observability
   helm_cnpg_version      = var.helm_cnpg_version
+  cnpg                   = local.profile.cnpg
   db_username            = local.local_db_username
   db_password            = random_password.local_postgres_password.result
   kubeconfig_path        = local.kubeconfig_path
@@ -75,15 +76,16 @@ module "k8s_common" {
     external   = external
   }
 
-  deployment_name  = var.deployment_name
-  gdcn_license_key = var.gdcn_license_key
-  gdcn_namespace   = var.gdcn_namespace
-  gdcn_orgs        = var.gdcn_orgs
-  size_profile     = var.size_profile
-  # There is no prod-large StarRocks profile; fall back to prod-xl sizing.
-  starrocks_size_profile = coalesce(var.starrocks_size_profile, var.size_profile == "prod-large" ? "prod-xl" : var.size_profile)
-  cloud                  = "local"
-  ingress_controller     = var.ingress_controller
+  deployment_name    = var.deployment_name
+  gdcn_license_key   = var.gdcn_license_key
+  gdcn_namespace     = var.gdcn_namespace
+  gdcn_orgs          = var.gdcn_orgs
+  ingress_replicas   = local.profile.ingress_replicas
+  gdcn_size          = local.profile.gdcn_size
+  pulsar_size        = local.profile.pulsar_size
+  observability_size = local.profile.observability_size
+  cloud              = "local"
+  ingress_controller = var.ingress_controller
 
   letsencrypt_email       = ""
   auth_hostname           = var.auth_hostname
