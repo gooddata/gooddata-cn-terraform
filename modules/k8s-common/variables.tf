@@ -256,9 +256,20 @@ variable "starrocks_s3_bucket_id" {
   default = ""
 }
 
-variable "size_profile" { type = string }
+variable "ingress_replicas" { type = number }
 
-variable "starrocks_size_profile" { type = string }
+# Workload size selectors, resolved by each env's size-profiles.tf.
+variable "gdcn_size" { type = string }
+
+variable "observability_size" { type = string }
+
+variable "pulsar_size" { type = string }
+
+# Required only when enable_ai_lake is true (StarRocks is AWS-only); null otherwise.
+variable "starrocks_size_profile" {
+  type    = string
+  default = null
+}
 
 variable "starrocks_cn_image_tag" {
   type    = string
