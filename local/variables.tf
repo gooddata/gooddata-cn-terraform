@@ -168,7 +168,7 @@ variable "helm_kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to deploy."
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "86.2.3"
+  default = "86.3.2"
 }
 
 variable "helm_prometheus_operator_crds_version" {
