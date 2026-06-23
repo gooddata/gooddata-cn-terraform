@@ -179,13 +179,13 @@ gdcn_helm_extra_values = <<-EOT
   enableAiAgenticMultiConversations: false
   enableGenAIAlerts: false
   enableGenAIPromptRedesign: false
-  enableGenAiMetricSkill: false
+  enableGenAiMetricSkill: true
   enableGenAICatalogQualityChecker: false
   enableGenAiAiModuleGating: false
   aiMeteringEnforcement: false
   enableA2AServer: false
   enableGenAiAgentSwitching: false
-  enableScheduledExportSkill: false
+  enableScheduledExportSkill: true
   enableMultilingualAIAssistant: false
   enableGenAIReasoningVisibility: true
   enableGenAiAttributeValues: false
@@ -193,15 +193,15 @@ gdcn_helm_extra_values = <<-EOT
   enableAnomalyDetectionAlert: false
   enableAIDataSetting: false
   enableGenAiMemoryAgent: false
-  enableGenAiKdaSkill: false
-  enableGenAiWhatifSkill: false
-  enableGenAiForecastingSkill: false
-  enableGenAiAnomalySkill: false
-  enableGenAiClusteringSkill: false
+  enableGenAiKdaSkill: true
+  enableGenAiWhatifSkill: true
+  enableGenAiForecastingSkill: true
+  enableGenAiAnomalySkill: true
+  enableGenAiClusteringSkill: true
   enableGenAiVisualizationSummarySkill: true
   enableGenAiDashboardSummarySkill: true
   enableGenAiHeadlessSummary: false
-  enableGenAiAlertSkill: false
+  enableGenAiAlertSkill: true
   enableGenAiVisualizationSkill: true
   enableGenAiRankingFilter: false
   enableKeyDriverAnalysis: false
