@@ -148,14 +148,14 @@ gdcn_helm_extra_values = <<-EOT
   enableDashboardShareDialogLink: false
 
   # --- Scheduling & Alerting ---
-  enableScheduling: false
-  enableAlerting: false
+  enableScheduling: true
+  enableAlerting: true
   enableSmtp: false
   enableDefaultSmtp: false
-  enableInPlatformNotifications: false
+  enableInPlatformNotifications: true
   enableExternalRecipients: false
-  enableNewScheduledExport: false
-  enableAutomationManagement: false
+  enableNewScheduledExport: true
+  enableAutomationManagement: true
   enableNotificationSource: false
   enableAutomationExportRetries: false
   enableAutomationRunPersistence: false
@@ -177,7 +177,7 @@ gdcn_helm_extra_values = <<-EOT
   enableAIKnowledge: true
   enableAiHub: true
   enableAiAgenticMultiConversations: false
-  enableGenAIAlerts: false
+  enableGenAIAlerts: true
   enableGenAIPromptRedesign: false
   enableGenAiMetricSkill: true
   enableGenAICatalogQualityChecker: false
