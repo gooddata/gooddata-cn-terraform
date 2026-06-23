@@ -13,10 +13,9 @@ locals {
         instance_class    = "db.t4g.medium"
         allocated_storage = 20
       }
-      eks_node_types       = ["m6a.xlarge", "m6a.2xlarge"]
-      starrocks_node_types = ["r8a.large", "m8a.xlarge"]
-      eks_max_nodes        = 6
-      ingress_replicas     = 1
+      eks_node_types   = ["m6a.xlarge", "m6a.2xlarge"]
+      eks_max_nodes    = 6
+      ingress_replicas = 1
       postgres = {
         work_mem_mb             = 8
         maintenance_work_mem_mb = 128
@@ -30,10 +29,9 @@ locals {
         instance_class    = "db.r6g.large"
         allocated_storage = 100
       }
-      eks_node_types       = ["m8a.xlarge", "m8a.2xlarge"]
-      starrocks_node_types = ["r8a.large", "r8a.xlarge"]
-      eks_max_nodes        = 12
-      ingress_replicas     = 2
+      eks_node_types   = ["m8a.xlarge", "m8a.2xlarge"]
+      eks_max_nodes    = 12
+      ingress_replicas = 2
       postgres = {
         work_mem_mb             = 16
         maintenance_work_mem_mb = 256
@@ -47,13 +45,9 @@ locals {
         instance_class    = "db.r6g.xlarge"
         allocated_storage = 100
       }
-      eks_node_types = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
-      # Unused: StarRocks has no prod-large tier (starrocks_size_profile can only
-      # be dev/prod-small/prod-xl), so this is never selected. Present for type
-      # consistency across the map.
-      starrocks_node_types = ["r8a.large", "r8a.8xlarge"]
-      eks_max_nodes        = 20
-      ingress_replicas     = 3
+      eks_node_types   = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
+      eks_max_nodes    = 20
+      ingress_replicas = 3
       postgres = {
         work_mem_mb             = 32
         maintenance_work_mem_mb = 512
@@ -67,10 +61,9 @@ locals {
         instance_class    = "db.r6g.2xlarge"
         allocated_storage = 200
       }
-      eks_node_types       = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
-      starrocks_node_types = ["r8a.large", "r8a.8xlarge"]
-      eks_max_nodes        = 30
-      ingress_replicas     = 3
+      eks_node_types   = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
+      eks_max_nodes    = 30
+      ingress_replicas = 3
       postgres = {
         work_mem_mb             = 64
         maintenance_work_mem_mb = 1024
@@ -80,6 +73,16 @@ locals {
       pulsar_size        = "prod-large"
       observability_size = "prod-large"
     }
+  }
+
+  # StarRocks node pools are a separate dimension from size_profile: they are
+  # selected by var.starrocks_size_profile (dev/prod-small/prod-xl), which is
+  # decoupled from size_profile, so they live in their own map keyed only by the
+  # valid StarRocks tiers. There is intentionally no prod-large entry.
+  starrocks_node_type_presets = {
+    dev        = ["r8a.large", "m8a.xlarge"]
+    prod-small = ["r8a.large", "r8a.xlarge"]
+    prod-xl    = ["r8a.large", "r8a.8xlarge"]
   }
 
   profile = local.size_profiles[var.size_profile]
@@ -93,5 +96,5 @@ locals {
   # StarRocks node pool: indexed by the explicit var.starrocks_size_profile, NOT
   # size_profile (the two are decoupled). Only used when enable_ai_lake is true,
   # which the variable's validation requires.
-  eks_starrocks_node_types = var.enable_ai_lake ? coalesce(var.eks_starrocks_node_types, local.size_profiles[var.starrocks_size_profile].starrocks_node_types) : []
+  eks_starrocks_node_types = var.enable_ai_lake ? coalesce(var.eks_starrocks_node_types, local.starrocks_node_type_presets[var.starrocks_size_profile]) : []
 }

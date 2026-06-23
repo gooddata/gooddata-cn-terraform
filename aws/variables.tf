@@ -89,7 +89,7 @@ variable "eks_endpoint_public_access_cidrs" {
 }
 
 variable "eks_max_nodes" {
-  description = "Maximum number of EKS worker nodes (autoscaler ceiling). If null, chosen by size_profile."
+  description = "Maximum worker nodes PER node group (autoscaler ceiling applied to each per-instance-type managed node group and each StarRocks node group independently, so the cluster-wide max is this value times the number of groups). If null, chosen by size_profile."
   type        = number
   default     = null
 }

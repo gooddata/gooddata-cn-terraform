@@ -125,8 +125,9 @@ gdcn_orgs = [
 # enable_observability = true
 # observability_hostname = "observability.gooddata.example.com"
 
-# Uncomment to override data retention (defaults shown). Each signal has its own 5Gi
-# PVC, so lower these to bound storage. Loki must be a multiple of 24h.
+# Uncomment to override data retention (defaults shown). Each signal has its own
+# PVC sized by size_profile (5Gi dev / 10Gi prod-small / 20Gi prod-large), so
+# lower these to bound storage. Loki must be a multiple of 24h.
 # loki_retention_period       = "168h"
 # prometheus_retention_period = "168h"
 # tempo_retention_period      = "168h"
