@@ -133,8 +133,9 @@ resource "helm_release" "loki" {
           }]
         }
         # Retention is enforced by the compactor loop below. retention_period
-        # caps log age; the 5Gi PVC still caps total size, so at high log volume
-        # data may be evicted before this period is reached.
+        # caps log age; the PVC (size set per tier in size-profiles.tf) still
+        # caps total size, so at high log volume data may be evicted before this
+        # period is reached.
         limits_config = {
           retention_period = var.loki_retention_period
         }
@@ -254,8 +255,9 @@ resource "helm_release" "tempo" {
           }
           zipkin = { endpoint = "0.0.0.0:9411" }
         }
-        # Trace retention enforced by the block-storage compactor. The 5Gi PVC
-        # still caps total size, so traces may be evicted before this period.
+        # Trace retention enforced by the block-storage compactor. The PVC (size
+        # set per tier in size-profiles.tf) still caps total size, so traces may
+        # be evicted before this period.
         retention = var.tempo_retention_period
         # Per-tenant ingestion limits, sized by tier (see size-profiles.tf).
         # Strategy stays "local" (single-binary deployment, no global ring).

@@ -5,7 +5,7 @@ variable "aks_api_server_authorized_ip_ranges" {
 }
 
 variable "aks_max_nodes" {
-  description = "Maximum number of AKS worker nodes (autoscaler ceiling). If null, chosen by size_profile."
+  description = "Maximum worker nodes PER node pool (autoscaler ceiling applied to the default pool and to each additional aks_node_vm_sizes pool independently, so the cluster-wide max is this value times the number of pools). If null, chosen by size_profile."
   type        = number
   default     = null
 }
