@@ -135,9 +135,11 @@ case "$cmd" in
         "$REPO_ROOT/scripts/configure-kubectl.sh"
         echo ""
         echo ">> Deployment complete!"
-        terraform output -raw org_domains 2>/dev/null | tr -d '[]"' | tr ',' '\n' | while read -r domain; do
+        # org_domains is a list output, so `-raw` (string-only) errors; use -json + jq.
+        # Guarded so this purely informational step never fails an otherwise-successful apply.
+        terraform output -json org_domains 2>/dev/null | jq -r '.[]?' | while read -r domain; do
             echo "   https://$domain"
-        done
+        done || true
         ;;
 
     destroy)
