@@ -5,21 +5,26 @@ variable "aks_api_server_authorized_ip_ranges" {
 }
 
 variable "aks_max_nodes" {
-  description = "Maximum number of AKS worker nodes"
+  description = "Maximum worker nodes PER node pool (autoscaler ceiling applied to the default pool and to each additional aks_node_vm_sizes pool independently, so the cluster-wide max is this value times the number of pools). If null, chosen by size_profile."
   type        = number
-  default     = 20
+  default     = null
 }
 
 variable "aks_min_nodes" {
-  description = "Minimum number of AKS worker nodes"
+  description = "Minimum number of AKS worker nodes. If null, chosen by size_profile."
   type        = number
-  default     = 2
+  default     = null
 }
 
-variable "aks_node_vm_size" {
-  description = "VM size for AKS worker nodes. E.g. Standard_D4as_v6, Standard_D4pd_v6"
-  type        = string
-  default     = "Standard_D4as_v6"
+variable "aks_node_vm_sizes" {
+  description = "VM sizes for AKS worker pools. The first entry sizes the default (system) node pool; any additional entries each create a separate autoscaling user node pool (scaling from 0). With least-waste autoscaling this lets the cluster pick the cheapest size that fits pending pods, mirroring the AWS eks_node_types list. If null, chosen by size_profile. E.g. [\"Standard_D4as_v6\", \"Standard_D8as_v6\", \"Standard_D16as_v6\"]."
+  type        = list(string)
+  default     = null
+
+  validation {
+    condition     = var.aks_node_vm_sizes == null || length(var.aks_node_vm_sizes) > 0
+    error_message = "aks_node_vm_sizes must contain at least one VM size (the default node pool)."
+  }
 }
 
 variable "aks_version" {
@@ -322,15 +327,15 @@ variable "observability_hostname" {
 }
 
 variable "postgresql_sku_name" {
-  description = "Azure Database for PostgreSQL SKU name. E.g. B_Standard_B1ms, GP_Standard_D2s_v3, MO_Standard_E4s_v3"
+  description = "Azure Database for PostgreSQL SKU name. If null, chosen by size_profile. E.g. B_Standard_B1ms, GP_Standard_D2s_v3, MO_Standard_E4s_v3"
   type        = string
-  default     = "GP_Standard_D2ds_v5"
+  default     = null
 }
 
 variable "postgresql_storage_mb" {
-  description = "Azure Database for PostgreSQL storage in MB"
+  description = "Azure Database for PostgreSQL storage in MB. If null, chosen by size_profile."
   type        = number
-  default     = 32768
+  default     = null
 }
 
 variable "size_profile" {

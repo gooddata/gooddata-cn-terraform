@@ -16,8 +16,10 @@ redis-ha:
   persistentVolume:
     size: 1Gi
 
-etcd:
+customEtcd:
   replicaCount: 1
+  antiAffinity:
+    enabled: false
   persistence:
     size: 1Gi
 

@@ -10,8 +10,8 @@ deployment_name = "gooddata-cn-local"
 ###
 k3d_cluster_name = "gdcluster"
 
-# If you're running Terraform on a Linux host (not inside a container) and
-# host.docker.internal is not resolvable, set:
+# Uncomment if you're running Terraform on a Linux host (not inside a container)
+# and host.docker.internal is not resolvable:
 # k3d_kubeapi_host = "127.0.0.1"
 
 ###
@@ -22,23 +22,22 @@ helm_gdcn_version = "4.9.0" # use latest version here: https://www.gooddata.com/
 # GoodData.CN license key
 gdcn_license_key = "key/asdf==" # provided by GoodData
 
-# Additional gooddata-cn Helm values
+# Uncomment to append extra gooddata-cn Helm values
 # gdcn_helm_extra_values = <<-EOT
 #   service:
 #     someComponent:
 #       replicaCount: 3
 # EOT
 
-# Deploys and enables GoodData generative AI services
+# Uncomment to deploy and enable GoodData generative AI services
 # enable_ai_features = true
 
-# Enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
+# Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
 
-# Size profile controls replicas/resources across services:
-# - dev: lowest footprint, not HA
-# NOTE: switching size profile after deploying isn't supported since persistent
-# volume sizes can't be automatically adjusted in-place.
+# Size profile controls replicas/resources across services plus the in-cluster
+# metadata postgres sizing. Local installs only support "dev" (the smallest,
+# non-HA footprint).
 size_profile = "dev"
 
 ###
@@ -86,8 +85,8 @@ gdcn_orgs = [
 # Uncomment to enable the observability stack
 # enable_observability = true
 # observability_hostname = "observability.localhost"
-#
-# Observability data retention (optional; defaults shown). Each signal has its own 5Gi
+
+# Uncomment to override data retention (defaults shown). Each signal has its own 5Gi
 # PVC, so lower these to bound storage. Loki must be a multiple of 24h.
 # loki_retention_period       = "168h"
 # prometheus_retention_period = "168h"

@@ -66,7 +66,7 @@ resource "kubectl_manifest" "postgres_cluster" {
       namespace = kubernetes_namespace_v1.postgres.metadata[0].name
     }
     spec = {
-      instances             = 1
+      instances             = var.cnpg.instances
       imageName             = var.postgres_image
       primaryUpdateStrategy = "unsupervised"
       enableSuperuserAccess = true
@@ -75,7 +75,7 @@ resource "kubectl_manifest" "postgres_cluster" {
       }
 
       storage = {
-        size         = "2Gi"
+        size         = var.cnpg.storage
         storageClass = local.postgres_storage_class
       }
 
@@ -91,8 +91,8 @@ resource "kubectl_manifest" "postgres_cluster" {
 
       resources = {
         requests = {
-          cpu    = "200m"
-          memory = "256Mi"
+          cpu    = var.cnpg.cpu
+          memory = var.cnpg.memory
         }
       }
 
@@ -104,6 +104,11 @@ resource "kubectl_manifest" "postgres_cluster" {
         pg_hba = [
           "hostssl all all 0.0.0.0/0 scram-sha-256",
         ]
+        # Tuned by size_profile (see local/size-profiles.tf).
+        parameters = {
+          work_mem             = "${var.cnpg.work_mem_mb}MB"
+          maintenance_work_mem = "${var.cnpg.maintenance_work_mem_mb}MB"
+        }
       }
     }
   })

@@ -188,7 +188,7 @@ resource "helm_release" "gooddata_cn" {
       s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
       s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
     }) : null,
-    templatefile("${path.module}/templates/gdcn-size-${local.size_profile_template}.yaml.tftpl", {}),
+    templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", {}),
     var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,
   ])
 

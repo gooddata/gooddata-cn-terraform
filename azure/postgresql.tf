@@ -11,6 +11,7 @@ resource "random_password" "db_password" {
 locals {
   db_username = "postgres"
   db_password = random_password.db_password.result
+  # PostgreSQL sizing resolved in size-profiles.tf.
 }
 
 # Create Private DNS Zone for PostgreSQL
@@ -42,8 +43,8 @@ resource "azurerm_postgresql_flexible_server" "main" {
   private_dns_zone_id    = azurerm_private_dns_zone.postgresql.id
   administrator_login    = local.db_username
   administrator_password = local.db_password
-  storage_mb             = var.postgresql_storage_mb
-  sku_name               = var.postgresql_sku_name
+  storage_mb             = local.postgresql_storage_mb
+  sku_name               = local.postgresql_sku_name
 
   # Disable public network access when using VNet integration
   public_network_access_enabled = false
@@ -74,4 +75,19 @@ resource "azurerm_postgresql_flexible_server_configuration" "trigram" {
   name      = "azure.extensions"
   server_id = azurerm_postgresql_flexible_server.main.id
   value     = "PG_TRGM"
+}
+
+# Performance parameters tuned by size_profile (see size-profiles.tf). Both are
+# dynamic (no restart). shared_buffers/effective_cache_size are left to the SKU
+# defaults, which scale with instance memory. Values are in kB.
+resource "azurerm_postgresql_flexible_server_configuration" "work_mem" {
+  name      = "work_mem"
+  server_id = azurerm_postgresql_flexible_server.main.id
+  value     = tostring(local.profile.postgres.work_mem_mb * 1024)
+}
+
+resource "azurerm_postgresql_flexible_server_configuration" "maintenance_work_mem" {
+  name      = "maintenance_work_mem"
+  server_id = azurerm_postgresql_flexible_server.main.id
+  value     = tostring(local.profile.postgres.maintenance_work_mem_mb * 1024)
 }

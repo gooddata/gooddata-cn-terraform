@@ -49,10 +49,27 @@ module "rds_postgresql" {
   engine                      = "postgres"
   engine_version              = data.aws_rds_engine_version.default.version
   family                      = "postgres${split(".", data.aws_rds_engine_version.default.version)[0]}"
-  instance_class              = var.rds_instance_class
-  allocated_storage           = 20
+  instance_class              = local.rds_instance_class
+  allocated_storage           = local.rds_allocated_storage
   apply_immediately           = true
   allow_major_version_upgrade = var.rds_allow_major_version_upgrade
+
+  # Performance parameters tuned by size_profile (see size-profiles.tf). Both are
+  # dynamic (apply_method = immediate, no reboot). shared_buffers/effective_cache_size
+  # are intentionally left to the RDS instance-class defaults, which already scale
+  # with instance memory. Values are in kB.
+  parameters = [
+    {
+      name         = "work_mem"
+      value        = tostring(local.profile.postgres.work_mem_mb * 1024)
+      apply_method = "immediate"
+    },
+    {
+      name         = "maintenance_work_mem"
+      value        = tostring(local.profile.postgres.maintenance_work_mem_mb * 1024)
+      apply_method = "immediate"
+    },
+  ]
 
   # Database name & credentials
   username                    = local.db_username

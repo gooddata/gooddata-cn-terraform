@@ -16,7 +16,7 @@ module "k8s_aws" {
   ingress_controller = var.ingress_controller
   dns_provider       = var.dns_provider
   route53_zone_id    = var.route53_zone_id
-  size_profile       = var.size_profile
+  ingress_replicas   = local.profile.ingress_replicas
 
   registry_k8sio = local.registry_k8sio
 

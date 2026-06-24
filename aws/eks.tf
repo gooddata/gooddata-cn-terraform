@@ -29,25 +29,7 @@ locals {
     ECRPullThroughCacheMin = aws_iam_policy.ecr_pull_through_cache_min[0].arn
   } : {}
 
-  eks_node_type_presets = {
-    dev        = ["m6a.xlarge", "m6a.2xlarge"]
-    prod-small = ["m8a.xlarge", "m8a.2xlarge"]
-    prod-large = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
-    prod-xl    = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
-  }
-
-  eks_starrocks_node_type_presets = {
-    dev        = ["r8a.large", "m8a.xlarge"]
-    prod-small = ["r8a.large", "r8a.xlarge"]
-    prod-xl    = ["r8a.large", "r8a.8xlarge"]
-  }
-
-  # There is no dedicated prod-large StarRocks profile; fall back to prod-xl
-  # StarRocks sizing when size_profile is prod-large (see gdcn-size-prod-large).
-  starrocks_size_profile_effective = coalesce(var.starrocks_size_profile, var.size_profile == "prod-large" ? "prod-xl" : var.size_profile)
-
-  eks_node_types           = coalesce(var.eks_node_types, local.eks_node_type_presets[var.size_profile])
-  eks_starrocks_node_types = coalesce(var.eks_starrocks_node_types, local.eks_starrocks_node_type_presets[local.starrocks_size_profile_effective])
+  # Node types / StarRocks node types / autoscaler ceiling: resolved in size-profiles.tf.
 
   # Per-AZ node groups for StarRocks so the cluster autoscaler can scale
   # nodes in the AZ where the FE/CN EBS volume lives (EBS is zonal).
@@ -130,7 +112,7 @@ module "eks" {
         }, local.ecr_pull_through_cache_policy)
 
         min_size = 0
-        max_size = var.eks_max_nodes
+        max_size = local.eks_max_nodes
 
         # This value is ignored after the initial creation
         # https://github.com/bryantbiggs/eks-desired-size-hack
@@ -174,7 +156,7 @@ module "eks" {
         }, local.ecr_pull_through_cache_policy)
 
         min_size     = 0
-        max_size     = var.eks_max_nodes
+        max_size     = local.eks_max_nodes
         desired_size = 0
       }
     },

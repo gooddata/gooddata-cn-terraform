@@ -6,7 +6,7 @@ locals {
   ingress_values = {
     controller = merge(
       {
-        replicaCount = var.size_profile == "dev" ? 1 : 2
+        replicaCount = var.ingress_replicas
         image = {
           registry = var.registry_k8sio
         }
