@@ -233,13 +233,6 @@ variable "helm_cert_manager_version" {
   default = "v1.20.2"
 }
 
-variable "helm_cluster_autoscaler_version" {
-  description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
-  type        = string
-  # renovate: depName=cluster-autoscaler registryUrl=https://kubernetes.github.io/autoscaler
-  default = "9.57.0"
-}
-
 variable "helm_external_dns_version" {
   description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
   type        = string
@@ -302,6 +295,13 @@ variable "helm_istio_version" {
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
   default = "1.30.1"
+}
+
+variable "helm_karpenter_version" {
+  description = "Version of the Karpenter Helm chart (oci://public.ecr.aws/karpenter/karpenter) to deploy. https://github.com/aws/karpenter-provider-aws/releases"
+  type        = string
+  # renovate: depName=karpenter packageName=public.ecr.aws/karpenter/karpenter datasource=docker
+  default = "1.6.3"
 }
 
 variable "helm_loki_version" {
