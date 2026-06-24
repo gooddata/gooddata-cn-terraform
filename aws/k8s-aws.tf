@@ -20,17 +20,16 @@ module "k8s_aws" {
 
   registry_k8sio = local.registry_k8sio
 
-  helm_cluster_autoscaler_version = var.helm_cluster_autoscaler_version
-  helm_aws_lb_controller_version  = var.helm_aws_lb_controller_version
-  helm_metrics_server_version     = var.helm_metrics_server_version
-  helm_external_dns_version       = var.helm_external_dns_version
+  helm_aws_lb_controller_version = var.helm_aws_lb_controller_version
+  helm_metrics_server_version    = var.helm_metrics_server_version
+  helm_external_dns_version      = var.helm_external_dns_version
 
   vpc_id                        = local.vpc_id
   eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
   eks_cluster_oidc_issuer_url   = module.eks.cluster_oidc_issuer_url
 
   # Explicit dependency ensures destroy order: k8s_aws Helm releases (LB
-  # controller, cluster-autoscaler, etc.) are removed before the EKS cluster
-  # and node groups are torn down.
+  # controller, external-dns, etc.) are removed before the EKS cluster and
+  # node groups are torn down.
   depends_on = [module.eks, module.vpc]
 }
