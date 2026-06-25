@@ -87,6 +87,28 @@ resource "kubernetes_namespace_v1" "external_dns" {
   }
 }
 
+# external-dns's Azure provider reads its config from a file (default
+# /etc/kubernetes/azure.json), NOT from env vars. Provide it as a Secret;
+# useWorkloadIdentityExtension makes it auth via the federated SA token that the
+# workload-identity webhook injects (no client secret needed).
+resource "kubernetes_secret_v1" "external_dns_azure" {
+  count = local.external_dns_enabled ? 1 : 0
+
+  metadata {
+    name      = "external-dns-azure-config"
+    namespace = kubernetes_namespace_v1.external_dns[0].metadata[0].name
+  }
+
+  data = {
+    "azure.json" = jsonencode({
+      tenantId                     = data.azurerm_client_config.current.tenant_id
+      subscriptionId               = data.azurerm_client_config.current.subscription_id
+      resourceGroup                = local.external_dns_zone_rg
+      useWorkloadIdentityExtension = true
+    })
+  }
+}
+
 resource "helm_release" "external_dns" {
   count = local.external_dns_enabled ? 1 : 0
 
@@ -126,14 +148,16 @@ resource "helm_release" "external_dns" {
       "azure.workload.identity/use" = "true"
     }
 
-    # The Azure provider for external-dns needs the resource group + subscription
-    # of the DNS zone; surfacing them as env vars avoids mounting a config file.
-    env = [
-      { name = "AZURE_SUBSCRIPTION_ID", value = data.azurerm_client_config.current.subscription_id },
-      { name = "AZURE_TENANT_ID", value = data.azurerm_client_config.current.tenant_id },
-      { name = "AZURE_RESOURCE_GROUP", value = local.external_dns_zone_rg },
-      { name = "AZURE_USE_WORKLOAD_IDENTITY_EXTENSION", value = "true" },
-    ]
+    # Mount azure.json (the Secret above) at the provider's default config path.
+    extraVolumes = [{
+      name   = "azure-config-file"
+      secret = { secretName = kubernetes_secret_v1.external_dns_azure[0].metadata[0].name }
+    }]
+    extraVolumeMounts = [{
+      name      = "azure-config-file"
+      mountPath = "/etc/kubernetes"
+      readOnly  = true
+    }]
   })]
 
   depends_on = [
