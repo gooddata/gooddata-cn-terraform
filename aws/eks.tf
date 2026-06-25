@@ -155,11 +155,11 @@ module "eks" {
         tags = merge(
           local.common_tags,
           {
-            "k8s.io/cluster-autoscaler/enabled"                                       = "true"
-            "k8s.io/cluster-autoscaler/${var.deployment_name}"                        = "owned"
-            "k8s.io/cluster-autoscaler/node-template/label/workload"                  = "starrocks"
+            "k8s.io/cluster-autoscaler/enabled"                                         = "true"
+            "k8s.io/cluster-autoscaler/${var.deployment_name}"                          = "owned"
+            "k8s.io/cluster-autoscaler/node-template/label/workload"                    = "starrocks"
             "k8s.io/cluster-autoscaler/node-template/label/topology.kubernetes.io/zone" = ng.az
-            "k8s.io/cluster-autoscaler/node-template/taint/workload"                  = "starrocks:NoSchedule"
+            "k8s.io/cluster-autoscaler/node-template/taint/workload"                    = "starrocks:NoSchedule"
           }
         )
 

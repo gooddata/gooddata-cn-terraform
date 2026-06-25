@@ -131,8 +131,6 @@ variable "helm_gdcn_version" { type = string }
 
 variable "helm_grafana_version" { type = string }
 
-variable "helm_ingress_nginx_version" { type = string }
-
 variable "helm_istio_version" { type = string }
 
 variable "helm_loki_version" { type = string }
@@ -150,14 +148,16 @@ variable "helm_starrocks_version" {
 
 variable "helm_tempo_version" { type = string }
 
+variable "helm_traefik_version" { type = string }
+
 variable "ingress_annotations_override" {
   type    = map(string)
   default = {}
 }
 
-variable "ingress_controller" { type = string }
+variable "ingress_behind_l7" { type = bool }
 
-variable "ingress_nginx_behind_l7" { type = bool }
+variable "ingress_controller" { type = string }
 
 variable "letsencrypt_email" { type = string }
 

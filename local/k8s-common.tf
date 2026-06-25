@@ -83,10 +83,10 @@ module "k8s_common" {
   cloud                  = "local"
   ingress_controller     = var.ingress_controller
 
-  letsencrypt_email       = ""
-  auth_hostname           = var.auth_hostname
-  tls_mode                = var.tls_mode
-  ingress_nginx_behind_l7 = var.ingress_nginx_behind_l7
+  letsencrypt_email = ""
+  auth_hostname     = var.auth_hostname
+  tls_mode          = var.tls_mode
+  ingress_behind_l7 = var.ingress_behind_l7
 
   enable_ai_features = var.enable_ai_features
   enable_image_cache = false
@@ -98,7 +98,7 @@ module "k8s_common" {
   helm_gdcn_version                  = var.helm_gdcn_version
   helm_istio_version                 = var.helm_istio_version
   helm_pulsar_version                = var.helm_pulsar_version
-  helm_ingress_nginx_version         = var.helm_ingress_nginx_version
+  helm_traefik_version               = var.helm_traefik_version
   helm_kube_prometheus_stack_version = var.helm_kube_prometheus_stack_version
   helm_loki_version                  = var.helm_loki_version
   helm_promtail_version              = var.helm_promtail_version

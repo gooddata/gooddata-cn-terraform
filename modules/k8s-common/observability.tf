@@ -413,9 +413,9 @@ resource "helm_release" "grafana" {
         enabled          = !local.use_istio_gateway
         ingressClassName = local.resolved_ingress_class_name
         annotations = merge(
-          {
-            "nginx.ingress.kubernetes.io/proxy-body-size" = "50m"
-          },
+          local.use_traefik ? {
+            "traefik.ingress.kubernetes.io/router.middlewares" = local.traefik_grafana_middlewares
+          } : {},
           local.use_cert_manager ? {
             "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
           } : {},

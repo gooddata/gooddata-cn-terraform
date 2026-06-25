@@ -35,8 +35,8 @@ size_profile = "dev"
 # Ingress + TLS
 ###
 
-# Option 1 — NGINX Ingress Controller (ingress-nginx) + cert-manager self-signed certificates
-ingress_controller      = "ingress-nginx"
+# Option 1 — Traefik (Kubernetes Ingress) + cert-manager self-signed certificates
+ingress_controller      = "traefik"
 tls_mode                = "selfsigned"
 
 # Option 2 — Istio Gateway + cert-manager self-signed certificates

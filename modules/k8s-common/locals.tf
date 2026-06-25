@@ -6,7 +6,7 @@ locals {
   starrocks_service_account_name = "starrocks"
 
   use_alb           = var.ingress_controller == "alb"
-  use_ingress_nginx = var.ingress_controller == "ingress-nginx"
+  use_traefik       = var.ingress_controller == "traefik"
   use_lets_encrypt  = var.tls_mode == "letsencrypt"
   use_self_signed   = var.tls_mode == "selfsigned"
   use_cert_manager  = local.use_lets_encrypt || local.use_self_signed
@@ -16,7 +16,7 @@ locals {
 
   # Reuse a single ingress class name throughout the module
   resolved_ingress_class_name = var.ingress_controller == "alb" ? "alb" : (
-    var.ingress_controller == "istio_gateway" ? "" : "nginx"
+    var.ingress_controller == "istio_gateway" ? "" : "traefik"
   )
 }
 

@@ -278,13 +278,6 @@ variable "helm_grafana_version" {
   default = "10.5.15"
 }
 
-variable "helm_ingress_nginx_version" {
-  description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
-  type        = string
-  # renovate: depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
-  default = "4.15.1"
-}
-
 variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
   type        = string
@@ -341,22 +334,29 @@ variable "helm_tempo_version" {
   default = "1.24.4"
 }
 
+variable "helm_traefik_version" {
+  description = "Version of the Traefik Helm chart to deploy. https://artifacthub.io/packages/helm/traefik/traefik"
+  type        = string
+  # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
+  default = "40.2.0"
+}
+
+variable "ingress_behind_l7" {
+  description = "Whether the ingress controller is running behind an L7 proxy/load balancer (enables trusting X-Forwarded-* headers)."
+  type        = bool
+  default     = false
+}
+
 variable "ingress_controller" {
-  description = "Ingress controller used to expose GoodData.CN. Use alb for AWS ALB, ingress-nginx for Kubernetes Ingress, or istio_gateway to expose the Istio ingress gateway via LoadBalancer."
+  description = "Ingress controller used to expose GoodData.CN. Use alb for AWS ALB, traefik for Kubernetes Ingress via Traefik, or istio_gateway to expose the Istio ingress gateway via LoadBalancer."
   type        = string
   default     = "alb"
   validation {
     condition = (
-      contains(["ingress-nginx", "alb", "istio_gateway"], var.ingress_controller)
+      contains(["traefik", "alb", "istio_gateway"], var.ingress_controller)
     )
-    error_message = "ingress_controller must be one of: \"alb\", \"ingress-nginx\", \"istio_gateway\"."
+    error_message = "ingress_controller must be one of: \"alb\", \"traefik\", \"istio_gateway\"."
   }
-}
-
-variable "ingress_nginx_behind_l7" {
-  description = "Whether ingress-nginx is running behind an L7 proxy/load balancer (enables use-forwarded-headers)."
-  type        = bool
-  default     = false
 }
 
 variable "letsencrypt_email" {
@@ -447,15 +447,15 @@ variable "starrocks_fe_image_tag" {
 }
 
 variable "tls_mode" {
-  description = "TLS management mode. Use acm for ALB, letsencrypt for ingress-nginx."
+  description = "TLS management mode. Use acm for ALB, letsencrypt for Traefik or Istio."
   type        = string
   default     = "acm"
   validation {
     condition = (
       contains(["acm", "letsencrypt"], var.tls_mode) &&
       (var.tls_mode != "acm" ? true : var.ingress_controller == "alb") &&
-      (var.tls_mode != "letsencrypt" ? true : contains(["ingress-nginx", "istio_gateway"], var.ingress_controller))
+      (var.tls_mode != "letsencrypt" ? true : contains(["traefik", "istio_gateway"], var.ingress_controller))
     )
-    error_message = "tls_mode=\"acm\" requires ingress_controller=\"alb\"; tls_mode=\"letsencrypt\" requires ingress_controller=\"ingress-nginx\" or \"istio_gateway\"."
+    error_message = "tls_mode=\"acm\" requires ingress_controller=\"alb\"; tls_mode=\"letsencrypt\" requires ingress_controller=\"traefik\" or \"istio_gateway\"."
   }
 }

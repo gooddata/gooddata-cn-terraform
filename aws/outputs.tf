@@ -38,7 +38,7 @@ locals {
     ) : (local.use_istio_gateway ? (
       length(data.external.istio_gateway_lb) > 0 ? trimspace(try(data.external.istio_gateway_lb[0].result.hostname, "")) : ""
       ) : (
-      length(data.external.ingress_nginx_lb) > 0 ? trimspace(try(data.external.ingress_nginx_lb[0].result.hostname, "")) : ""
+      length(data.external.ingress_lb) > 0 ? trimspace(try(data.external.ingress_lb[0].result.hostname, "")) : ""
   ))
 }
 
