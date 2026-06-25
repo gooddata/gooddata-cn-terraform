@@ -43,6 +43,26 @@ variable "azure_additional_tags" {
   default     = {}
 }
 
+variable "azure_dns_zone_name" {
+  description = "Name of the existing Azure DNS public zone used by external-dns when dns_provider = \"azure-dns\" (e.g. \"example.com\"). The zone must already exist in your subscription."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.dns_provider != "azure-dns" || length(trimspace(var.azure_dns_zone_name)) > 0
+    error_message = "azure_dns_zone_name is required when dns_provider is \"azure-dns\"."
+  }
+}
+
+variable "azure_dns_zone_resource_group_name" {
+  description = "Name of the resource group that contains the Azure DNS zone referenced by azure_dns_zone_name. Required when dns_provider = \"azure-dns\"."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.dns_provider != "azure-dns" || length(trimspace(var.azure_dns_zone_resource_group_name)) > 0
+    error_message = "azure_dns_zone_resource_group_name is required when dns_provider is \"azure-dns\"."
+  }
+}
+
 variable "azure_location" {
   description = "Azure location to deploy resources to."
   type        = string
@@ -73,12 +93,12 @@ variable "deployment_name" {
 }
 
 variable "dns_provider" {
-  description = "DNS management mode on Azure. Currently only self-managed DNS is supported."
+  description = "DNS management mode on Azure. \"self-managed\" leaves DNS to the user; \"azure-dns\" deploys external-dns wired to an existing Azure DNS zone and automatically maintains A records for each GoodData hostname."
   type        = string
   default     = "self-managed"
   validation {
-    condition     = var.dns_provider == "self-managed"
-    error_message = "dns_provider must be \"self-managed\" on Azure."
+    condition     = contains(["self-managed", "azure-dns"], var.dns_provider)
+    error_message = "dns_provider must be \"self-managed\" or \"azure-dns\"."
   }
 }
 
@@ -172,6 +192,13 @@ variable "helm_cert_manager_version" {
   type        = string
   # renovate: depName=cert-manager registryUrl=https://charts.jetstack.io
   default = "v1.20.2"
+}
+
+variable "helm_external_dns_version" {
+  description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
+  type        = string
+  # renovate: depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
+  default = "1.21.1"
 }
 
 variable "helm_gdcn_version" {
