@@ -6,15 +6,18 @@ locals {
   auth_hostname = trimspace(var.auth_hostname)
   org_ids       = distinct(compact([for org in var.gdcn_orgs : trimspace(org.id)]))
   org_domains   = distinct(compact([for org in var.gdcn_orgs : trimspace(org.hostname)]))
-  ingress_annotation_defaults = local.use_ingress_nginx ? merge(
+  ingress_annotation_defaults = local.use_traefik ? merge(
     {
-      "nginx.ingress.kubernetes.io/proxy-body-size" = "200m"
+      "traefik.ingress.kubernetes.io/router.middlewares" = local.traefik_gdcn_middlewares
     },
     local.use_cert_manager ? {
       "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
     } : {}
   ) : {}
-  dex_annotation_defaults = local.use_ingress_nginx ? (
+  dex_annotation_defaults = local.use_traefik ? merge(
+    {
+      "traefik.ingress.kubernetes.io/router.middlewares" = local.traefik_gdcn_middlewares
+    },
     local.use_cert_manager ? {
       "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
     } : {}
@@ -200,7 +203,11 @@ resource "helm_release" "gooddata_cn" {
   depends_on = [
     kubernetes_namespace_v1.gdcn,
     helm_release.pulsar,
-    helm_release.ingress_nginx,
+    helm_release.traefik,
+    kubectl_manifest.traefik_default_headers,
+    kubectl_manifest.traefik_compress,
+    kubectl_manifest.traefik_body_200m,
+    kubectl_manifest.traefik_body_50m,
     kubectl_manifest.letsencrypt_cluster_issuer,
     kubectl_manifest.selfsigned_cluster_issuer,
     helm_release.istio_ingress_gateway,
@@ -256,10 +263,10 @@ resource "kubectl_manifest" "redis_ha_podmonitor" {
 
 # Server-side-apply patch onto the gooddata-cn-export-builder Deployment
 # created by the GoodData.CN Helm chart. Injects a socat sidecar that
-# forwards localhost:443 to ingress-nginx, so export-builder can reach
-# the ingress endpoint via 127.0.0.1:443 inside k3d.
+# forwards localhost:443 to the ingress controller, so export-builder
+# can reach the ingress endpoint via 127.0.0.1:443 inside k3d.
 resource "kubectl_manifest" "export_builder_localhost_forwarder" {
-  count = var.cloud == "local" && local.use_ingress_nginx ? 1 : 0
+  count = var.cloud == "local" && local.use_traefik ? 1 : 0
 
   server_side_apply = true
   force_conflicts   = true
@@ -281,8 +288,8 @@ resource "kubectl_manifest" "export_builder_localhost_forwarder" {
                 - /bin/sh
                 - -ec
                 - |
-                  socat TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork TCP4:ingress-nginx-controller.ingress-nginx.svc.cluster.local:443 &
-                  socat TCP6-LISTEN:443,bind=[::1],reuseaddr,fork TCP4:ingress-nginx-controller.ingress-nginx.svc.cluster.local:443 &
+                  socat TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork TCP4:traefik.traefik.svc.cluster.local:443 &
+                  socat TCP6-LISTEN:443,bind=[::1],reuseaddr,fork TCP4:traefik.traefik.svc.cluster.local:443 &
                   wait
               securityContext:
                 allowPrivilegeEscalation: false

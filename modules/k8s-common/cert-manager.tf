@@ -4,9 +4,6 @@
 
 locals {
   cert_manager_http01_ingress_class = local.use_istio_gateway ? "istio" : local.resolved_ingress_class_name
-  cert_manager_http01_ingress_annotations = local.cert_manager_http01_ingress_class == "nginx" ? {
-    "nginx.ingress.kubernetes.io/enable-validate-ingress" = "false"
-  } : {}
 }
 
 resource "kubernetes_namespace_v1" "cert-manager" {
@@ -68,16 +65,9 @@ resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
         privateKeySecretRef = { name = "letsencrypt-account-key" }
         solvers = [{
           http01 = {
-            ingress = merge(
-              { ingressClassName = local.cert_manager_http01_ingress_class },
-              local.cert_manager_http01_ingress_class == "nginx" ? {
-                ingressTemplate = {
-                  metadata = {
-                    annotations = { "nginx.ingress.kubernetes.io/enable-validate-ingress" = "false" }
-                  }
-                }
-              } : {}
-            )
+            ingress = {
+              ingressClassName = local.cert_manager_http01_ingress_class
+            }
           }
         }]
       }

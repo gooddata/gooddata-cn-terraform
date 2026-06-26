@@ -24,10 +24,10 @@ module "k8s_common" {
   cloud                  = "azure"
   ingress_controller     = var.ingress_controller
 
-  letsencrypt_email       = var.letsencrypt_email
-  auth_hostname           = var.auth_hostname
-  tls_mode                = var.tls_mode
-  ingress_nginx_behind_l7 = var.ingress_nginx_behind_l7
+  letsencrypt_email = var.letsencrypt_email
+  auth_hostname     = var.auth_hostname
+  tls_mode          = var.tls_mode
+  ingress_behind_l7 = var.ingress_behind_l7
 
   enable_ai_features           = var.enable_ai_features
   enable_experimental_features = var.enable_experimental_features
@@ -40,7 +40,7 @@ module "k8s_common" {
   helm_gdcn_version                  = var.helm_gdcn_version
   helm_istio_version                 = var.helm_istio_version
   helm_pulsar_version                = var.helm_pulsar_version
-  helm_ingress_nginx_version         = var.helm_ingress_nginx_version
+  helm_traefik_version               = var.helm_traefik_version
   helm_kube_prometheus_stack_version = var.helm_kube_prometheus_stack_version
   helm_loki_version                  = var.helm_loki_version
   helm_promtail_version              = var.helm_promtail_version
@@ -109,9 +109,9 @@ output "org_ids" {
   value       = module.k8s_common.org_ids
 }
 
-# Query the ingress-nginx LoadBalancer IP via Azure CLI (no local kubectl needed)
+# Query the Traefik LoadBalancer IP via Azure CLI (no local kubectl needed)
 data "external" "ingress_lb_ip" {
-  count = var.ingress_controller == "ingress-nginx" ? 1 : 0
+  count = var.ingress_controller == "traefik" ? 1 : 0
 
   program = [
     "bash", "-c",
@@ -120,7 +120,7 @@ data "external" "ingress_lb_ip" {
       result=$(az aks command invoke \
         --resource-group "${azurerm_resource_group.main.name}" \
         --name "${azurerm_kubernetes_cluster.main.name}" \
-        --command "kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+        --command "kubectl get svc traefik -n traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
         --query "logs" -o tsv 2>/dev/null || echo "")
       # Clean up any whitespace/newlines
       ip=$(echo "$result" | tr -d '[:space:]')
@@ -160,7 +160,7 @@ locals {
 
 output "manual_dns_records" {
   description = "DNS records to create for Azure ingress."
-  value = var.ingress_controller == "ingress-nginx" && local.ingress_lb_ip != "" ? [
+  value = var.ingress_controller == "traefik" && local.ingress_lb_ip != "" ? [
     for hostname in distinct(compact(concat(
       [module.k8s_common.auth_hostname],
       module.k8s_common.org_domains,
