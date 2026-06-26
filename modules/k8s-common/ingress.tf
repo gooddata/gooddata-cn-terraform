@@ -52,6 +52,10 @@ locals {
           "service.beta.kubernetes.io/aws-load-balancer-alpn-policy"          = "HTTP2Preferred"
         }
       } : {},
+      # Azure Standard LB probes one of the Service's declared ports (80/443), not arbitrary pod ports.
+      # Traefik's /ping endpoint lives on the admin entrypoint (8080), which is not in the Service spec.
+      # No health-probe-request-path annotation is set: Azure uses a TCP probe on port 80, which is
+      # sufficient to validate that Traefik is accepting connections on its web entrypoint.
     )
 
     additionalArguments = var.ingress_behind_l7 ? [
