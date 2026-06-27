@@ -27,11 +27,11 @@ ENV_FILE="$SCRIPT_DIR/../providers/providers.env"
 
 # --- Server registry: key | k8s workload | namespace | OpenAI baseUrl | model | providerId ---
 # workload is "<kind>/<name>" so the swap can scale it 0/1 generically.
-declare -A WORKLOAD NS BASEURL MODEL PROVIDER
-#                workload                               namespace   baseUrl                                              model                          providerId
-register_server() { WORKLOAD[$1]=$2; NS[$1]=$3; BASEURL[$1]=$4; MODEL[$1]=$5; PROVIDER[$1]=$6; }
-register_server vllm "deployment/vllm"                 inference  "http://vllm.inference.svc.cluster.local:8000/v1"     "Qwen/Qwen3.6-27B"             "vllm-qwen"
-register_server sie  "statefulset/sie-worker-l4-sglang" sie       "http://sie-gateway.sie.svc.cluster.local:8080/v1"   "Qwen/Qwen3-4B-Instruct-2507"  "sie-llm"
+declare -A WORKLOAD NS BASEURL MODEL PROVIDER DISABLE_THINKING MAX_ITER
+#                workload                               namespace   baseUrl                                              model                          providerId      disable_thinking  max_iter
+register_server() { WORKLOAD[$1]=$2; NS[$1]=$3; BASEURL[$1]=$4; MODEL[$1]=$5; PROVIDER[$1]=$6; DISABLE_THINKING[$1]=${7:-false}; MAX_ITER[$1]=${8:-40}; }
+register_server vllm "deployment/vllm"                 inference  "http://vllm.inference.svc.cluster.local:8000/v1"     "Qwen/Qwen3.6-27B"             "vllm-qwen"  false  40
+register_server sie  "statefulset/sie-worker-l4-sglang" sie       "http://sie-gateway.sie.svc.cluster.local:8080/v1"   "Qwen/Qwen3-4B-Instruct-2507"  "sie-llm"    true   80
 
 SERVER="${1:-}"
 WORKSPACE="${2:-ecommerce-parent}"
@@ -73,7 +73,17 @@ curl -sf -o /dev/null -w "   provider: %{http_code}\n" "${AUTH[@]}" "${JSON[@]}"
     -d "{\"data\":{\"id\":\"$pid\",\"type\":\"llmProvider\",\"attributes\":{\"name\":\"$pid\",\"defaultModelId\":\"$model\",\"providerConfig\":{\"type\":\"OPENAI\",\"baseUrl\":\"$url\",\"auth\":{\"type\":\"API_KEY\",\"apiKey\":\"local\"}},\"models\":[{\"family\":\"UNKNOWN\",\"id\":\"$model\"}]}}}" \
     "$TIGER_ENDPOINT/api/v1/entities/llmProviders"
 
-# 3. Activate it on the workspace (replace any existing setting).
+# 3. Set model-tuning flags on gen-ai.
+#    - DISABLE_THINKING: small models (SIE 4B) must suppress <think> blocks
+#    - MAX_ITER: 4B models need more correction attempts (schema retries, search
+#      retries) to complete multi-step visualization workflows; raise the ceiling
+#      for SIE and restore default for larger models.
+echo ">> Setting LOCAL_LLM_DISABLE_THINKING=${DISABLE_THINKING[$SERVER]} AGENTIC_MAX_ITERATIONS=${MAX_ITER[$SERVER]} on gen-ai"
+kubectl -n gooddata-cn set env deploy/gooddata-cn-gen-ai \
+    "LOCAL_LLM_DISABLE_THINKING=${DISABLE_THINKING[$SERVER]}" \
+    "AGENTIC_MAX_ITERATIONS=${MAX_ITER[$SERVER]}" >/dev/null
+
+# 4. Activate it on the workspace (replace any existing setting).
 echo ">> Activating on workspace '$WORKSPACE'"
 curl -sf -o /dev/null "${AUTH[@]}" "${JSON[@]}" -X DELETE \
     "$TIGER_ENDPOINT/api/v1/entities/workspaces/$WORKSPACE/workspaceSettings/activeLlmProvider" 2>/dev/null || true
