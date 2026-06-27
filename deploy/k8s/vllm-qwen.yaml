@@ -65,6 +65,7 @@ spec:
             - --tool-call-parser=qwen3_coder
             - --reasoning-parser=qwen3
             - --gpu-memory-utilization=0.95
+            - --guided-decoding-backend=outlines
             - --enforce-eager
           ports:
             - containerPort: 8000
