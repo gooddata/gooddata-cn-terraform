@@ -58,12 +58,15 @@ workers:
     # and blocks the HTTP server for minutes — default liveness (3x30s) kills
     # the container mid-load, causing an infinite load->SIGKILL loop.
     # Tolerate ~5 min of unresponsiveness.
+    # Liveness budget (failureThreshold * periodSeconds) MUST exceed
+    # modelReadyTimeoutSec (1800) — the chart validates this so kubelet can't
+    # SIGKILL the worker mid-load. 70 * 30 = 2100s > 1800s.
     probes:
       liveness:
         initialDelaySeconds: 10
         periodSeconds: 30
         timeoutSeconds: 10
-        failureThreshold: 10
+        failureThreshold: 70
       readiness:
         periodSeconds: 5
         timeoutSeconds: 10
