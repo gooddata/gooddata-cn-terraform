@@ -49,6 +49,11 @@ machineProfiles:
 workers:
   common:
     platform: cuda12
+    # The real cold-start gate (fixed in SIE >=0.6.7, default 900s): rendered as
+    # SIE_MODEL_READY_TIMEOUT_S into worker + sidecar; the SGLang startup-health
+    # fallback that the old non-configurable ~42s window enforced. 27B FP8 on an
+    # L40S loads well within this. Keep >= the SGLang profile startup_timeout_s.
+    modelReadyTimeoutSec: 1800
     # Model load runs in the worker MAIN thread (adapter.requires_main_thread)
     # and blocks the HTTP server for minutes — default liveness (3x30s) kills
     # the container mid-load, causing an infinite load->SIGKILL loop.

@@ -13,7 +13,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+SIE_CHART_VERSION="${SIE_CHART_VERSION:-0.6.14}"
 helm upgrade --install sie-cluster oci://ghcr.io/superlinked/charts/sie-cluster \
+    --version "$SIE_CHART_VERSION" \
     --namespace sie \
     --create-namespace \
     -f "$SCRIPT_DIR/sie-values.yaml" \
