@@ -1,0 +1,112 @@
+# Standalone SGLang on the inference GPU pool — Qwen3.6-27B FP8 on a single
+# L40S 48GB. Unlike SIE (which wraps SGLang behind fixed 96GB/80GB profiles
+# that OOM on a 48GB card), here we control the SGLang args directly and size
+# them to fit the L40S: online FP8 + modest mem-fraction + no speculative
+# decoding. Third serving option alongside vLLM and SIE for the infra-bench
+# A/B (deploy/infra-bench) and provider-switch tests (use-server.sh sglang).
+#
+# In-cluster endpoint (LLM_BASE_URL for the LOCAL provider):
+#   http://sglang.inference.svc.cluster.local:8000/v1
+#
+# Cold start: first request downloads ~55GB bf16 + online FP8 quantize.
+# Scale to zero when idle: kubectl -n inference scale deploy/sglang --replicas=0
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sglang
+  namespace: inference
+  labels:
+    app: sglang
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate            # single GPU — never two pods on the card at once
+  selector:
+    matchLabels:
+      app: sglang
+  template:
+    metadata:
+      labels:
+        app: sglang
+    spec:
+      # k8s injects SGLANG_* / service-link env for the "sglang" Service which
+      # the launcher can misread; disable service-link env injection.
+      enableServiceLinks: false
+      nodeSelector:
+        workload: inference
+      tolerations:
+        - key: workload
+          value: inference
+          effect: NoSchedule
+      containers:
+        - name: sglang
+          image: lmsysorg/sglang:latest
+          command: ["python3", "-m", "sglang.launch_server"]
+          args:
+            - --model-path=Qwen/Qwen3.6-27B
+            - --quantization=fp8           # online FP8 — ~27GB weights, fits 48GB
+            - --mem-fraction-static=0.85   # leave headroom (vs SIE's 96GB-tuned KV)
+            - --context-length=16384
+            - --tool-call-parser=qwen3_coder
+            - --reasoning-parser=qwen3
+            - --tp=1
+            - --host=0.0.0.0
+            - --port=8000
+            # no --speculative-* : speculative decoding off (the eagle draft is
+            # what tipped SIE's rtx-pro-6000 profile over 48GB)
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+              memory: 24Gi
+          volumeMounts:
+            - name: model-cache
+              mountPath: /root/.cache/huggingface
+            - name: shm
+              mountPath: /dev/shm
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            failureThreshold: 140          # 55GB download + FP8 quantize on cold start
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: sglang-hf-cache
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sglang-hf-cache
+  namespace: inference
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: 120Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sglang
+  namespace: inference
+spec:
+  selector:
+    app: sglang
+  ports:
+    - port: 8000
+      targetPort: 8000

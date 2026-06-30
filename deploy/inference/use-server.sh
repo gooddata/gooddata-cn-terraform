@@ -32,6 +32,7 @@ declare -A WORKLOAD NS BASEURL MODEL PROVIDER DISABLE_THINKING MAX_ITER
 register_server() { WORKLOAD[$1]=$2; NS[$1]=$3; BASEURL[$1]=$4; MODEL[$1]=$5; PROVIDER[$1]=$6; DISABLE_THINKING[$1]=${7:-false}; MAX_ITER[$1]=${8:-40}; }
 register_server vllm "deployment/vllm"                 inference  "http://vllm.inference.svc.cluster.local:8000/v1"     "Qwen/Qwen3.6-27B"             "vllm-qwen"  false  40
 register_server sie  "statefulset/sie-worker-l4-sglang" sie       "http://sie-gateway.sie.svc.cluster.local:8080/v1"   "Qwen/Qwen3.6-27B:no-spec"  "sie-llm"    true   40
+register_server sglang "deployment/sglang"             inference  "http://sglang.inference.svc.cluster.local:8000/v1"  "Qwen/Qwen3.6-27B"             "sglang-qwen"  true  40
 
 SERVER="${1:-}"
 WORKSPACE="${2:-ecommerce-parent}"
