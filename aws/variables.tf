@@ -89,9 +89,9 @@ variable "eks_endpoint_public_access_cidrs" {
 }
 
 variable "eks_max_nodes" {
-  description = "Maximum number of EKS worker nodes"
+  description = "Maximum worker nodes PER node group (autoscaler ceiling applied to each per-instance-type managed node group and each StarRocks node group independently, so the cluster-wide max is this value times the number of groups). If null, chosen by size_profile."
   type        = number
-  default     = 20
+  default     = null
 }
 
 variable "eks_node_types" {
@@ -101,7 +101,7 @@ variable "eks_node_types" {
 }
 
 variable "eks_starrocks_node_types" {
-  description = "EC2 instance types for the StarRocks-dedicated EKS pool (taint workload=starrocks). If null, defaults to a preset chosen by starrocks_size_profile (or size_profile when unset)."
+  description = "EC2 instance types for the StarRocks-dedicated EKS pool (taint workload=starrocks). If null, defaults to a preset chosen by starrocks_size_profile."
   type        = list(string)
   default     = null
 }
@@ -410,10 +410,10 @@ variable "observability_hostname" {
   }
 }
 
-variable "rds_deletion_protection" {
-  description = "Enable deletion protection on the RDS instance."
-  type        = bool
-  default     = false
+variable "rds_allocated_storage" {
+  description = "RDS PostgreSQL allocated storage in GB. If null, chosen by size_profile."
+  type        = number
+  default     = null
 }
 
 variable "rds_allow_major_version_upgrade" {
@@ -422,10 +422,16 @@ variable "rds_allow_major_version_upgrade" {
   default     = false
 }
 
+variable "rds_deletion_protection" {
+  description = "Enable deletion protection on the RDS instance."
+  type        = bool
+  default     = false
+}
+
 variable "rds_instance_class" {
-  description = "RDS PostgreSQL instance class"
+  description = "RDS PostgreSQL instance class. If null, chosen by size_profile."
   type        = string
-  default     = "db.t4g.medium"
+  default     = null
 }
 
 variable "rds_skip_final_snapshot" {
@@ -455,12 +461,16 @@ variable "size_profile" {
 }
 
 variable "starrocks_size_profile" {
-  description = "Sizing profile for StarRocks (FE/CN pods and dedicated EKS node pool). If null, falls back to size_profile."
+  description = "StarRocks (AI Lake) sizing profile. Required when enable_ai_lake is true; one of: dev, prod-small, prod-xl. Not derived from size_profile."
   type        = string
   default     = null
   validation {
-    condition     = var.starrocks_size_profile == null || contains(["dev", "prod-small", "prod-xl"], coalesce(var.starrocks_size_profile, "dev"))
+    condition     = var.starrocks_size_profile == null || contains(["dev", "prod-small", "prod-xl"], var.starrocks_size_profile)
     error_message = "starrocks_size_profile must be one of: dev, prod-small, prod-xl."
+  }
+  validation {
+    condition     = !var.enable_ai_lake || var.starrocks_size_profile != null
+    error_message = "starrocks_size_profile must be set when enable_ai_lake is true."
   }
 }
 

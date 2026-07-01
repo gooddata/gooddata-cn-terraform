@@ -10,43 +10,7 @@ resource "kubernetes_namespace_v1" "observability" {
 }
 
 locals {
-  # Memory requests/limits for the observability stack, scaled by size_profile.
-  # CPU is intentionally left flat per-service (these components are memory-bound,
-  # not CPU-bound, at our scale).
-  observability_memory = {
-    dev = {
-      prometheus = { request = "256Mi", limit = "1Gi" }
-      loki       = { request = "256Mi", limit = "1Gi" }
-      tempo      = { request = "128Mi", limit = "512Mi" }
-      grafana    = { request = "128Mi", limit = "512Mi" }
-      promtail   = { request = "64Mi", limit = "256Mi" }
-    }
-    prod-small = {
-      prometheus = { request = "512Mi", limit = "2Gi" }
-      loki       = { request = "512Mi", limit = "2Gi" }
-      tempo      = { request = "256Mi", limit = "1Gi" }
-      grafana    = { request = "256Mi", limit = "1Gi" }
-      promtail   = { request = "128Mi", limit = "256Mi" }
-    }
-    prod-large = {
-      prometheus = { request = "1Gi", limit = "4Gi" }
-      loki       = { request = "1Gi", limit = "4Gi" }
-      # Higher request/limit gives the single-binary Tempo headroom for the
-      # raised ingestion limits (see helm_release.tempo overrides) so the
-      # larger live-trace buffer does not OOM under peak trace volume.
-      tempo    = { request = "1Gi", limit = "3Gi" }
-      grafana  = { request = "256Mi", limit = "1Gi" }
-      promtail = { request = "128Mi", limit = "512Mi" }
-    }
-  }
-
-  # size_profile_template already maps prod-xl to prod-large; any other unmapped
-  # profile falls back to prod-small.
-  obs_mem = lookup(
-    local.observability_memory,
-    local.size_profile_template,
-    local.observability_memory["prod-small"],
-  )
+  # Observability sizing (obs_mem / obs_disk) lives in size-profiles.tf.
 
   # dotdc Kubernetes dashboards loaded into Grafana (see dashboards block below).
   grafana_kubernetes_dashboards = [
@@ -117,7 +81,7 @@ resource "helm_release" "kube_prometheus_stack" {
             volumeClaimTemplate = {
               spec = {
                 resources = {
-                  requests = { storage = "5Gi" }
+                  requests = { storage = local.obs_disk.prometheus }
                 }
               }
             }
@@ -169,8 +133,9 @@ resource "helm_release" "loki" {
           }]
         }
         # Retention is enforced by the compactor loop below. retention_period
-        # caps log age; the 5Gi PVC still caps total size, so at high log volume
-        # data may be evicted before this period is reached.
+        # caps log age; the PVC (size set per tier in size-profiles.tf) still
+        # caps total size, so at high log volume data may be evicted before this
+        # period is reached.
         limits_config = {
           retention_period = var.loki_retention_period
         }
@@ -184,7 +149,7 @@ resource "helm_release" "loki" {
         replicas = 1
         persistence = {
           enabled = true
-          size    = "5Gi"
+          size    = local.obs_disk.loki
         }
         resources = {
           requests = {
@@ -290,25 +255,24 @@ resource "helm_release" "tempo" {
           }
           zipkin = { endpoint = "0.0.0.0:9411" }
         }
-        # Trace retention enforced by the block-storage compactor. The 5Gi PVC
-        # still caps total size, so traces may be evicted before this period.
+        # Trace retention enforced by the block-storage compactor. The PVC (size
+        # set per tier in size-profiles.tf) still caps total size, so traces may
+        # be evicted before this period.
         retention = var.tempo_retention_period
-        # Raise per-tenant ingestion limits above Tempo's defaults (15MB/s rate,
-        # 20MB burst). The defaults were rejecting trace pushes during peak
-        # windows with "RATE_LIMITED: ingestion rate limit ... exceeded" errors.
+        # Per-tenant ingestion limits, sized by tier (see size-profiles.tf).
         # Strategy stays "local" (single-binary deployment, no global ring).
         overrides = {
           defaults = {
             ingestion = {
-              rate_limit_bytes = 30000000 # 30 MB/s (default: 15 MB/s)
-              burst_size_bytes = 45000000 # 45 MB   (default: 20 MB)
+              rate_limit_bytes = local.obs_tempo_ingestion.rate_limit_bytes
+              burst_size_bytes = local.obs_tempo_ingestion.burst_size_bytes
             }
           }
         }
       }
       persistence = {
         enabled = true
-        size    = "5Gi"
+        size    = local.obs_disk.tempo
       }
       resources = {
         requests = {

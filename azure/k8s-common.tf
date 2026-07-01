@@ -18,9 +18,10 @@ module "k8s_common" {
   gdcn_license_key       = var.gdcn_license_key
   gdcn_orgs              = var.gdcn_orgs
   gdcn_helm_extra_values = var.gdcn_helm_extra_values
-  size_profile           = var.size_profile
-  # There is no prod-large StarRocks profile; fall back to prod-xl sizing.
-  starrocks_size_profile = var.size_profile == "prod-large" ? "prod-xl" : var.size_profile
+  ingress_replicas       = local.profile.ingress_replicas
+  gdcn_size              = local.profile.gdcn_size
+  pulsar_size            = local.profile.pulsar_size
+  observability_size     = local.profile.observability_size
   cloud                  = "azure"
   ingress_controller     = var.ingress_controller
 

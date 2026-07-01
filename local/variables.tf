@@ -295,24 +295,15 @@ variable "registry_quayio" {
 }
 
 variable "size_profile" {
-  description = "Sizing profile for GoodData.CN and supporting services."
+  description = "Sizing profile for GoodData.CN and supporting services. Local installs only support \"dev\"."
   type        = string
   default     = "dev"
   validation {
-    condition     = contains(["dev", "prod-small", "prod-large"], var.size_profile)
-    error_message = "size_profile must be one of: dev, prod-small, prod-large."
+    condition     = contains(["dev"], var.size_profile)
+    error_message = "size_profile must be \"dev\" for local installs."
   }
 }
 
-variable "starrocks_size_profile" {
-  description = "Sizing profile for StarRocks (FE/CN pods). If null, falls back to size_profile."
-  type        = string
-  default     = null
-  validation {
-    condition     = var.starrocks_size_profile == null || contains(["dev"], coalesce(var.starrocks_size_profile, "dev"))
-    error_message = "starrocks_size_profile must be \"dev\" for local installs."
-  }
-}
 
 variable "tls_mode" {
   description = "TLS management mode for local installs. Use selfsigned for cert-manager self-signed certificates."
