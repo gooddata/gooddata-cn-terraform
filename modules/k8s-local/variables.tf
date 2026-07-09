@@ -37,7 +37,7 @@ variable "helm_cnpg_version" {
   description = "Version of the CloudNativePG Helm chart to deploy."
   type        = string
   # renovate: depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
-  default = "0.29.0"
+  default = "0.28.3"
 }
 
 variable "helm_seaweedfs_version" {
@@ -93,10 +93,22 @@ variable "seaweedfs_bucket_exports" {
   default     = "gooddata-exports"
 }
 
+variable "seaweedfs_bucket_loki" {
+  description = "Bucket used for Loki object storage (chunks/index)."
+  type        = string
+  default     = "gooddata-loki"
+}
+
 variable "seaweedfs_bucket_quiver_cache" {
   description = "Bucket used for Quiver durable cache."
   type        = string
   default     = "gooddata-quiver-cache"
+}
+
+variable "seaweedfs_bucket_tempo" {
+  description = "Bucket used for Tempo trace object storage."
+  type        = string
+  default     = "gooddata-tempo"
 }
 
 variable "seaweedfs_release_name" {
@@ -109,4 +121,10 @@ variable "seaweedfs_storage_class" {
   description = "StorageClass name for SeaweedFS PVC. Empty uses cluster default."
   type        = string
   default     = "local-path"
+}
+
+variable "seaweedfs_storage_size" {
+  description = "Size of the SeaweedFS data PVC. Backs all S3 buckets (Quiver cache, exports, datasource FS, Loki chunks, Tempo traces), so it must hold object-storage retention for every signal."
+  type        = string
+  default     = "50Gi"
 }

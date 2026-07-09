@@ -89,6 +89,38 @@ module "k8s_common" {
   prometheus_retention_period = var.prometheus_retention_period
   tempo_retention_period      = var.tempo_retention_period
 
+  # Observability object storage: Loki + Tempo write to S3 (no big PVC),
+  # authenticating via IRSA (observability IAM role assumed by their SAs).
+  loki_objstore = {
+    object_store = "s3"
+    storage = {
+      type = "s3"
+      # The SingleBinary chart references all three bucket names even with
+      # ruler/admin features off; point them at the one loki bucket.
+      bucketNames = {
+        chunks = aws_s3_bucket.observability["loki"].id
+        ruler  = aws_s3_bucket.observability["loki"].id
+        admin  = aws_s3_bucket.observability["loki"].id
+      }
+      # IRSA supplies credentials; only the region is needed (default endpoint).
+      s3 = {
+        region = var.aws_region
+      }
+    }
+  }
+  tempo_objstore = {
+    backend = "s3"
+    s3 = {
+      bucket   = aws_s3_bucket.observability["tempo"].id
+      endpoint = "s3.${var.aws_region}.amazonaws.com"
+      region   = var.aws_region
+    }
+    wal = { path = "/var/tempo/wal" }
+  }
+  obs_sa_annotations = {
+    "eks.amazonaws.com/role-arn" = aws_iam_role.observability_irsa.arn
+  }
+
   enable_ai_lake                        = var.enable_ai_lake
   starrocks_s3_bucket_id                = var.enable_ai_lake ? aws_s3_bucket.starrocks[0].id : ""
   starrocks_irsa_role_arn               = var.enable_ai_lake ? aws_iam_role.starrocks_irsa[0].arn : ""
@@ -124,6 +156,7 @@ module "k8s_common" {
     module.vpc,
     null_resource.alb_cleanup_wait,
     aws_iam_role_policy_attachment.gdcn_irsa_s3_access,
+    aws_iam_role_policy_attachment.observability_irsa_s3_access,
     aws_iam_role_policy_attachment.starrocks_irsa_s3_access,
     aws_iam_role_policy.ai_lake_pod_identity,
     aws_eks_pod_identity_association.ai_lake,

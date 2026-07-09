@@ -11,6 +11,9 @@ locals {
     var.seaweedfs_bucket_exports,
     var.seaweedfs_bucket_datasource_fs,
     var.seaweedfs_bucket_quiver_cache,
+    # Observability object storage (Loki chunks/index, Tempo trace blocks).
+    var.seaweedfs_bucket_loki,
+    var.seaweedfs_bucket_tempo,
   ]
 }
 
@@ -84,9 +87,13 @@ resource "helm_release" "seaweedfs" {
           # output.  Buckets are created by the kubernetes_job below instead.
         }
 
+        # Single PVC backs every bucket (Quiver cache, exports, datasource FS,
+        # and now Loki/Tempo object storage), so it must be sized for all of
+        # them. local-path is thin-provisioned, so the request is a ceiling, not
+        # a preallocation.
         data = {
           type         = "persistentVolumeClaim"
-          size         = "10Gi"
+          size         = var.seaweedfs_storage_size
           storageClass = var.seaweedfs_storage_class
         }
 

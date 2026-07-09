@@ -1,10 +1,11 @@
 ###
-# Cloud-agnostic workload sizing for the shared module. These values are the
-# same across AWS/Azure/local at a given tier, so they live here once and each
-# environment's size-profiles.tf selects a tier by name (var.observability_size,
-# var.gdcn_size, var.pulsar_size, var.starrocks_size_profile). GoodData.CN /
-# Pulsar / StarRocks sizing is in templates/*-size-<tier>.yaml.tftpl; the
-# observability stack (no per-tier Helm chart) is sized here.
+# Cloud-agnostic observability sizing for the shared module. These values are
+# the same across AWS/Azure/local at a given tier, so they live here once and
+# the environment selects a tier by name via var.observability_size. Only the
+# observability stack (no per-tier Helm chart) is sized here; GoodData.CN,
+# Pulsar, and StarRocks sizing is selected by var.gdcn_size / var.pulsar_size /
+# var.starrocks_size_profile against templates/*-size-<tier>.yaml.tftpl and
+# starrocks.tf, not this file.
 #
 # Observability CPU is intentionally left flat per-service (these components are
 # memory-bound, not CPU-bound, at our scale). The disk values are StatefulSet
@@ -25,9 +26,9 @@ locals {
           promtail   = { request = "64Mi", limit = "256Mi" }
         }
         disk = {
+          # Loki/Tempo are object-storage backed (only a small WAL PVC remains,
+          # see obs_wal_disk); Prometheus stays PVC-backed.
           prometheus = "5Gi"
-          loki       = "5Gi"
-          tempo      = "5Gi"
         }
         # Per-tenant Tempo trace-ingestion limits. dev uses Tempo's defaults.
         tempo_ingestion = {
@@ -46,9 +47,9 @@ locals {
           promtail   = { request = "128Mi", limit = "256Mi" }
         }
         disk = {
+          # Loki/Tempo are object-storage backed (only a small WAL PVC remains,
+          # see obs_wal_disk); Prometheus stays PVC-backed.
           prometheus = "10Gi"
-          loki       = "10Gi"
-          tempo      = "10Gi"
         }
         # Raised above Tempo defaults to stop RATE_LIMITED drops at peak.
         tempo_ingestion = {
@@ -70,9 +71,10 @@ locals {
           promtail = { request = "128Mi", limit = "512Mi" }
         }
         disk = {
-          prometheus = "20Gi"
-          loki       = "20Gi"
-          tempo      = "20Gi"
+          # Loki/Tempo are object-storage backed (retention lives in the bucket;
+          # only a small fixed WAL PVC remains, see obs_wal_disk). Prometheus
+          # stays PVC-backed (no native object-store mode without Thanos/Mimir).
+          prometheus = "100Gi"
         }
         tempo_ingestion = {
           rate_limit_bytes = 50000000 # 50 MB/s
@@ -82,8 +84,12 @@ locals {
     }
   }
 
-  profile             = local.size_profiles[var.observability_size]
-  obs_mem             = local.profile.observability.memory
-  obs_disk            = local.profile.observability.disk
-  obs_tempo_ingestion = local.profile.observability.tempo_ingestion
+  # Valid workload size tiers = the keys of the size_profiles map above; used by
+  # the gdcn_size / observability_size / pulsar_size variable validations.
+  workload_size_tiers = keys(local.size_profiles)
+
+  obs_profile         = local.size_profiles[var.observability_size]
+  obs_mem             = local.obs_profile.observability.memory
+  obs_disk            = local.obs_profile.observability.disk
+  obs_tempo_ingestion = local.obs_profile.observability.tempo_ingestion
 }

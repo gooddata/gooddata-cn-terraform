@@ -23,7 +23,10 @@ locals {
   storage_containers = [
     "quiver-cache",
     "quiver-datasource-fs",
-    "exports"
+    "exports",
+    # Observability object storage (Loki chunks/index, Tempo trace blocks).
+    "loki",
+    "tempo"
   ]
 }
 

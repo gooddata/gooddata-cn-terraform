@@ -8,9 +8,19 @@ output "seaweedfs_bucket_exports" {
   value       = var.seaweedfs_bucket_exports
 }
 
+output "seaweedfs_bucket_loki" {
+  description = "SeaweedFS bucket for Loki object storage (chunks/index)."
+  value       = var.seaweedfs_bucket_loki
+}
+
 output "seaweedfs_bucket_quiver_cache" {
   description = "SeaweedFS bucket for Quiver durable cache."
   value       = var.seaweedfs_bucket_quiver_cache
+}
+
+output "seaweedfs_bucket_tempo" {
+  description = "SeaweedFS bucket for Tempo trace object storage."
+  value       = var.seaweedfs_bucket_tempo
 }
 
 output "seaweedfs_gdcn_access_key" {

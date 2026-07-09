@@ -259,7 +259,13 @@ variable "starrocks_s3_bucket_id" {
 variable "ingress_replicas" { type = number }
 
 # Workload size selectors, resolved by each env's size-profiles.tf.
-variable "gdcn_size" { type = string }
+variable "gdcn_size" {
+  type = string
+  validation {
+    condition     = contains(local.workload_size_tiers, var.gdcn_size)
+    error_message = "gdcn_size must be one of: dev, prod-small, prod-large (fold prod-xl to prod-large in the env's size-profiles.tf)."
+  }
+}
 
 variable "gdcn_storage_class" {
   description = "Kubernetes StorageClass for GoodData.CN chart PVCs (etcd, redis-ha, qdrant). Empty string leaves them on the cluster default class."
@@ -267,9 +273,21 @@ variable "gdcn_storage_class" {
   default     = ""
 }
 
-variable "observability_size" { type = string }
+variable "observability_size" {
+  type = string
+  validation {
+    condition     = contains(local.workload_size_tiers, var.observability_size)
+    error_message = "observability_size must be one of: dev, prod-small, prod-large (fold prod-xl to prod-large in the env's size-profiles.tf)."
+  }
+}
 
-variable "pulsar_size" { type = string }
+variable "pulsar_size" {
+  type = string
+  validation {
+    condition     = contains(local.workload_size_tiers, var.pulsar_size)
+    error_message = "pulsar_size must be one of: dev, prod-small, prod-large (fold prod-xl to prod-large in the env's size-profiles.tf)."
+  }
+}
 
 # Required only when enable_ai_lake is true (StarRocks is AWS-only); null otherwise.
 variable "starrocks_size_profile" {
@@ -326,4 +344,40 @@ variable "gdcn_helm_extra_values" {
   description = "Additional Helm values YAML string appended to the gooddata-cn chart values. Use to override sub-chart settings not exposed as Terraform variables."
   type        = string
   default     = ""
+}
+
+# --- Observability object storage (Loki/Tempo) -----------------------------
+# When set, Loki/Tempo store chunks/index/trace-blocks in object storage
+# (Azure Blob / S3 / SeaweedFS) instead of a large local PVC. Retention then
+# lives in the bucket; the pods keep only a small fixed WAL PVC (obs_wal_disk).
+# Built per-cloud and passed in; null => legacy filesystem behaviour.
+
+variable "loki_objstore" {
+  description = "Loki object-storage config: { object_store = \"azure\"|\"s3\", storage = <loki.storage block> }. Null => filesystem."
+  type        = any
+  default     = null
+}
+
+variable "tempo_objstore" {
+  description = "Tempo trace object-storage config (the storage.trace block: backend + backend-specific block). Null => filesystem."
+  type        = any
+  default     = null
+}
+
+variable "obs_sa_annotations" {
+  description = "ServiceAccount annotations applied to Loki/Tempo for object-storage auth (Azure workload-identity client-id / AWS IRSA role-arn)."
+  type        = map(string)
+  default     = {}
+}
+
+variable "obs_pod_labels" {
+  description = "Pod labels applied to Loki/Tempo (e.g. azure.workload.identity/use=true to trigger the workload-identity webhook)."
+  type        = map(string)
+  default     = {}
+}
+
+variable "obs_wal_disk" {
+  description = "Fixed WAL/scratch PVC size for Loki/Tempo when backed by object storage (no longer retention-sized)."
+  type        = string
+  default     = "10Gi"
 }
