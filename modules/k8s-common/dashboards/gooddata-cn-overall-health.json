@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Single-pane-of-glass overview. Open this first during any incident.\n\nGoodData CN Service Reference:\n  tiger-*          All GoodData CN services use this prefix (e.g. tiger-gateway = API Gateway)\n  Calcique         Analytics Engine — computes dashboard & report queries\n  Result Cache     Stores computed results to avoid re-running identical queries\n  SQL Executor     Runs queries against your external data sources\n  Pulsar           Internal message queue for background job processing\n  Export Builder   Renders PDF/PNG exports using headless Chrome\n  Hikari           Database connection pool — number of open DB connections per service",
+  "description": "Single-pane-of-glass overview. Open this first during any incident.\n\nGoodData CN Service Reference:\n  Calcique         Analytics Engine — computes dashboard & report queries\n  Result Cache     Stores computed results to avoid re-running identical queries\n  SQL Executor     Runs queries against your external data sources\n  Pulsar           Internal message queue for background job processing\n  Export Builder   Renders PDF/PNG exports using headless Chrome\n  Hikari           Database connection pool — number of open DB connections per service",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -4336,8 +4336,9 @@
       },
       {
         "current": {
-          "text": "iad1",
-          "value": "iad1"
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
@@ -4359,8 +4360,8 @@
       },
       {
         "current": {
-          "text": "tiger-ga",
-          "value": "tiger-ga"
+          "text": "gooddata-cn",
+          "value": "gooddata-cn"
         },
         "datasource": {
           "type": "prometheus",
@@ -4371,7 +4372,7 @@
         "name": "ns",
         "options": [],
         "query": {
-          "query": "label_values(kube_pod_info{cluster_name=~\"$cluster\", namespace=~\".*tiger.*|.*gooddata.*|.*adhoc.*\"}, namespace)",
+          "query": "label_values(kube_pod_info{cluster_name=~\"$cluster\", namespace=~\".*gooddata.*\"}, namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
