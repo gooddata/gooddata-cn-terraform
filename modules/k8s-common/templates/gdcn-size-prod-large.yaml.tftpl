@@ -487,6 +487,11 @@ apiGw:
   # backend call, so forward concurrency = ~100 x replicas — the ceiling when
   # backends are slow. 6 pods (~600 slots); raise toward 16 if it backs up.
   replicaCount: 6
+  # Enable Quiver's modern etcd keyspace (removes the single-threaded flight-
+  # catalog view-apply stall under load). Platform feature-value flag.
+  extraEnvVars:
+    - name: GDC_FEATURES_VALUES_ENABLE_MODERN_QUIVER_KEYSPACE
+      value: "true"
   database:
     pool:
       # Wider DB pool for higher concurrency (matches prod).
