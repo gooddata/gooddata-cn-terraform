@@ -184,6 +184,9 @@ quiver:
         memory: 512Mi
 redis-ha:
   replicas: 3
+  # Keep 2/3 sentinel quorum during voluntary disruptions (node drains, Karpenter consolidation)
+  podDisruptionBudget:
+    maxUnavailable: 1
   configmapTest:
     resources:
       limits:
