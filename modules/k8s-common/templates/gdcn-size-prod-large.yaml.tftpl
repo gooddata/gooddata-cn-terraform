@@ -27,6 +27,9 @@ deployDedicatedPolicyNodes: true
 # Deploy dedicated Quiver datasource-filesystem nodes to offload datasource reads.
 deployQuiverDatasourceFs: true
 
+# Long-poll AFM execution results instead of client polling.
+enableAfmLongPoll: true
+
 afmExecApi:
   # Netty/WebFlux: blocking calls use Dispatchers.IO (64-thread default caps
   # ~50 req/pod). io.parallelism + ActiveProcessorCount raise per-pod concurrency.
@@ -234,9 +237,16 @@ qdrant:
       memory: 3500Mi
 quiver:
   limitFlightCount: 150000
+  cacheCountLimit: 150000
   concurrentPutRequests: 64
+  # Durable-write concurrency is per-backend: ABS on Azure, S3 on AWS and local (SeaweedFS).
+%{ if cloud == "azure" ~}
+  absDurableStorage:
+    durableABSWritesInProgress: 128
+%{ else ~}
   s3DurableStorage:
     durableS3WritesInProgress: 128
+%{ endif ~}
   storage:
     # Holds the flight catalog (SQLite); must scale with limitFlightCount.
     serverWorkDirSize: 1024Mi
@@ -246,10 +256,10 @@ quiver:
   replicaCount:
     # cache serves every DoGet + absorbs DoPut/S3 writes on cache miss; 2 pods
     # saturated the put pipeline under load.
-    cache: 12
+    cache: 8
     # xtab is I/O-bound (Flight reads from cache); scaled to 18 pods plus widened
     # worker pools (extraEnvVarsXtab) to keep the cross-tab queue clear under load.
-    xtab: 18
+    xtab: 8
   resources:
     cache:
       # Needs real CPU headroom: the single-threaded etcd-view-apply loop needs a
@@ -308,15 +318,23 @@ quiver:
   extraEnvVarsXtab:
     - name: QUIVER_ETCD_NEW_EVENT_READER
       value: "1"
-    # Per-pod xtab throughput is gated by these worker pools, not CPU/replicas:
-    # tasks are I/O-bound (Flight), so widening the pools greatly raises per-pod
-    # throughput at trivial CPU cost.
+    # Cap the dataframe worker pool: xtab spawns TASK_WORKERS subprocesses
+    # sequentially at boot (~2s each, importing polars), so a high count (was 24)
+    # pushed startup past the liveness probe on slower/contended nodes and the pod
+    # self-terminated mid-boot. 8 boots in ~15-20s (under the probe) while keeping
+    # enough concurrency for the I/O-bound cross-tab tasks. POLARS_MAX_THREADS caps
+    # per-worker polars threads to avoid CPU oversubscription.
     - name: QUIVER_DATAFRAME_TASK_THREADS
-      value: "48"
+      value: "12"
     - name: QUIVER_DATAFRAME_TASK_WORKERS
-      value: "24"
+      value: "8"
     - name: QUIVER_DATAFRAME_GATHER_THREADS
-      value: "24"
+      value: "8"
+    - name: POLARS_MAX_THREADS
+      value: "6"
+  # Store the Flight catalog on disk (in the server work dir above).
+  optimizations:
+    etcd_disk_flight_catalog: true
 redis-ha:
   replicas: 3
   # Keep 2/3 sentinel quorum during voluntary disruptions (node drains, Karpenter consolidation)
