@@ -7,6 +7,26 @@ locals {
     controller = merge(
       {
         replicaCount = var.ingress_replicas
+        # A PDB (which NAP/Karpenter honors) plus cross-node spread keep >=1
+        # controller — and thus the admission webhook's endpoints — alive through
+        # node consolidation, so an in-flight ingress create (e.g. Grafana) can't
+        # fail against a webhook that momentarily has no endpoints.
+        podDisruptionBudget = {
+          enabled      = var.ingress_replicas > 1
+          minAvailable = 1
+        }
+        # Spread replicas across nodes so one node's disruption can't take them all.
+        topologySpreadConstraints = [{
+          maxSkew           = 1
+          topologyKey       = "kubernetes.io/hostname"
+          whenUnsatisfiable = "ScheduleAnyway"
+          labelSelector = {
+            matchLabels = {
+              "app.kubernetes.io/name"      = "ingress-nginx"
+              "app.kubernetes.io/component" = "controller"
+            }
+          }
+        }]
         image = {
           registry = var.registry_k8sio
         }

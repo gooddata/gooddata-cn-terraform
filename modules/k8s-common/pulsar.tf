@@ -46,6 +46,7 @@ resource "helm_release" "pulsar" {
     templatefile("${path.module}/templates/pulsar-base.yaml.tftpl", {
       registry_dockerio    = var.registry_dockerio
       enable_observability = var.enable_observability
+      storage_class        = var.gdcn_storage_class
     }),
     local.use_istio_gateway ? templatefile("${path.module}/templates/pulsar-istio.tftpl", {}) : null,
     templatefile("${path.module}/templates/pulsar-size-${var.pulsar_size}.yaml.tftpl", {})

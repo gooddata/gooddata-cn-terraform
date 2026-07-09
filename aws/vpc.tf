@@ -71,6 +71,10 @@ module "vpc" {
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb"              = "1"
     "kubernetes.io/cluster/${var.deployment_name}" = "shared"
+    # Lets the Karpenter EC2NodeClass discover these subnets via
+    # subnetSelectorTerms. When bringing your own VPC (existing_vpc_id set),
+    # tag the private subnets with this key=value manually.
+    "karpenter.sh/discovery" = var.deployment_name
   }
 
 }

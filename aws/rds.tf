@@ -45,13 +45,18 @@ module "rds_postgresql" {
   version = "~> 7.0"
 
   # Identifier & engine
-  identifier                  = var.deployment_name
-  engine                      = "postgres"
-  engine_version              = data.aws_rds_engine_version.default.version
-  family                      = "postgres${split(".", data.aws_rds_engine_version.default.version)[0]}"
-  instance_class              = local.rds_instance_class
-  allocated_storage           = local.rds_allocated_storage
-  apply_immediately           = var.rds_apply_immediately
+  identifier        = var.deployment_name
+  engine            = "postgres"
+  engine_version    = data.aws_rds_engine_version.default.version
+  family            = "postgres${split(".", data.aws_rds_engine_version.default.version)[0]}"
+  instance_class    = local.rds_instance_class
+  allocated_storage = local.rds_allocated_storage
+  # gp3 gives a 3000 IOPS / 125 MBps baseline (free), vs gp2's ~3 IOPS/GB
+  # (~300 @ 100 GB). For >3000 IOPS, bump allocated_storage >=400 GB and set
+  # iops/storage_throughput. Autoscale storage to avoid full-disk outages.
+  storage_type          = "gp3"
+  max_allocated_storage = local.rds_allocated_storage * 4
+  apply_immediately     = var.rds_apply_immediately
   allow_major_version_upgrade = var.rds_allow_major_version_upgrade
 
   # Performance parameters tuned by size_profile (see size-profiles.tf). Both are

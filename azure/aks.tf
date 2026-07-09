@@ -2,8 +2,8 @@
 # Provision AKS cluster
 ###
 
-# AKS worker sizing resolved in size-profiles.tf. The first VM size is the
-# always-on default/system pool; the rest are scale-from-0 user pools.
+# Sizing resolved in size-profiles.tf: system_node_vm_size sizes the system
+# pool; workload nodes come from Node Auto Provisioning (see karpenter.tf).
 
 # Create the AKS cluster
 resource "azurerm_kubernetes_cluster" "main" {
@@ -12,6 +12,9 @@ resource "azurerm_kubernetes_cluster" "main" {
   resource_group_name = azurerm_resource_group.main.name
   dns_prefix          = var.deployment_name
   kubernetes_version  = var.aks_version
+
+  # Standard tier: API-server uptime SLA (99.95% with AZs) + scaled control plane.
+  sku_tier = "Standard"
 
   oidc_issuer_enabled       = true
   workload_identity_enabled = true
@@ -29,18 +32,22 @@ resource "azurerm_kubernetes_cluster" "main" {
     }
   }
 
-  # Default (system) node pool. Sized by the first entry of aks_node_vm_sizes;
-  # any further entries become separate user node pools below.
+  # Fixed-size system node pool. Hosts cluster-critical system pods; all
+  # workload capacity is provisioned just-in-time by Node Auto Provisioning
+  # (managed Karpenter, enabled below). Sized by system_node_vm_size.
   default_node_pool {
-    name                 = "default"
-    vm_size              = local.aks_node_vm_sizes[0]
-    vnet_subnet_id       = azurerm_subnet.aks.id
-    auto_scaling_enabled = true
-    min_count            = local.aks_min_nodes
-    max_count            = local.aks_max_nodes
-    node_count           = null
-    max_pods             = 110
-    os_disk_size_gb      = 100
+    name           = "default"
+    vm_size        = local.system_node_vm_size
+    vnet_subnet_id = azurerm_subnet.aks.id
+    node_count     = local.aks_min_nodes
+    # Spread system nodes across all 3 AZs (also unlocks the 99.95% API SLA and
+    # zone-redundant / Premium SSD v2 workloads).
+    zones           = ["1", "2", "3"]
+    max_pods        = 110
+    os_disk_size_gb = 100
+    # CriticalAddonsOnly taint: reserve the system pool for system/critical pods
+    # so workloads can't starve CoreDNS, metrics-server, or the NAP controller.
+    only_critical_addons_enabled = true
 
     upgrade_settings {
       max_surge = "2"
@@ -49,8 +56,14 @@ resource "azurerm_kubernetes_cluster" "main" {
     tags = local.common_tags
   }
 
-  auto_scaler_profile {
-    expander = "least-waste"
+  # Node Auto Provisioning (NAP / managed Karpenter) replaces the cluster
+  # autoscaler. mode=Auto installs and manages Karpenter in the control plane;
+  # default_node_pools=None means the only NodePools are the ones we define
+  # ourselves (see karpenter.tf). NAP cannot coexist with the cluster
+  # autoscaler, so node-pool autoscaling and auto_scaler_profile are removed.
+  node_provisioning_profile {
+    mode               = "Auto"
+    default_node_pools = "None"
   }
 
   # Identity configuration
@@ -58,53 +71,30 @@ resource "azurerm_kubernetes_cluster" "main" {
     type = "SystemAssigned"
   }
 
-  # Network configuration
+  # Azure CNI Overlay powered by Cilium: pods get IPs from pod_cidr, not the AKS
+  # subnet, so node count is no longer subnet-bound. Overlay requires Cilium (not NPM).
   network_profile {
-    network_plugin    = "azure"
-    network_policy    = "azure"
-    dns_service_ip    = "10.2.0.10"
-    service_cidr      = "10.2.0.0/24"
-    load_balancer_sku = "standard"
+    network_plugin      = "azure"
+    network_plugin_mode = "overlay"
+    network_policy      = "cilium"
+    network_data_plane  = "cilium"
+    pod_cidr            = "10.244.0.0/16"
+    dns_service_ip      = "10.2.0.10"
+    service_cidr        = "10.2.0.0/24"
+    load_balancer_sku   = "standard"
+    # Egress via the managed NAT gateway (nat-gateway.tf) to avoid SNAT exhaustion.
+    outbound_type = "userAssignedNATGateway"
   }
 
   # Add-ons
   azure_policy_enabled             = true
   http_application_routing_enabled = false
 
-
-
   tags = local.common_tags
-}
 
-# Additional worker node pools, one per extra entry in aks_node_vm_sizes
-# (the first entry sizes default_node_pool above). Each scales from 0 so the
-# least-waste autoscaler only provisions a larger size when a pending pod
-# needs it. Names are kept short (AKS node pool names are <=12 lowercase
-# alphanumeric chars and cannot encode the full VM size), so they are keyed
-# by position: pool1, pool2, ...
-resource "azurerm_kubernetes_cluster_node_pool" "additional" {
-  for_each = {
-    for idx, size in slice(local.aks_node_vm_sizes, 1, length(local.aks_node_vm_sizes)) :
-    "pool${idx + 1}" => size
-  }
-
-  name                  = each.key
-  kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
-  vm_size               = each.value
-  vnet_subnet_id        = azurerm_subnet.aks.id
-  mode                  = "User"
-
-  auto_scaling_enabled = true
-  min_count            = 0
-  max_count            = local.aks_max_nodes
-  max_pods             = 110
-  os_disk_size_gb      = 100
-
-  upgrade_settings {
-    max_surge = "2"
-  }
-
-  tags = local.common_tags
+  # NAT gateway must be attached to the subnet before the cluster is created
+  # when outbound_type = userAssignedNATGateway.
+  depends_on = [azurerm_subnet_nat_gateway_association.aks]
 }
 
 # Grant AKS cluster permissions to manage the resource group
