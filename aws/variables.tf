@@ -88,21 +88,27 @@ variable "eks_endpoint_public_access_cidrs" {
   }
 }
 
-variable "eks_max_nodes" {
-  description = "Maximum worker nodes PER node group (autoscaler ceiling applied to each per-instance-type managed node group and each StarRocks node group independently, so the cluster-wide max is this value times the number of groups). If null, chosen by size_profile."
+variable "eks_node_cpu_limit" {
+  description = "Total vCPU ceiling for Karpenter-provisioned general workload nodes, applied as the general NodePool's spec.limits.cpu. Karpenter stops provisioning once exceeded. Replaces the former per-group max-node count. If null, chosen by size_profile."
   type        = number
   default     = null
 }
 
-variable "eks_node_types" {
-  description = "EC2 instance types for the shared EKS worker pool. If null, defaults to a preset chosen by size_profile."
-  type        = list(string)
+variable "eks_node_cpu_max" {
+  description = "Per-node vCPU cap for Karpenter-provisioned general workload nodes, applied as the general NodePool's karpenter.k8s.aws/instance-cpu Lt requirement. Bounds the size of any single workload node within the m category. If null, chosen by size_profile."
+  type        = number
   default     = null
 }
 
 variable "eks_starrocks_node_types" {
   description = "EC2 instance types for the StarRocks-dedicated EKS pool (taint workload=starrocks). If null, defaults to a preset chosen by starrocks_size_profile."
   type        = list(string)
+  default     = null
+}
+
+variable "eks_storage_class" {
+  description = "Kubernetes StorageClass for GoodData.CN chart PVCs. If null, chosen by size_profile (gp3 for dev, gp3-perf for prod)."
+  type        = string
   default     = null
 }
 
@@ -233,13 +239,6 @@ variable "helm_cert_manager_version" {
   default = "v1.21.0"
 }
 
-variable "helm_cluster_autoscaler_version" {
-  description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
-  type        = string
-  # renovate: depName=cluster-autoscaler registryUrl=https://kubernetes.github.io/autoscaler
-  default = "9.59.0"
-}
-
 variable "helm_external_dns_version" {
   description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
   type        = string
@@ -302,6 +301,13 @@ variable "helm_istio_version" {
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
   default = "1.30.3"
+}
+
+variable "helm_karpenter_version" {
+  description = "Version of the Karpenter Helm chart (oci://public.ecr.aws/karpenter/karpenter) to deploy. https://github.com/aws/karpenter-provider-aws/releases"
+  type        = string
+  # renovate: depName=karpenter packageName=public.ecr.aws/karpenter/karpenter datasource=docker
+  default = "1.6.3"
 }
 
 variable "helm_loki_version" {
@@ -466,6 +472,18 @@ variable "size_profile" {
   }
 }
 
+variable "starrocks_cn_image_tag" {
+  description = "Docker image tag for StarRocks CN nodes"
+  type        = string
+  default     = "4.0.6-20260507-091022-3c12ee9"
+}
+
+variable "starrocks_fe_image_tag" {
+  description = "Docker image tag for StarRocks FE nodes"
+  type        = string
+  default     = "4.0.6-20260507-091022-3c12ee9"
+}
+
 variable "starrocks_size_profile" {
   description = "StarRocks (AI Lake) sizing profile. Required when enable_ai_lake is true; one of: dev, prod-small, prod-xl. Not derived from size_profile."
   type        = string
@@ -478,18 +496,6 @@ variable "starrocks_size_profile" {
     condition     = !var.enable_ai_lake || var.starrocks_size_profile != null
     error_message = "starrocks_size_profile must be set when enable_ai_lake is true."
   }
-}
-
-variable "starrocks_cn_image_tag" {
-  description = "Docker image tag for StarRocks CN nodes"
-  type        = string
-  default     = "4.0.6-20260507-091022-3c12ee9"
-}
-
-variable "starrocks_fe_image_tag" {
-  description = "Docker image tag for StarRocks FE nodes"
-  type        = string
-  default     = "4.0.6-20260507-091022-3c12ee9"
 }
 
 variable "tls_mode" {

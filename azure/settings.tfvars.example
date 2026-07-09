@@ -43,7 +43,7 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # It sets sensible defaults for the metadata DB tier/storage, worker node
 # sizes/counts, observability disk sizes, and GoodData.CN/subchart sizing, so you
 # don't set those individually. To override one default, add its variable here
-# yourself (e.g. postgresql_sku_name, aks_node_vm_sizes); see variables.tf for the list.
+# yourself (e.g. postgresql_sku_name, aks_node_cpu_limit); see variables.tf for the list.
 # NOTE: changing size_profile after deploying isn't a supported migration; PVCs
 # can't shrink, and growing them is a manual, storage-class-dependent step.
 size_profile = "prod-small"
@@ -51,8 +51,10 @@ size_profile = "prod-small"
 ###
 # DNS
 ###
-# Azure DNS records must be managed externally.
-# Terraform outputs the public IP address and required DNS records.
+
+# Self-managed DNS
+# Terraform outputs the LoadBalancer's public IP and the records you need to create
+# (auth/org/observability hostnames → IP). You create them in your DNS provider.
 dns_provider = "self-managed"
 
 ###

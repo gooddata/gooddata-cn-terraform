@@ -129,6 +129,7 @@ resource "helm_release" "gooddata_cn" {
       db_hostname             = var.db_hostname
       db_username             = var.db_username
       db_password             = var.db_password
+      storage_class           = var.gdcn_storage_class
       registry_dockerio       = var.registry_dockerio
       registry_quayio         = var.registry_quayio
       ingress_class_name      = local.resolved_ingress_class_name

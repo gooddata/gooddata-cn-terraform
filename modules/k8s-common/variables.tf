@@ -261,6 +261,12 @@ variable "ingress_replicas" { type = number }
 # Workload size selectors, resolved by each env's size-profiles.tf.
 variable "gdcn_size" { type = string }
 
+variable "gdcn_storage_class" {
+  description = "Kubernetes StorageClass for GoodData.CN chart PVCs (etcd, redis-ha, qdrant). Empty string leaves them on the cluster default class."
+  type        = string
+  default     = ""
+}
+
 variable "observability_size" { type = string }
 
 variable "pulsar_size" { type = string }

@@ -20,6 +20,7 @@ module "k8s_common" {
   gdcn_helm_extra_values = var.gdcn_helm_extra_values
   ingress_replicas       = local.profile.ingress_replicas
   gdcn_size              = local.profile.gdcn_size
+  gdcn_storage_class     = local.storage_class
   pulsar_size            = local.profile.pulsar_size
   observability_size     = local.profile.observability_size
   cloud                  = "azure"
@@ -67,10 +68,11 @@ module "k8s_common" {
 
   depends_on = [
     azurerm_kubernetes_cluster.main,
-    # Premium SSD must be the default storage class before any Helm release
-    # provisions PVCs, so all persistent volumes land on premium SSDs.
+    # Storage classes + the default-class annotations must exist before any Helm
+    # release provisions PVCs, since every PVC references a class by name per profile.
+    kubernetes_storage_class_v1.premium_ssd_v2,
     kubernetes_storage_class_v1.premium_ssd,
-    kubernetes_annotations.demote_standardssd_default,
+    kubernetes_annotations.default_storage_class,
     azurerm_role_assignment.gdcn_blob_contrib,
     azurerm_federated_identity_credential.gdcn,
     # Image cache plumbing must outlive the helm releases: pre-delete hooks
