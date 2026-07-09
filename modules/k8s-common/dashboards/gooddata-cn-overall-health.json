@@ -1867,7 +1867,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU Throtling - per Service",
+      "title": "CPU Throttling - per Service",
       "type": "timeseries"
     },
     {
