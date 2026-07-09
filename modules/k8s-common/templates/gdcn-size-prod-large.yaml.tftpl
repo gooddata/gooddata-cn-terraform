@@ -1,4 +1,4 @@
-# GoodData.CN "prod-large" size profile (last updated: 2026-06-05)
+# GoodData.CN "prod-large" size profile (last updated: 2026-07-09)
 #
 # High-traffic multi-tenant sizing: more hot-path replicas + CPU/memory than
 # prod-small, dedicated Quiver policy nodes, larger result cache.
@@ -16,14 +16,14 @@ platform_limits:
   # Double the limit of page size in AFM so that tabular-exporter can still
   # load 1000 row pages even with the new 2000 column limit.
   max_afm_result_page_bytes: 10485760
-  # Raise the export timeout to 7 minutes (default 5); some exports, XLSX most
-  # often, take just over 6 minutes.
+  # Raise export timeout to 7 min (default 5); large exports (esp. XLSX) can
+  # exceed the default.
   export_result_timeout_seconds: 420
 
 # Deploy dedicated Quiver policy nodes so policy-handling load is taken off the
 # cache nodes, preventing hiccups during high load and releases.
 deployDedicatedPolicyNodes: true
-# Deploy the Quiver datasource filesystem nodes.
+# Deploy dedicated Quiver datasource-filesystem nodes to offload datasource reads.
 deployQuiverDatasourceFs: true
 # Run the in-cluster GoodData etcd (paired with customEtcd.enabled below).
 useInternalGDEtcd: true
@@ -32,7 +32,7 @@ afmExecApi:
   # Netty/WebFlux: blocking calls use Dispatchers.IO (64-thread default caps
   # ~50 req/pod). io.parallelism + ActiveProcessorCount raise per-pod concurrency.
   jvmOptions: -Xmx1700M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=128
-  # 8 replicas: 4 regressed execute latency ~80ms->5s at 40 loads/s.
+  # Scaled to 12; fewer replicas regress execute latency sharply under high load.
   replicaCount: 12
   resources:
     limits:
@@ -94,9 +94,6 @@ calcique:
       memory: 2800Mi
 customEtcd:
   enabled: true
-  # 3-node Quiver coordination layer. Large range-scan buffers OOMKilled members
-  # at the old 1536Mi limit, losing quorum. Fix is vertical (more memory/CPU);
-  # etcd is Raft, so adding members only enlarges the write quorum. Stay at 3.
   resources:
     requests:
       cpu: 500m
@@ -198,11 +195,10 @@ metadataApi:
   replicaCount: 4
   resources:
     limits:
-      # metadataApi is the busiest service (every AFM execute hits it via the
-      # existEntitlement gRPC call). Match the CPU limit to the JVM's
-      # ActiveProcessorCount=6 above: with the old 4150m limit the JVM sized its
-      # GC/ForkJoin/coroutine pools for 6 cores but got CFS-throttled at ~4.15,
-      # starving the actuator thread and tripping the 5s liveness probe under load.
+      # metadataApi is the busiest service (every AFM execute calls it via the
+      # existEntitlement gRPC). A CPU limit below the JVM's assumed core count
+      # causes CFS throttling that starves the actuator thread and trips the
+      # liveness probe under load.
       cpu: 4000m
       memory: 7300Mi
     requests:
@@ -240,8 +236,8 @@ qdrant:
 quiver:
   limitFlightCount: 150000
   # Cache-miss write gate: sql-executor DoPuts results into quiver-cache, bounded
-  # by these limits. Too low, fetch blocked ~6s/query waiting for a put slot.
-  # Keep puts + durable S3 writes above the sustained cache-miss rate.
+  # by these limits. Set too low, fetches block waiting for a put slot; keep puts
+  # + durable S3 writes above the sustained cache-miss rate.
   concurrentPutRequests: 64
   s3DurableStorage:
     durableS3WritesInProgress: 128
@@ -255,14 +251,14 @@ quiver:
     # cache serves every DoGet + absorbs DoPut/S3 writes on cache miss; 2 pods
     # saturated the put pipeline under load.
     cache: 12
-    # xtab is I/O-bound (Flight reads from cache). 16 pods + widened worker pools
-    # (extraEnvVarsXtab) clear the cross-tab queue at 40 loads/s.
+    # xtab is I/O-bound (Flight reads from cache); scaled to 18 pods plus widened
+    # worker pools (extraEnvVarsXtab) to keep the cross-tab queue clear under load.
     xtab: 18
   resources:
     cache:
       # Needs real CPU headroom: the single-threaded etcd-view-apply loop needs a
-      # full core, and starving it (old 1.5-core limit) made consistency-checked
-      # Flight reads block 5s and time out, stalling cross-tabs to 9-14s.
+      # full core; starving it makes consistency-checked Flight reads time out and
+      # stall cross-tabs.
       limits:
         cpu: 4000m
         memory: 2048Mi
@@ -273,17 +269,15 @@ quiver:
         ephemeral-storage: 30Gi
     xtab:
       # Bursty CPU (worker subprocesses run short polars ops); needs headroom
-      # despite low average. 4000m is the p95<5s passing config.
+      # despite a low average, so the limit sits well above steady-state.
       limits:
         cpu: 4000m
         memory: 7680Mi
       requests:
         cpu: 2000m
-        # Observed steady-state RSS is ~4.2-4.4Gi/pod under load. The old 2560Mi
-        # request under-reserved by ~1.6Gi, so the scheduler overcommitted nodes
-        # (limits hit ~288%), tripping MemoryPressure and evicting xtab pods
-        # (exit 137 / ContainerStatusUnknown) under the cross-tab burst. Reserve
-        # above observed peak so packing reflects reality. Still < the 7680Mi cap.
+        # Steady-state RSS runs well above the old request, letting the scheduler
+        # overcommit nodes and evict xtab pods under load. Request is set above
+        # observed peak (still below the limit).
         memory: 5120Mi
     ml:
       limits:
@@ -319,9 +313,8 @@ quiver:
     - name: QUIVER_ETCD_NEW_EVENT_READER
       value: "1"
     # Per-pod xtab throughput is gated by these worker pools, not CPU/replicas:
-    # tasks are ~I/O-bound (Flight), so pods idle at ~0.17 cores while the default
-    # 8 workers cap ~50/s/pod and queue 20-30s. Tripling lifts to ~150/s/pod at
-    # trivial CPU cost (memory ~4.3Gi, under the 7.68Gi limit).
+    # tasks are I/O-bound (Flight), so widening the pools greatly raises per-pod
+    # throughput at trivial CPU cost.
     - name: QUIVER_DATAFRAME_TASK_THREADS
       value: "48"
     - name: QUIVER_DATAFRAME_TASK_WORKERS
@@ -380,7 +373,7 @@ resultCache:
   # count; without ActiveProcessorCount ~200 executions/pod contend for ~6 threads
   # (~4.7s vs ~0.3s), holding api-gw's forward pool open. Widen and scale out.
   jvmOptions: -Xmx2100M -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=256
-  # 6 replicas @ 4000m: 4/2000m regressed execute latency ~80ms->5s at 40 loads/s.
+  # Scaled to 16 at 4000m; fewer/smaller replicas regress execute latency sharply under load.
   replicaCount: 16
   resources:
     limits:
@@ -393,7 +386,7 @@ resultCache:
     executionFinish:
       # Raise how many execution-finish messages a pod handles at once.
       maxConcurrentMessages: 200
-  # Large total result-cache size limit (512 GiB).
+  # Total result-cache size limit: 512 GiB.
   totalCacheLimit: 549755813888
   # Disable the dead Zipkin exporter (see metadataApi).
   extraEnvVars:
