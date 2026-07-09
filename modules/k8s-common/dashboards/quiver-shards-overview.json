@@ -422,7 +422,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum by (pod) (quiver_shard_limits{cluster_name=\"${cluster}\", namespace=\"${ns}\", pod=\"quiver-shard1\", limit_type=\"memory_cache_size_b\"})",
+          "expr": "sum by (pod) (quiver_shard_limits{cluster_name=\"${cluster}\", namespace=\"${ns}\", pod=\"${nodes.0}\", limit_type=\"memory_cache_size_b\"})",
           "interval": "",
           "legendFormat": "Memory Cache Size",
           "refId": "B"
@@ -555,7 +555,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum by (pod) (quiver_shard_limits{cluster_name=\"${cluster}\", namespace=\"${ns}\", pod=\"quiver-shard1\", limit_type=\"mmap_cache_size_b\"})",
+          "expr": "sum by (pod) (quiver_shard_limits{cluster_name=\"${cluster}\", namespace=\"${ns}\", pod=\"${nodes.0}\", limit_type=\"mmap_cache_size_b\"})",
           "interval": "",
           "legendFormat": "mmap Cache Size",
           "refId": "B"
@@ -688,7 +688,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum by (pod) (quiver_shard_limits{cluster_name=\"${cluster}\", namespace=\"${ns}\", pod=\"quiver-shard1\", limit_type=\"disk_cache_size_b\"})",
+          "expr": "sum by (pod) (quiver_shard_limits{cluster_name=\"${cluster}\", namespace=\"${ns}\", pod=\"${nodes.0}\", limit_type=\"disk_cache_size_b\"})",
           "interval": "",
           "legendFormat": "Disk Cache Size",
           "refId": "B"
