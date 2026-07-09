@@ -23,10 +23,9 @@ platform_limits:
 # Deploy dedicated Quiver policy nodes so policy-handling load is taken off the
 # cache nodes, preventing hiccups during high load and releases.
 deployDedicatedPolicyNodes: true
+
 # Deploy dedicated Quiver datasource-filesystem nodes to offload datasource reads.
 deployQuiverDatasourceFs: true
-# Run the in-cluster GoodData etcd (paired with customEtcd.enabled below).
-useInternalGDEtcd: true
 
 afmExecApi:
   # Netty/WebFlux: blocking calls use Dispatchers.IO (64-thread default caps
@@ -235,9 +234,6 @@ qdrant:
       memory: 3500Mi
 quiver:
   limitFlightCount: 150000
-  # Cache-miss write gate: sql-executor DoPuts results into quiver-cache, bounded
-  # by these limits. Set too low, fetches block waiting for a put slot; keep puts
-  # + durable S3 writes above the sustained cache-miss rate.
   concurrentPutRequests: 64
   s3DurableStorage:
     durableS3WritesInProgress: 128
