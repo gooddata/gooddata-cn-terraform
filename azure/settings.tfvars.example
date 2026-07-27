@@ -125,5 +125,5 @@ gdcn_orgs = [
 # AKS & infrastructure (optional)
 ###
 # Uncomment to override AKS defaults
-# aks_version                         = "1.35"
+# aks_version                         = "1.36"
 # aks_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
