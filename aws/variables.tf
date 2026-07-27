@@ -422,6 +422,12 @@ variable "rds_allow_major_version_upgrade" {
   default     = false
 }
 
+variable "rds_apply_immediately" {
+  description = "Apply RDS modifications during terraform apply instead of the next maintenance window. Instance-class changes reboot the database, so leave this off unless you accept downtime."
+  type        = bool
+  default     = false
+}
+
 variable "rds_deletion_protection" {
   description = "Enable deletion protection on the RDS instance."
   type        = bool

@@ -51,7 +51,7 @@ module "rds_postgresql" {
   family                      = "postgres${split(".", data.aws_rds_engine_version.default.version)[0]}"
   instance_class              = local.rds_instance_class
   allocated_storage           = local.rds_allocated_storage
-  apply_immediately           = true
+  apply_immediately           = var.rds_apply_immediately
   allow_major_version_upgrade = var.rds_allow_major_version_upgrade
 
   # Performance parameters tuned by size_profile (see size-profiles.tf). Both are

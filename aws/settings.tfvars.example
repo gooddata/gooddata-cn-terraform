@@ -47,8 +47,8 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # sizes/counts, observability disk sizes, and GoodData.CN/subchart sizing, so you
 # don't set those individually. To override one default, add its variable here
 # yourself (e.g. rds_instance_class, eks_node_types); see variables.tf for the list.
-# NOTE: changing size_profile after deploying isn't supported (persistent volume
-# sizes can't be resized in place).
+# NOTE: changing size_profile after deploying isn't a supported migration; PVCs
+# can't shrink, and growing them is a manual, storage-class-dependent step.
 size_profile = "prod-small"
 
 ###
@@ -157,6 +157,8 @@ gdcn_orgs = [
 # eks_endpoint_public_access_cidrs = ["x.x.x.x/32"]
 # eks_endpoint_private_access      = false
 
-# Uncomment to override RDS defaults
+# Uncomment to override RDS defaults. apply_immediately reboots the DB to apply
+# changes (e.g. an instance-class change) instead of waiting for maintenance.
+# rds_apply_immediately   = false
 # rds_deletion_protection = false
 # rds_skip_final_snapshot = true
