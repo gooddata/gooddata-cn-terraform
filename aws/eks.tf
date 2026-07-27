@@ -72,11 +72,9 @@ module "eks" {
   vpc_id     = local.vpc_id
   subnet_ids = local.private_subnet_ids
 
-  # A single small, fixed-size managed node group hosts the Karpenter
-  # controller and cluster-critical add-ons. Karpenter (see karpenter.tf) then
-  # provisions all workload capacity just-in-time, replacing the per-instance
-  # -type cluster-autoscaler node groups (general + StarRocks) that used to
-  # live here.
+  # A single small, fixed-size managed node group hosts the Karpenter controller
+  # and cluster-critical add-ons; Karpenter (karpenter.tf) provisions all
+  # workload capacity just-in-time.
   eks_managed_node_groups = {
     system = {
       ami_type                   = "BOTTLEROCKET_x86_64"

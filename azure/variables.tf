@@ -11,7 +11,7 @@ variable "aks_min_nodes" {
 }
 
 variable "aks_node_cpu_limit" {
-  description = "Total vCPU ceiling for Karpenter/NAP-provisioned workload nodes, applied as the general NodePool's spec.limits.cpu. NAP stops provisioning once exceeded. Replaces the former per-pool max-node count. If null, chosen by size_profile."
+  description = "Total vCPU ceiling for Karpenter/NAP-provisioned workload nodes, applied as the general NodePool's spec.limits.cpu. NAP stops provisioning once exceeded. If null, chosen by size_profile."
   type        = number
   default     = null
 }

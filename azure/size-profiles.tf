@@ -83,8 +83,7 @@ locals {
   # System pool VM size (not user-configurable). Workload nodes are sized by
   # Karpenter (sku-family + CPU bounds below).
   system_node_vm_size = local.profile.system_node_vm_size
-  # Total workload vCPU ceiling (NodePool spec.limits.cpu); replaces the old
-  # max-node count. ~= old max nodes x largest SKU vCPU.
+  # Total workload vCPU ceiling (NodePool spec.limits.cpu).
   aks_node_cpu_limit = coalesce(var.aks_node_cpu_limit, local.profile.node_cpu_limit)
   # Per-node vCPU cap for workload nodes (NodePool sku-cpu Lt) within the D family.
   aks_node_cpu_max = coalesce(var.aks_node_cpu_max, local.profile.node_cpu_max)

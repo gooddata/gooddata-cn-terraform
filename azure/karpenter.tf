@@ -68,23 +68,16 @@ resource "kubectl_manifest" "karpenter_node_pool" {
           expireAfter = "720h"
         }
       }
-      # Total vCPU ceiling for this NodePool (size-profiles.tf); replaces the
-      # old max-node count as the scale guardrail.
+      # Total vCPU ceiling for this NodePool (size-profiles.tf).
       limits = {
         cpu = local.aks_node_cpu_limit
       }
       disruption = {
-        # WhenEmpty (not WhenEmptyOrUnderutilized): only reclaim nodes that are
-        # fully empty; never evict running pods to bin-pack underutilized nodes.
-        # Under fluctuating load (our test workload) the "Underutilized" policy
-        # never converges — it evicts+repacks pods on every utilization dip
-        # ("Evicted pod: Underutilized"), churns a dozen nodes/hour, bounces
-        # stateful pods (Pulsar/Loki/Tempo) across hosts, and fights the PDBs.
-        # Lengthening consolidateAfter only delayed each trigger; the eviction
-        # behavior itself is what had to go.
+        # Bin-pack underutilized nodes, not just empty ones, to keep node count
+        # tracking actual demand.
         consolidationPolicy = "WhenEmptyOrUnderutilized"
-        # Hold an emptied node 15m before removal so a node that briefly drains
-        # mid-test isn't torn down right as load returns (avoids scale-up lag).
+        # Hold a drained node 15m so a brief dip doesn't tear it down right as
+        # load returns (avoids scale-up lag).
         consolidateAfter = "15m"
       }
     }

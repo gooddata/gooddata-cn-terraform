@@ -89,7 +89,7 @@ variable "eks_endpoint_public_access_cidrs" {
 }
 
 variable "eks_node_cpu_limit" {
-  description = "Total vCPU ceiling for Karpenter-provisioned general workload nodes, applied as the general NodePool's spec.limits.cpu. Karpenter stops provisioning once exceeded. Replaces the former per-group max-node count. If null, chosen by size_profile."
+  description = "Total vCPU ceiling for Karpenter-provisioned general workload nodes, applied as the general NodePool's spec.limits.cpu. Karpenter stops provisioning once exceeded. If null, chosen by size_profile."
   type        = number
   default     = null
 }

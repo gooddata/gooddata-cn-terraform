@@ -101,8 +101,7 @@ locals {
   # System node group instance type (not user-configurable). Workload nodes are
   # sized by Karpenter (instance-category + CPU bounds below).
   system_node_type = local.profile.system_node_type
-  # Total workload vCPU ceiling (NodePool spec.limits.cpu); replaces the old
-  # max-node count. ~= old max nodes x largest instance-type vCPU.
+  # Total workload vCPU ceiling (NodePool spec.limits.cpu).
   eks_node_cpu_limit = coalesce(var.eks_node_cpu_limit, local.profile.node_cpu_limit)
   # Per-node vCPU cap for workload nodes (NodePool instance-cpu Lt) within the m category.
   eks_node_cpu_max = coalesce(var.eks_node_cpu_max, local.profile.node_cpu_max)

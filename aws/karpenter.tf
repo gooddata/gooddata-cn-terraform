@@ -1,5 +1,5 @@
 ###
-# Provision Karpenter (replaces cluster-autoscaler)
+# Provision Karpenter
 #
 # Karpenter provisions right-sized, on-demand EC2 capacity just-in-time in
 # response to pending pods. The supporting IAM roles, instance profile, SQS
@@ -19,9 +19,8 @@ module "karpenter" {
   # association binding the kube-system/karpenter service account to the role.
   create_pod_identity_association = true
 
-  # Node role gets the same managed policies the old cluster-autoscaler node
-  # groups carried, so Karpenter-launched nodes can use the EBS CSI driver and
-  # pull images (incl. via the optional pull-through cache).
+  # Lets Karpenter-launched nodes use the EBS CSI driver and pull images
+  # (incl. via the optional pull-through cache).
   node_iam_role_additional_policies = merge({
     AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
     AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
@@ -125,8 +124,7 @@ resource "kubectl_manifest" "karpenter_node_pool" {
           expireAfter = "720h"
         }
       }
-      # Total vCPU ceiling for this NodePool (size-profiles.tf); replaces the old
-      # max-node count. StarRocks pool below is uncapped (bounded by fixed replicas).
+      # Total vCPU ceiling for this NodePool (size-profiles.tf).
       limits = {
         cpu = local.eks_node_cpu_limit
       }
