@@ -66,14 +66,30 @@ resource "azurerm_role_assignment" "external_dns_zone_contributor" {
   principal_id         = azurerm_user_assigned_identity.external_dns[0].principal_id
 }
 
+data "azurerm_resource_group" "external_dns_zone" {
+  count = local.external_dns_enabled ? 1 : 0
+
+  name = local.external_dns_zone_rg
+}
+
+# external-dns discovers zones with a resource-group-scoped list, which the
+# zone-scoped assignment above does not authorize. Without this it 403s on every sync.
+resource "azurerm_role_assignment" "external_dns_zone_rg_reader" {
+  count = local.external_dns_enabled ? 1 : 0
+
+  scope                = data.azurerm_resource_group.external_dns_zone[0].id
+  role_definition_name = "Reader"
+  principal_id         = azurerm_user_assigned_identity.external_dns[0].principal_id
+}
+
 resource "azurerm_federated_identity_credential" "external_dns" {
   count = local.external_dns_enabled ? 1 : 0
 
-  name      = "external-dns-workload"
-  parent_id = azurerm_user_assigned_identity.external_dns[0].id
-  audience  = ["api://AzureADTokenExchange"]
-  issuer    = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject   = "system:serviceaccount:${local.external_dns_namespace}:external-dns"
+  name                      = "external-dns-workload"
+  user_assigned_identity_id = azurerm_user_assigned_identity.external_dns[0].id
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject                   = "system:serviceaccount:${local.external_dns_namespace}:external-dns"
 }
 
 resource "kubernetes_namespace_v1" "external_dns" {
@@ -81,10 +97,11 @@ resource "kubernetes_namespace_v1" "external_dns" {
 
   metadata {
     name = local.external_dns_namespace
-    labels = {
-      "azure.workload.identity/use" = "true"
-    }
   }
+
+  # Azure RBAC is on and the provider uses the non-admin kubeconfig, so this
+  # grant is what authorizes every Kubernetes API call below.
+  depends_on = [azurerm_role_assignment.aks_creator_cluster_admin]
 }
 
 # external-dns's Azure provider reads its config from a file (default
@@ -107,6 +124,8 @@ resource "kubernetes_secret_v1" "external_dns_azure" {
       useWorkloadIdentityExtension = true
     })
   }
+
+  depends_on = [azurerm_role_assignment.aks_creator_cluster_admin]
 }
 
 resource "helm_release" "external_dns" {
@@ -160,14 +179,17 @@ resource "helm_release" "external_dns" {
     }]
   })]
 
+  # Deliberately does NOT depend on module.k8s_common: external-dns watches for
+  # Ingresses/Services, so it can start first, and k8s_common depends on it so
+  # DNS resolves before cert-manager opens its first ACME HTTP-01 challenge.
   depends_on = [
     azurerm_role_assignment.external_dns_zone_contributor,
+    azurerm_role_assignment.external_dns_zone_rg_reader,
     azurerm_federated_identity_credential.external_dns,
     terraform_data.validate_azure_dns_hostnames,
-    # external-dns watches Ingress objects created by the gooddata-cn chart, so
-    # it must come after the rest of the cluster is up. k8s_common owns those
-    # Ingresses; depending on it here keeps the apply order sensible.
-    module.k8s_common,
+    # Image comes from the k8sio cache rule when enable_image_cache is set.
+    azurerm_container_registry_cache_rule.k8sio,
+    azurerm_role_assignment.aks_acr_pull,
   ]
 }
 

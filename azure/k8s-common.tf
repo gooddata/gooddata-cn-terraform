@@ -81,6 +81,9 @@ module "k8s_common" {
     azurerm_container_registry_credential_set.dockerio,
     azurerm_role_assignment.aks_acr_pull,
     azurerm_role_assignment.acr_credential_set_secrets_user,
+    # DNS must resolve before cert-manager issues its first Let's Encrypt cert;
+    # a failed issuance backs off up to 32h. No-op unless dns_provider=azure-dns.
+    helm_release.external_dns,
   ]
 }
 
