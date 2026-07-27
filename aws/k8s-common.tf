@@ -5,8 +5,8 @@
 locals {
   gdcn_service_account_name = "gooddata-cn"
   use_alb                   = var.ingress_controller == "alb"
-  use_ingress_nginx         = var.ingress_controller == "ingress-nginx"
-  nlb_load_balancer_name    = local.use_ingress_nginx ? "${var.deployment_name}-ingress" : ""
+  use_traefik               = var.ingress_controller == "traefik"
+  nlb_load_balancer_name    = local.use_traefik ? "${var.deployment_name}-ingress" : ""
   alb_base_name             = "${var.deployment_name}-gdcn"
   alb_name_sanitized        = replace(lower(local.alb_base_name), "/[^a-z0-9-]/", "-")
   alb_load_balancer_name    = local.use_alb ? substr(local.alb_name_sanitized, 0, min(length(local.alb_name_sanitized), 32)) : ""
@@ -55,10 +55,10 @@ module "k8s_common" {
   ingress_controller     = var.ingress_controller
   gdcn_irsa_role_arn     = aws_iam_role.gdcn_irsa.arn
 
-  letsencrypt_email       = var.letsencrypt_email
-  auth_hostname           = var.auth_hostname
-  tls_mode                = var.tls_mode
-  ingress_nginx_behind_l7 = var.ingress_nginx_behind_l7
+  letsencrypt_email = var.letsencrypt_email
+  auth_hostname     = var.auth_hostname
+  tls_mode          = var.tls_mode
+  ingress_behind_l7 = var.ingress_behind_l7
 
   enable_ai_features           = var.enable_ai_features
   enable_experimental_features = var.enable_experimental_features
@@ -71,7 +71,7 @@ module "k8s_common" {
   helm_gdcn_version                  = var.helm_gdcn_version
   helm_istio_version                 = var.helm_istio_version
   helm_pulsar_version                = var.helm_pulsar_version
-  helm_ingress_nginx_version         = var.helm_ingress_nginx_version
+  helm_traefik_version               = var.helm_traefik_version
   helm_kube_prometheus_stack_version = var.helm_kube_prometheus_stack_version
   helm_loki_version                  = var.helm_loki_version
   helm_promtail_version              = var.helm_promtail_version

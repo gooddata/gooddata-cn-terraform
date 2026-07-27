@@ -342,8 +342,8 @@ resource "null_resource" "alb_cleanup_wait" {
 }
 
 # Query NLB DNS name directly from AWS (NLB name is deterministic)
-data "external" "ingress_nginx_lb" {
-  count = local.use_ingress_nginx ? 1 : 0
+data "external" "ingress_lb" {
+  count = local.use_traefik ? 1 : 0
 
   program = [
     "bash", "-c",
