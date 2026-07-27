@@ -143,8 +143,10 @@ gdcn_orgs = [
 ###
 # GoodData AI Lake (optional)
 ###
-# Uncomment to deploy AI Lake (additional license required)
-# enable_ai_lake = true
+# Uncomment to deploy AI Lake (additional license required). Both lines are
+# required; starrocks_size_profile is one of: dev, prod-small, prod-xl.
+# enable_ai_lake         = true
+# starrocks_size_profile = "prod-small"
 
 ###
 # EKS & infrastructure (optional)
