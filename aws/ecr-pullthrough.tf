@@ -7,7 +7,7 @@ data "aws_caller_identity" "current" {}
 
 # If image caching is enabled, construct the registry URL. Otherwise, return the upstream one.
 locals {
-  ecr_registry_base = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.id}.amazonaws.com"
+  ecr_registry_base = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.region}.amazonaws.com"
 
   upstream_registry_dockerio = "registry-1.docker.io"
   registry_dockerio = var.enable_image_cache ? (
