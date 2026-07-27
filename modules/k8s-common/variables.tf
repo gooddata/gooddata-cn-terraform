@@ -377,7 +377,7 @@ variable "obs_pod_labels" {
 }
 
 variable "obs_wal_disk" {
-  description = "Fixed WAL/scratch PVC size for Loki/Tempo when backed by object storage (no longer retention-sized)."
+  description = "Fixed WAL/scratch PVC size for Loki/Tempo when backed by object storage."
   type        = string
   default     = "10Gi"
 }

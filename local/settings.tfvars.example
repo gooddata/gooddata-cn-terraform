@@ -86,8 +86,8 @@ gdcn_orgs = [
 # enable_observability = true
 # observability_hostname = "observability.localhost"
 
-# Uncomment to override data retention (defaults shown). Each signal has its own 5Gi
-# PVC, so lower these to bound storage. Loki must be a multiple of 24h.
+# Uncomment to override data retention (defaults shown). Loki/Tempo store data
+# in SeaweedFS S3, so retention bounds bucket usage. Loki needs a multiple of 24h.
 # loki_retention_period       = "168h"
 # prometheus_retention_period = "168h"
 # tempo_retention_period      = "168h"

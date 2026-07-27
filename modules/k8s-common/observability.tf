@@ -133,10 +133,8 @@ resource "helm_release" "loki" {
             }
           }]
         }
-        # Retention is enforced by the compactor loop below. retention_period
-        # caps log age; the PVC (size set per tier in size-profiles.tf) still
-        # caps total size, so at high log volume data may be evicted before this
-        # period is reached.
+        # Retention is enforced by the compactor loop below; retention_period
+        # caps log age and bounds object-storage usage.
         limits_config = {
           retention_period = var.loki_retention_period
         }
