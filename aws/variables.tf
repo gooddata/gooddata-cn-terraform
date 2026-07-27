@@ -223,21 +223,21 @@ variable "helm_aws_lb_controller_version" {
   description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string
   # renovate: depName=aws-load-balancer-controller registryUrl=https://aws.github.io/eks-charts
-  default = "3.4.0"
+  default = "3.4.2"
 }
 
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
   # renovate: depName=cert-manager registryUrl=https://charts.jetstack.io
-  default = "v1.20.3"
+  default = "v1.21.0"
 }
 
 variable "helm_cluster_autoscaler_version" {
   description = "Version of the cluster-autoscaler Helm chart to deploy. https://artifacthub.io/packages/helm/cluster-autoscaler/cluster-autoscaler"
   type        = string
   # renovate: depName=cluster-autoscaler registryUrl=https://kubernetes.github.io/autoscaler
-  default = "9.58.0"
+  default = "9.59.0"
 }
 
 variable "helm_external_dns_version" {
@@ -301,14 +301,14 @@ variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
-  default = "1.30.2"
+  default = "1.30.3"
 }
 
 variable "helm_loki_version" {
   description = "Version of the loki Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/loki"
   type        = string
   # renovate: depName=loki registryUrl=https://grafana.github.io/helm-charts
-  default = "7.0.0"
+  default = "7.1.0"
 }
 
 variable "helm_metrics_server_version" {
@@ -322,7 +322,7 @@ variable "helm_kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack"
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "87.10.1"
+  default = "87.19.2"
 }
 
 variable "helm_promtail_version" {
@@ -336,14 +336,14 @@ variable "helm_pulsar_version" {
   description = "Version of the pulsar Helm chart to deploy. https://artifacthub.io/packages/helm/apache/pulsar"
   type        = string
   # renovate: depName=pulsar registryUrl=https://pulsar.apache.org/charts
-  default = "4.6.1"
+  default = "4.7.0"
 }
 
 variable "helm_starrocks_version" {
   description = "Version of the kube-starrocks Helm chart to deploy. https://artifacthub.io/packages/helm/kube-starrocks/kube-starrocks"
   type        = string
   # renovate: depName=kube-starrocks registryUrl=https://starrocks.github.io/starrocks-kubernetes-operator
-  default = "1.11.5"
+  default = "1.11.6"
 }
 
 variable "helm_tempo_version" {

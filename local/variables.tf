@@ -103,7 +103,7 @@ variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy."
   type        = string
   # renovate: depName=cert-manager registryUrl=https://charts.jetstack.io
-  default = "v1.20.3"
+  default = "v1.21.0"
 }
 
 variable "helm_cnpg_version" {
@@ -154,21 +154,21 @@ variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway)."
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
-  default = "1.30.2"
+  default = "1.30.3"
 }
 
 variable "helm_loki_version" {
   description = "Version of the loki Helm chart to deploy."
   type        = string
   # renovate: depName=loki registryUrl=https://grafana.github.io/helm-charts
-  default = "7.0.0"
+  default = "7.1.0"
 }
 
 variable "helm_kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to deploy."
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "87.10.1"
+  default = "87.19.2"
 }
 
 variable "helm_prometheus_operator_crds_version" {
@@ -189,7 +189,7 @@ variable "helm_pulsar_version" {
   description = "Version of the pulsar Helm chart to deploy."
   type        = string
   # renovate: depName=pulsar registryUrl=https://pulsar.apache.org/charts
-  default = "4.6.1"
+  default = "4.7.0"
 }
 
 variable "helm_tempo_version" {
