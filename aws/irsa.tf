@@ -14,7 +14,7 @@ data "aws_iam_policy_document" "gdcn_irsa_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      variable = local.eks_oidc_condition_key
       values = [
         "system:serviceaccount:${var.gdcn_namespace}:${local.gdcn_service_account_name}"
       ]
@@ -53,7 +53,7 @@ data "aws_iam_policy_document" "observability_irsa_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      variable = local.eks_oidc_condition_key
       values = [
         "system:serviceaccount:observability:loki",
         "system:serviceaccount:observability:tempo",
@@ -92,7 +92,7 @@ data "aws_iam_policy_document" "starrocks_irsa_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      variable = local.eks_oidc_condition_key
       values = [
         "system:serviceaccount:starrocks:starrocks"
       ]

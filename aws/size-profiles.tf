@@ -98,6 +98,12 @@ locals {
   # Resolved size_profile values (profile default, overridable via var.*).
   rds_instance_class    = coalesce(var.rds_instance_class, local.profile.rds.instance_class)
   rds_allocated_storage = coalesce(var.rds_allocated_storage, local.profile.rds.allocated_storage)
+  # Prod tiers get deletion protection and a final snapshot on destroy; dev stays
+  # disposable. PITR is 14 days for prod, 7 for dev. Overridable via var.*.
+  rds_is_prod                 = startswith(var.size_profile, "prod")
+  rds_deletion_protection     = var.rds_deletion_protection != null ? var.rds_deletion_protection : local.rds_is_prod
+  rds_skip_final_snapshot     = var.rds_skip_final_snapshot != null ? var.rds_skip_final_snapshot : !local.rds_is_prod
+  rds_backup_retention_period = coalesce(var.rds_backup_retention_period, local.rds_is_prod ? 14 : 7)
   # System node group instance type (not user-configurable). Workload nodes are
   # sized by Karpenter (instance-category + CPU bounds below).
   system_node_type = local.profile.system_node_type

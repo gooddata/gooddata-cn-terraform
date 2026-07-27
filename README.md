@@ -74,7 +74,7 @@ Requirements:
 1. Choose your provider and `cd` into its directory: `cd aws`, `cd azure`, or `cd local`
 
 1. Authenticate to your cloud provider's CLI:
-    - For AWS: `aws login` / `aws sso login` (or otherwise configure your AWS credentials)
+    - For AWS: `aws sso login` (or `aws configure`, or otherwise configure your AWS credentials)
     - For Azure: `az login`
     - Azure note: Terraform's Kubernetes authentication uses `kubelogin` with your Azure CLI session.
 

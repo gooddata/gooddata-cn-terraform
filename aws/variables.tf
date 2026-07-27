@@ -434,6 +434,16 @@ variable "rds_apply_immediately" {
   default     = false
 }
 
+variable "rds_backup_retention_period" {
+  description = "Days of automated RDS backups / point-in-time recovery. If null, chosen by size_profile (14 for prod, 7 for dev)."
+  type        = number
+  default     = null
+  validation {
+    condition     = var.rds_backup_retention_period == null || (var.rds_backup_retention_period >= 0 && var.rds_backup_retention_period <= 35)
+    error_message = "rds_backup_retention_period must be between 0 and 35 days."
+  }
+}
+
 variable "rds_deletion_protection" {
   description = "Enable deletion protection on the RDS instance."
   type        = bool

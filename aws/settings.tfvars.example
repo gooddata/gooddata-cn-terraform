@@ -33,8 +33,8 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 #       replicaCount: 3
 # EOT
 
-# Uncomment to deploy and enable GoodData generative AI services
-# enable_ai_features = true
+# Uncomment to disable GoodData generative AI services
+# enable_ai_features = false
 
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
@@ -128,9 +128,9 @@ gdcn_orgs = [
 
 # Uncomment to override data retention (defaults shown). Loki/Tempo store data
 # in S3, so retention bounds bucket usage. Loki needs a multiple of 24h.
-# loki_retention_period       = "168h"
+# loki_retention_period       = "720h"
 # prometheus_retention_period = "168h"
-# tempo_retention_period      = "168h"
+# tempo_retention_period      = "720h"
 
 ###
 # Container image caching (optional)
@@ -157,8 +157,10 @@ gdcn_orgs = [
 # eks_endpoint_public_access_cidrs = ["x.x.x.x/32"]
 # eks_endpoint_private_access      = false
 
-# Uncomment to override RDS defaults. apply_immediately reboots the DB to apply
-# changes (e.g. an instance-class change) instead of waiting for maintenance.
-# rds_apply_immediately   = false
-# rds_deletion_protection = false
-# rds_skip_final_snapshot = true
+# Uncomment to override RDS defaults. These follow size_profile: prod keeps
+# deletion protection and takes a final snapshot on destroy. apply_immediately
+# reboots the DB instead of waiting for the maintenance window.
+# rds_apply_immediately       = false
+# rds_backup_retention_period = 14
+# rds_deletion_protection     = true
+# rds_skip_final_snapshot     = false

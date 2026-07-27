@@ -56,11 +56,10 @@ resource "azurerm_kubernetes_cluster" "main" {
     tags = local.common_tags
   }
 
-  # Node Auto Provisioning (NAP / managed Karpenter) replaces the cluster
-  # autoscaler. mode=Auto installs and manages Karpenter in the control plane;
-  # default_node_pools=None means the only NodePools are the ones we define
-  # ourselves (see karpenter.tf). NAP cannot coexist with the cluster
-  # autoscaler, so node-pool autoscaling and auto_scaler_profile are removed.
+  # Node Auto Provisioning (NAP / managed Karpenter): mode=Auto installs and
+  # manages Karpenter in the control plane; default_node_pools=None means the
+  # only NodePools are the ones we define (karpenter.tf). NAP cannot coexist
+  # with the cluster autoscaler, so node-pool autoscaling must stay unset.
   node_provisioning_profile {
     mode               = "Auto"
     default_node_pools = "None"
@@ -72,7 +71,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   # Azure CNI Overlay powered by Cilium: pods get IPs from pod_cidr, not the AKS
-  # subnet, so node count is no longer subnet-bound. Overlay requires Cilium (not NPM).
+  # subnet, so node count isn't subnet-bound. Overlay requires Cilium (not NPM).
   network_profile {
     network_plugin      = "azure"
     network_plugin_mode = "overlay"
@@ -97,12 +96,8 @@ resource "azurerm_kubernetes_cluster" "main" {
   depends_on = [azurerm_subnet_nat_gateway_association.aks]
 }
 
-# Grant AKS cluster permissions to manage the resource group
-resource "azurerm_role_assignment" "aks_cluster_contributor" {
-  scope                = azurerm_resource_group.main.id
-  role_definition_name = "Contributor"
-  principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
-}
+# The kubelet identity gets no resource-group-wide grant: any pod can reach it
+# via IMDS. Real needs use scoped identities (AcrPull below, UAMIs in identity.tf).
 
 # Grant AKS cluster's system identity Network Contributor permissions for LoadBalancer services
 resource "azurerm_role_assignment" "aks_system_identity_network_contributor" {

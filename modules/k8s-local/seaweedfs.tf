@@ -88,9 +88,9 @@ resource "helm_release" "seaweedfs" {
         }
 
         # Single PVC backs every bucket (Quiver cache, exports, datasource FS,
-        # and now Loki/Tempo object storage), so it must be sized for all of
-        # them. local-path is thin-provisioned, so the request is a ceiling, not
-        # a preallocation.
+        # Loki/Tempo object storage), so it must be sized for all of them.
+        # local-path is thin-provisioned, so the request is a ceiling, not a
+        # preallocation.
         data = {
           type         = "persistentVolumeClaim"
           size         = var.seaweedfs_storage_size

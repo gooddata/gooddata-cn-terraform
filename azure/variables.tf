@@ -354,6 +354,22 @@ variable "observability_hostname" {
   }
 }
 
+variable "postgresql_backup_retention_days" {
+  description = "Days of automated PostgreSQL backups / point-in-time recovery. If null, chosen by size_profile (14 for prod, 7 for dev)."
+  type        = number
+  default     = null
+  validation {
+    condition     = var.postgresql_backup_retention_days == null || (var.postgresql_backup_retention_days >= 7 && var.postgresql_backup_retention_days <= 35)
+    error_message = "postgresql_backup_retention_days must be between 7 and 35 days."
+  }
+}
+
+variable "postgresql_geo_redundant_backup" {
+  description = "Replicate PostgreSQL backups to the Azure paired region. Create-time only: changing it on an existing server destroys and recreates the database."
+  type        = bool
+  default     = false
+}
+
 variable "postgresql_sku_name" {
   description = "Azure Database for PostgreSQL SKU name. If null, chosen by size_profile. E.g. B_Standard_B1ms, GP_Standard_D2s_v3, MO_Standard_E4s_v3"
   type        = string

@@ -2,15 +2,17 @@ resource "kubernetes_namespace_v1" "observability" {
   count = var.enable_observability ? 1 : 0
 
   metadata {
-    name = "observability"
-    labels = local.use_istio_gateway ? {
-      "istio-injection" = "enabled"
-    } : null
+    name   = "observability"
+    labels = local.istio_injection_labels
   }
 }
 
 locals {
   # Observability sizing (obs_mem / obs_disk) lives in size-profiles.tf.
+
+  # Shared storage-class override, merged into the Prometheus/Tempo/Grafana
+  # persistence blocks below. Empty map leaves the PVC on the cluster default class.
+  gdcn_storage_class_override = var.gdcn_storage_class != "" ? { storageClassName = var.gdcn_storage_class } : {}
 
   # dotdc Kubernetes dashboards loaded into Grafana (see dashboards block below).
   grafana_kubernetes_dashboards = [
@@ -81,7 +83,7 @@ resource "helm_release" "kube_prometheus_stack" {
             volumeClaimTemplate = {
               spec = merge(
                 { resources = { requests = { storage = local.obs_disk.prometheus } } },
-                var.gdcn_storage_class != "" ? { storageClassName = var.gdcn_storage_class } : {}
+                local.gdcn_storage_class_override
               )
             }
           }
@@ -262,9 +264,8 @@ resource "helm_release" "tempo" {
           }
           zipkin = { endpoint = "0.0.0.0:9411" }
         }
-        # Trace retention enforced by the block-storage compactor. The PVC (size
-        # set per tier in size-profiles.tf) still caps total size, so traces may
-        # be evicted before this period.
+        # Trace retention enforced by the block-storage compactor; it bounds
+        # object-storage usage.
         retention = var.tempo_retention_period
         # Per-tenant ingestion limits, sized by tier (see size-profiles.tf).
         # Strategy stays "local" (single-binary deployment, no global ring).
@@ -294,7 +295,7 @@ resource "helm_release" "tempo" {
       # size (obs_wal_disk), not retention-sized.
       persistence = merge(
         { enabled = true, size = var.obs_wal_disk },
-        var.gdcn_storage_class != "" ? { storageClassName = var.gdcn_storage_class } : {}
+        local.gdcn_storage_class_override
       )
       resources = {
         requests = {
@@ -335,7 +336,7 @@ resource "helm_release" "grafana" {
       }
       persistence = merge(
         { enabled = true, size = "1Gi" },
-        var.gdcn_storage_class != "" ? { storageClassName = var.gdcn_storage_class } : {}
+        local.gdcn_storage_class_override
       )
       resources = {
         requests = {
@@ -474,9 +475,7 @@ resource "helm_release" "grafana" {
           {
             "nginx.ingress.kubernetes.io/proxy-body-size" = "50m"
           },
-          local.use_cert_manager ? {
-            "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
-          } : {},
+          local.cert_manager_issuer_annotation,
           var.ingress_annotations_override
         )
         hosts = [var.observability_hostname]

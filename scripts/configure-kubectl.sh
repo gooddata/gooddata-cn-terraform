@@ -14,11 +14,7 @@ case "${CURRENT_DIR}" in
   aws)
     require_command aws "AWS CLI not found; install it to configure kubectl."
     require_command kubectl "kubectl not found; install it to interact with Kubernetes."
-    load_tf_outputs
-    if ! has_tf_outputs; then
-      echo ">> ERROR: Terraform outputs not available. Run 'terraform apply' first." >&2
-      exit 1
-    fi
+    require_tf_outputs
 
     EKS_CLUSTER_NAME=$(tf_output_value "eks_cluster_name")
     AWS_REGION=$(tf_output_value "aws_region")
@@ -41,11 +37,7 @@ case "${CURRENT_DIR}" in
   azure)
     require_command az "Azure CLI not found; install it to configure kubectl."
     require_command kubectl "kubectl not found; install it to interact with Kubernetes."
-    load_tf_outputs
-    if ! has_tf_outputs; then
-      echo ">> ERROR: Terraform outputs not available. Run 'terraform apply' first." >&2
-      exit 1
-    fi
+    require_tf_outputs
 
     AKS_CLUSTER_NAME=$(tf_output_value "aks_cluster_name")
     RESOURCE_GROUP=$(tf_output_value "azure_resource_group_name")
@@ -73,11 +65,7 @@ case "${CURRENT_DIR}" in
   local)
     require_command k3d "k3d CLI not found; install it to configure kubectl for local clusters."
     require_command kubectl "kubectl not found; install it to interact with Kubernetes."
-    load_tf_outputs
-    if ! has_tf_outputs; then
-      echo ">> ERROR: Terraform outputs not available. Run 'terraform apply' first." >&2
-      exit 1
-    fi
+    require_tf_outputs
 
     K3D_CLUSTER_NAME=$(tf_output_value "k3d_cluster_name")
     KUBECONFIG_CONTEXT=$(tf_output_value "kubeconfig_context")

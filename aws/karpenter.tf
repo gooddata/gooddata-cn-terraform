@@ -21,10 +21,7 @@ module "karpenter" {
 
   # Lets Karpenter-launched nodes use the EBS CSI driver and pull images
   # (incl. via the optional pull-through cache).
-  node_iam_role_additional_policies = merge({
-    AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-    AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
-  }, local.ecr_pull_through_cache_policy)
+  node_iam_role_additional_policies = local.node_iam_role_additional_policies
 
   tags = local.common_tags
 }
@@ -124,7 +121,8 @@ resource "kubectl_manifest" "karpenter_node_pool" {
           expireAfter = "720h"
         }
       }
-      # Total vCPU ceiling for this NodePool (size-profiles.tf).
+      # Total vCPU ceiling for this NodePool (size-profiles.tf). StarRocks pool
+      # below is uncapped (bounded by fixed replicas).
       limits = {
         cpu = local.eks_node_cpu_limit
       }

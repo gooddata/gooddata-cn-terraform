@@ -29,6 +29,14 @@ locals {
     ECRPullThroughCacheMin = aws_iam_policy.ecr_pull_through_cache_min[0].arn
   } : {}
 
+  # Managed policies shared by every node role (system managed node group here,
+  # and the Karpenter node role in karpenter.tf): EBS CSI driver + image pull,
+  # plus the pull-through cache policy when image caching is enabled.
+  node_iam_role_additional_policies = merge({
+    AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+    AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
+  }, local.ecr_pull_through_cache_policy)
+
   # Node sizing / StarRocks node types: resolved in size-profiles.tf and applied
   # via Karpenter NodePools (see karpenter.tf), not managed node groups.
 }
@@ -95,10 +103,7 @@ module "eks" {
 
       tags = local.common_tags
 
-      iam_role_additional_policies = merge({
-        AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-        AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
-      }, local.ecr_pull_through_cache_policy)
+      iam_role_additional_policies = local.node_iam_role_additional_policies
 
       min_size     = 2
       max_size     = 3

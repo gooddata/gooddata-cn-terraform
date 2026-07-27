@@ -29,8 +29,8 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 #       replicaCount: 3
 # EOT
 
-# Uncomment to deploy and enable GoodData generative AI services
-# enable_ai_features = true
+# Uncomment to disable GoodData generative AI services
+# enable_ai_features = false
 
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
@@ -45,8 +45,8 @@ size_profile = "dev"
 ###
 
 # Option 1 — NGINX Ingress Controller (ingress-nginx) + cert-manager self-signed certificates
-ingress_controller      = "ingress-nginx"
-tls_mode                = "selfsigned"
+ingress_controller = "ingress-nginx"
+tls_mode           = "selfsigned"
 
 # Option 2 — Istio Gateway + cert-manager self-signed certificates
 # ingress_controller = "istio_gateway"

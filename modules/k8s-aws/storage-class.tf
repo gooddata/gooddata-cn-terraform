@@ -2,6 +2,9 @@
 # Configure Kubernetes storage class
 ###
 
+# encrypted = "true" on both classes, so PVC data is encrypted at rest without
+# relying on the account default. Unset kmsKeyId uses the AWS-managed EBS key.
+
 resource "kubernetes_storage_class_v1" "gp3_perf" {
   metadata {
     name = "gp3-perf"
@@ -16,6 +19,7 @@ resource "kubernetes_storage_class_v1" "gp3_perf" {
     type       = "gp3"
     iops       = "5000"
     throughput = "300"
+    encrypted  = "true"
   }
 }
 
@@ -34,6 +38,7 @@ resource "kubernetes_storage_class_v1" "gp3" {
   allow_volume_expansion = true
 
   parameters = {
-    type = "gp3"
+    type      = "gp3"
+    encrypted = "true"
   }
 }

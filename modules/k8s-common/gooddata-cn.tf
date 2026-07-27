@@ -10,15 +10,9 @@ locals {
     {
       "nginx.ingress.kubernetes.io/proxy-body-size" = "200m"
     },
-    local.use_cert_manager ? {
-      "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
-    } : {}
+    local.cert_manager_issuer_annotation
   ) : {}
-  dex_annotation_defaults = local.use_ingress_nginx ? (
-    local.use_cert_manager ? {
-      "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
-    } : {}
-  ) : {}
+  dex_annotation_defaults = local.use_ingress_nginx ? local.cert_manager_issuer_annotation : {}
   ingress_annotations     = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
@@ -43,10 +37,8 @@ resource "kubectl_manifest" "peerauth_gdcn_strict" {
 
 resource "kubernetes_namespace_v1" "gdcn" {
   metadata {
-    name = var.gdcn_namespace
-    labels = local.use_istio_gateway ? {
-      "istio-injection" = "enabled"
-    } : null
+    name   = var.gdcn_namespace
+    labels = local.istio_injection_labels
   }
 }
 

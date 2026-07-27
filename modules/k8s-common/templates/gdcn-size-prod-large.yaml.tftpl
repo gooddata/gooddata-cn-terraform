@@ -24,9 +24,6 @@ platform_limits:
 # cache nodes, preventing hiccups during high load and releases.
 deployDedicatedPolicyNodes: true
 
-# Deploy dedicated Quiver datasource-filesystem nodes to offload datasource reads.
-deployQuiverDatasourceFs: true
-
 # Long-poll AFM execution results instead of client polling.
 enableAfmLongPoll: true
 
@@ -86,13 +83,13 @@ automation:
       value: "false"
 calcique:
   jvmOptions: -Xmx1024M -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M
-  replicaCount: 4
+  replicaCount: 2
   resources:
     limits:
-      cpu: 1500m
+      cpu: 3000m
       memory: 2800Mi
     requests:
-      cpu: 300m
+      cpu: 1500m
       memory: 2800Mi
 customEtcd:
   enabled: true
@@ -104,7 +101,7 @@ customEtcd:
       cpu: 2000m
       memory: 4096Mi
   persistence:
-    size: 512Gi
+    size: 30Gi
 dashboards:
   resources:
     limits:
@@ -257,8 +254,8 @@ quiver:
     # cache serves every DoGet + absorbs DoPut/S3 writes on cache miss; 2 pods
     # saturated the put pipeline under load.
     cache: 8
-    # xtab is I/O-bound (Flight reads from cache); scaled to 18 pods plus widened
-    # worker pools (extraEnvVarsXtab) to keep the cross-tab queue clear under load.
+    # xtab is I/O-bound (Flight reads from cache); 8 pods with capped worker
+    # pools (extraEnvVarsXtab) keep the queue clear without swamping the cache.
     xtab: 8
   resources:
     cache:
@@ -281,9 +278,8 @@ quiver:
         memory: 7680Mi
       requests:
         cpu: 2000m
-        # Steady-state RSS runs well above the old request, letting the scheduler
-        # overcommit nodes and evict xtab pods under load. Request is set above
-        # observed peak (still below the limit).
+        # Set above observed peak RSS (still under the limit) so the scheduler
+        # can't overcommit nodes and evict xtab pods under load.
         memory: 5120Mi
     ml:
       limits:
@@ -361,10 +357,10 @@ redis-ha:
       maxmemory: 7300m
     resources:
       limits:
-        cpu: 1500m
+        cpu: 2000m
         memory: 9125Mi
       requests:
-        cpu: 700m
+        cpu: 1500m
         memory: 9125Mi
   sentinel:
     resources:

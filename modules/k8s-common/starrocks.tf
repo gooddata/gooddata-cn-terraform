@@ -6,10 +6,8 @@ resource "kubernetes_namespace_v1" "starrocks" {
   count = var.enable_ai_lake ? 1 : 0
 
   metadata {
-    name = local.starrocks_namespace
-    labels = local.use_istio_gateway ? {
-      "istio-injection" = "enabled"
-    } : null
+    name   = local.starrocks_namespace
+    labels = local.istio_injection_labels
   }
 }
 

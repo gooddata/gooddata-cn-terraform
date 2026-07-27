@@ -30,8 +30,8 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 #       replicaCount: 3
 # EOT
 
-# Uncomment to deploy and enable GoodData generative AI services
-# enable_ai_features = true
+# Uncomment to disable GoodData generative AI services
+# enable_ai_features = false
 
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
@@ -76,8 +76,8 @@ dns_provider = "self-managed"
 
 # Option 1 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (letsencrypt)
 ingress_controller = "ingress-nginx"
-tls_mode          = "letsencrypt"
-letsencrypt_email = "me@example.com"
+tls_mode           = "letsencrypt"
+letsencrypt_email  = "me@example.com"
 
 # Uncomment when ingress-nginx sits behind another L7 proxy/load balancer.
 # ingress_nginx_behind_l7 = true
@@ -123,9 +123,9 @@ gdcn_orgs = [
 
 # Uncomment to override data retention (defaults shown). Loki/Tempo store data
 # in Azure Blob, so retention bounds container usage. Loki needs a multiple of 24h.
-# loki_retention_period       = "168h"
+# loki_retention_period       = "720h"
 # prometheus_retention_period = "168h"
-# tempo_retention_period      = "168h"
+# tempo_retention_period      = "720h"
 
 ###
 # Container image caching (optional)
@@ -141,3 +141,6 @@ gdcn_orgs = [
 # Uncomment to override AKS defaults
 # aks_version                         = "1.36"
 # aks_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
+
+# Uncomment to replicate backups to the Azure paired region.
+# postgresql_geo_redundant_backup = true

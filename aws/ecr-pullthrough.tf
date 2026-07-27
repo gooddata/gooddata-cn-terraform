@@ -7,28 +7,21 @@ data "aws_caller_identity" "current" {}
 
 # If image caching is enabled, construct the registry URL. Otherwise, return the upstream one.
 locals {
+  ecr_registry_base = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.id}.amazonaws.com"
+
   upstream_registry_dockerio = "registry-1.docker.io"
-  registry_dockerio = var.enable_image_cache ? format(
-    "%s.dkr.ecr.%s.amazonaws.com/%s",
-    data.aws_caller_identity.current.account_id,
-    data.aws_region.current.id,
-    aws_ecr_pull_through_cache_rule.dockerio[0].ecr_repository_prefix
+  registry_dockerio = var.enable_image_cache ? (
+    "${local.ecr_registry_base}/${aws_ecr_pull_through_cache_rule.dockerio[0].ecr_repository_prefix}"
   ) : local.upstream_registry_dockerio
 
   upstream_registry_quayio = "quay.io"
-  registry_quayio = var.enable_image_cache ? format(
-    "%s.dkr.ecr.%s.amazonaws.com/%s",
-    data.aws_caller_identity.current.account_id,
-    data.aws_region.current.id,
-    aws_ecr_pull_through_cache_rule.quayio[0].ecr_repository_prefix
+  registry_quayio = var.enable_image_cache ? (
+    "${local.ecr_registry_base}/${aws_ecr_pull_through_cache_rule.quayio[0].ecr_repository_prefix}"
   ) : local.upstream_registry_quayio
 
   upstream_registry_k8sio = "registry.k8s.io"
-  registry_k8sio = var.enable_image_cache ? format(
-    "%s.dkr.ecr.%s.amazonaws.com/%s",
-    data.aws_caller_identity.current.account_id,
-    data.aws_region.current.id,
-    aws_ecr_pull_through_cache_rule.k8sio[0].ecr_repository_prefix
+  registry_k8sio = var.enable_image_cache ? (
+    "${local.ecr_registry_base}/${aws_ecr_pull_through_cache_rule.k8sio[0].ecr_repository_prefix}"
   ) : local.upstream_registry_k8sio
 }
 

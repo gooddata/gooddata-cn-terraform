@@ -14,22 +14,15 @@ GRAFANA_CURL_CONNECT_ARGS=()
 try_load_grafana_admin_credentials_from_secret() {
   local namespace="observability"
   local secret_name="${1:-grafana}"
-  local admin_user_b64 admin_password_b64 admin_user admin_password
+  local admin_user admin_password
 
   command_exists kubectl || return 1
   command_exists base64 || return 1
 
   kubectl get secret -n "${namespace}" "${secret_name}" >/dev/null 2>&1 || return 1
 
-  admin_user_b64=$(kubectl get secret -n "${namespace}" "${secret_name}" -o jsonpath='{.data.admin-user}' 2>/dev/null || true)
-  admin_password_b64=$(kubectl get secret -n "${namespace}" "${secret_name}" -o jsonpath='{.data.admin-password}' 2>/dev/null || true)
-
-  if [[ -z "${admin_user_b64}" || -z "${admin_password_b64}" ]]; then
-    return 1
-  fi
-
-  admin_user=$(printf '%s' "${admin_user_b64}" | base64 -d 2>/dev/null || true)
-  admin_password=$(printf '%s' "${admin_password_b64}" | base64 -d 2>/dev/null || true)
+  admin_user=$(load_k8s_secret_field "${namespace}" "${secret_name}" "admin-user") || return 1
+  admin_password=$(load_k8s_secret_field "${namespace}" "${secret_name}" "admin-password") || return 1
 
   if [[ -z "${admin_user}" || -z "${admin_password}" ]]; then
     return 1
@@ -42,13 +35,7 @@ try_load_grafana_admin_credentials_from_secret() {
 }
 
 configure_grafana_connect_args() {
-  GRAFANA_CURL_CONNECT_ARGS=()
-  if is_inside_container && [[ "${OBSERVABILITY_HOSTNAME}" == "localhost" || "${OBSERVABILITY_HOSTNAME}" == *.localhost ]]; then
-    if command_exists getent && getent hosts host.docker.internal >/dev/null 2>&1; then
-      echo "Container detected, routing via host.docker.internal."
-      GRAFANA_CURL_CONNECT_ARGS=(--connect-to "${OBSERVABILITY_HOSTNAME}:443:host.docker.internal:443")
-    fi
-  fi
+  docker_internal_connect_to_args "${OBSERVABILITY_HOSTNAME}" GRAFANA_CURL_CONNECT_ARGS
 }
 
 resolve_grafana_admin_credentials() {
@@ -79,15 +66,9 @@ resolve_grafana_admin_credentials() {
 }
 
 curl_grafana_json() {
-  local response status body
-  response=$(curl --silent --show-error --write-out "\n%{http_code}" \
+  curl_with_status \
     "${CURL_TLS_ARGS[@]}" "${GRAFANA_CURL_CONNECT_ARGS[@]}" \
-    -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" "$@")
-  status=${response##*$'\n'}
-  body=${response%$'\n'*}
-
-  printf '%s\n%s\n' "${body}" "${status}"
-  [[ "${status}" =~ ^2 ]]
+    -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" "$@"
 }
 
 ###

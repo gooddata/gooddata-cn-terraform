@@ -76,8 +76,67 @@ locals {
   gdcn_s3_object_arns = formatlist("%s/*", local.gdcn_s3_bucket_arns)
 
   # Shared ARN fragments for StarRocks Glue/S3 Tables policies
-  glue_arn_prefix     = "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}"
-  s3tables_catalog_id = "${data.aws_caller_identity.current.account_id}:s3tablescatalog"
+  glue_arn_prefix              = "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}"
+  s3tables_catalog_id          = "${data.aws_caller_identity.current.account_id}:s3tablescatalog"
+  s3tables_bucket_wildcard_arn = "arn:aws:s3tables:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/*"
+
+  # Shared Glue catalog ARN list for the StarRocks S3 Tables federated catalog
+  # (catalog / catalog/s3tablescatalog / per-bucket catalog / database / table).
+  # Guarded by enable_ai_lake since it indexes into the count-gated table bucket.
+  glue_s3tables_catalog_arns = var.enable_ai_lake ? [
+    "${local.glue_arn_prefix}:catalog",
+    "${local.glue_arn_prefix}:catalog/s3tablescatalog",
+    "${local.glue_arn_prefix}:catalog/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}",
+    "${local.glue_arn_prefix}:database/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*",
+    "${local.glue_arn_prefix}:table/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*/*",
+  ] : []
+
+  # Shared two-statement (list+location, then object read/write/multipart) IAM
+  # policy JSON shape used by the gdcn, observability and starrocks S3 access
+  # policies below; only the per-consumer Resource lists differ. The starrocks
+  # ARNs are guarded by enable_ai_lake since the bucket is count-gated.
+  s3_rw_policy_json = {
+    for name, cfg in {
+      gdcn = {
+        bucket_arns = local.gdcn_s3_bucket_arns
+        object_arns = local.gdcn_s3_object_arns
+      }
+      observability = {
+        bucket_arns = local.obs_s3_bucket_arns
+        object_arns = local.obs_s3_object_arns
+      }
+      starrocks = {
+        bucket_arns = var.enable_ai_lake ? [aws_s3_bucket.starrocks[0].arn] : []
+        object_arns = var.enable_ai_lake ? ["${aws_s3_bucket.starrocks[0].arn}/*"] : []
+      }
+      } : name => jsonencode({
+        Version = "2012-10-17",
+        Statement = [
+          {
+            Sid    = "AllowBucketListingAndLocation",
+            Effect = "Allow",
+            Action = [
+              "s3:ListBucket",
+              "s3:GetBucketLocation",
+              "s3:ListBucketMultipartUploads"
+            ],
+            Resource = cfg.bucket_arns
+          },
+          {
+            Sid    = "AllowObjectReadWriteAndMultipart",
+            Effect = "Allow",
+            Action = [
+              "s3:GetObject",
+              "s3:PutObject",
+              "s3:DeleteObject",
+              "s3:AbortMultipartUpload",
+              "s3:ListMultipartUploadParts"
+            ],
+            Resource = cfg.object_arns
+          }
+        ]
+    })
+  }
 }
 
 ###
@@ -129,33 +188,7 @@ resource "aws_iam_policy" "starrocks_s3_access" {
   name        = "${var.deployment_name}-StarRocksS3Access"
   description = "Allow StarRocks workloads to use S3 bucket for shared-data storage."
 
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Sid    = "AllowBucketListingAndLocation",
-        Effect = "Allow",
-        Action = [
-          "s3:ListBucket",
-          "s3:GetBucketLocation",
-          "s3:ListBucketMultipartUploads"
-        ],
-        Resource = [aws_s3_bucket.starrocks[0].arn]
-      },
-      {
-        Sid    = "AllowObjectReadWriteAndMultipart",
-        Effect = "Allow",
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject",
-          "s3:AbortMultipartUpload",
-          "s3:ListMultipartUploadParts"
-        ],
-        Resource = ["${aws_s3_bucket.starrocks[0].arn}/*"]
-      }
-    ]
-  })
+  policy = local.s3_rw_policy_json["starrocks"]
 }
 
 ###
@@ -279,33 +312,7 @@ resource "aws_iam_policy" "gdcn_s3_access" {
   name        = "${var.deployment_name}-GoodDataCNS3Access"
   description = "Allow GoodData.CN workloads to use S3 buckets for quiver cache, datasource FS, and exports."
 
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Sid    = "AllowBucketListingAndLocation",
-        Effect = "Allow",
-        Action = [
-          "s3:ListBucket",
-          "s3:GetBucketLocation",
-          "s3:ListBucketMultipartUploads"
-        ],
-        Resource = local.gdcn_s3_bucket_arns
-      },
-      {
-        Sid    = "AllowObjectReadWriteAndMultipart",
-        Effect = "Allow",
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject",
-          "s3:AbortMultipartUpload",
-          "s3:ListMultipartUploadParts"
-        ],
-        Resource = local.gdcn_s3_object_arns
-      }
-    ]
-  })
+  policy = local.s3_rw_policy_json["gdcn"]
 }
 
 ###
@@ -367,31 +374,5 @@ resource "aws_iam_policy" "observability_s3_access" {
   name        = "${var.deployment_name}-ObservabilityS3Access"
   description = "Allow Loki and Tempo to use S3 buckets for object storage."
 
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Sid    = "AllowBucketListingAndLocation",
-        Effect = "Allow",
-        Action = [
-          "s3:ListBucket",
-          "s3:GetBucketLocation",
-          "s3:ListBucketMultipartUploads"
-        ],
-        Resource = local.obs_s3_bucket_arns
-      },
-      {
-        Sid    = "AllowObjectReadWriteAndMultipart",
-        Effect = "Allow",
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject",
-          "s3:AbortMultipartUpload",
-          "s3:ListMultipartUploadParts"
-        ],
-        Resource = local.obs_s3_object_arns
-      }
-    ]
-  })
+  policy = local.s3_rw_policy_json["observability"]
 }

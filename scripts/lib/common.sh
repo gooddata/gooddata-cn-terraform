@@ -42,6 +42,23 @@ is_inside_container() {
   return 1
 }
 
+docker_internal_connect_to_args() {
+  # If we're running inside a devcontainer, "localhost" refers to the container.
+  # For local k3d (Docker-outside-of-Docker), the ingress port is on the Docker host.
+  # Important: keep the URL hostname as-is so Ingress host routing works, but
+  # connect to host.docker.internal underneath.
+  local hostname="$1"
+  local -n out_array="$2"
+  out_array=()
+
+  if is_inside_container && [[ "${hostname}" == "localhost" || "${hostname}" == *.localhost ]]; then
+    if command_exists getent && getent hosts host.docker.internal >/dev/null 2>&1; then
+      echo "Container detected, routing via host.docker.internal."
+      out_array=(--connect-to "${hostname}:443:host.docker.internal:443")
+    fi
+  fi
+}
+
 require_command() {
   local binary="$1"
   local message="${2:-}"
@@ -87,6 +104,14 @@ has_tf_outputs() {
     jq -e 'length > 0' <<<"${TF_OUTPUT_JSON}" >/dev/null 2>&1
   else
     [[ "${TF_OUTPUT_JSON}" != "{}" ]]
+  fi
+}
+
+require_tf_outputs() {
+  load_tf_outputs
+  if ! has_tf_outputs; then
+    echo ">> ERROR: Terraform outputs not available. Run 'terraform apply' first." >&2
+    exit 1
   fi
 }
 
@@ -246,4 +271,28 @@ prompt_choice() {
 
 urlencode() {
   jq -rn --arg v "${1}" '$v|@uri'
+}
+
+# Runs curl with the given args, prints "<body>\n<http_status>\n" on stdout,
+# and returns success only if the status code is 2xx.
+curl_with_status() {
+  local response status body
+  response=$(curl --silent --show-error --write-out "\n%{http_code}" "$@")
+  status=${response##*$'\n'}
+  body=${response%$'\n'*}
+
+  printf '%s\n%s\n' "${body}" "${status}"
+
+  [[ "${status}" =~ ^2 ]]
+}
+
+# Fetches a single field from a Kubernetes Secret's .data and base64-decodes it.
+# Prints the decoded value on stdout; returns 1 if the field is missing/empty
+# or cannot be decoded.
+load_k8s_secret_field() {
+  local namespace="$1" secret="$2" key="$3"
+  local raw
+  raw=$(kubectl get secret -n "${namespace}" "${secret}" -o jsonpath="{.data.${key}}" 2>/dev/null || true)
+  [[ -n "${raw}" ]] || return 1
+  printf '%s' "${raw}" | base64 -d 2>/dev/null
 }
