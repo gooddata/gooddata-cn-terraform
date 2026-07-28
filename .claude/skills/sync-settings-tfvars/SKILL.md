@@ -86,7 +86,7 @@ done
 - `terraform console -var-file=settings.tfvars` is the real proof: it parses the
   file *and* runs every `validation` block, catching a value the current schema
   rejects — including cross-variable validations like AI Lake requiring
-  `starrocks_size_profile`. It usually needs no `init`. If it does fail with
+  `ai_lake_size_profile`. It usually needs no `init`. If it does fail with
   `Inconsistent dependency lock file`, that's pre-existing provider-constraint
   drift unrelated to your edit: report it and leave it, because
   `terraform init -upgrade` would rewrite a lock file the user didn't ask you to
@@ -177,7 +177,7 @@ list it in the report so the user can confirm it's still wanted.
 have genuinely different variable sets, so never copy a section across clouds by
 analogy. Confirm against that environment's `variables.tf` that a variable exists
 and a value is legal before introducing it. Two real examples: AI Lake
-(`enable_ai_lake`, `starrocks_size_profile`) exists for AWS and has no Azure
+(`enable_ai_lake`, `ai_lake_size_profile`) exists for AWS and has no Azure
 counterpart, and `size_profile` accepts `prod-xl` on AWS while Azure's validation
 block rejects it. Comments listing valid values are part of this — an
 AWS-accurate list pasted into Azure documents a value that fails validation.
@@ -201,7 +201,7 @@ behavior. This is usually the most consequential thing in the whole sync and the
 easiest to miss, because the mechanical diff is one comment line.
 
 **Structure changes can add a required companion.** A single variable can become
-a pair — `enable_ai_lake` gaining a mandatory `starrocks_size_profile`. When an
+a pair — `enable_ai_lake` gaining a mandatory `ai_lake_size_profile`. When an
 example's comment says two lines are required, carry both placeholders, or an
 opt-in later will fail. Read what the comment asserts, don't just copy lines.
 
