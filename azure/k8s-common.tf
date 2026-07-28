@@ -81,6 +81,9 @@ module "k8s_common" {
     azurerm_container_registry_credential_set.dockerio,
     azurerm_role_assignment.aks_acr_pull,
     azurerm_role_assignment.acr_credential_set_secrets_user,
+    # DNS must resolve before cert-manager issues its first Let's Encrypt cert;
+    # a failed issuance backs off up to 32h. No-op unless dns_provider=azure-dns.
+    helm_release.external_dns,
   ]
 }
 
@@ -159,18 +162,9 @@ locals {
 }
 
 output "manual_dns_records" {
-  description = "DNS records to create for Azure ingress."
-  value = var.ingress_controller == "ingress-nginx" && local.ingress_lb_ip != "" ? [
-    for hostname in distinct(compact(concat(
-      [module.k8s_common.auth_hostname],
-      module.k8s_common.org_domains,
-      var.enable_observability ? [trimspace(var.observability_hostname)] : []
-      ))) : {
-      hostname    = hostname
-      record_type = "A"
-      value       = local.ingress_lb_ip
-    }
-    ] : (var.ingress_controller == "istio_gateway" && local.istio_ingress_lb_ip != "" ? [
+  description = "DNS records to create for Azure ingress. Empty when dns_provider = \"azure-dns\" — external-dns maintains the records automatically."
+  value = local.external_dns_enabled ? [] : (
+    var.ingress_controller == "ingress-nginx" && local.ingress_lb_ip != "" ? [
       for hostname in distinct(compact(concat(
         [module.k8s_common.auth_hostname],
         module.k8s_common.org_domains,
@@ -178,7 +172,18 @@ output "manual_dns_records" {
         ))) : {
         hostname    = hostname
         record_type = "A"
-        value       = local.istio_ingress_lb_ip
+        value       = local.ingress_lb_ip
       }
-  ] : [])
+      ] : (var.ingress_controller == "istio_gateway" && local.istio_ingress_lb_ip != "" ? [
+        for hostname in distinct(compact(concat(
+          [module.k8s_common.auth_hostname],
+          module.k8s_common.org_domains,
+          var.enable_observability ? [trimspace(var.observability_hostname)] : []
+          ))) : {
+          hostname    = hostname
+          record_type = "A"
+          value       = local.istio_ingress_lb_ip
+        }
+    ] : [])
+  )
 }

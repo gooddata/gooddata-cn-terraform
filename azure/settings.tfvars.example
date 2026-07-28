@@ -46,9 +46,24 @@ size_profile = "prod-small"
 ###
 # DNS
 ###
-# Azure DNS records must be managed externally.
-# Terraform outputs the public IP address and required DNS records.
+
+# Option 1 — Self-managed DNS
+# Terraform outputs the LoadBalancer's public IP and the records you need to create
+# (auth/org/observability hostnames → IP). You create them in your DNS provider.
 dns_provider = "self-managed"
+
+# Option 2 — Azure DNS (managed via external-dns)
+# Terraform expects an existing Azure DNS public zone and deploys external-dns
+# inside the cluster. external-dns watches Ingress (or, for istio_gateway, the
+# Istio LoadBalancer Service) and continuously syncs A/TXT records into the zone.
+# Cost: ~$0.50/zone/month + ~$0.40 per million queries.
+#
+# Delegate your domain to Azure DNS by pointing your registrar at the name
+# servers from the `azure_dns_zone_name_servers` output before you rely on it.
+#
+# dns_provider                       = "azure-dns"
+# azure_dns_zone_name                = "gooddata.example.com"
+# azure_dns_zone_resource_group_name = "my-dns-rg"
 
 ###
 # Ingress + TLS
