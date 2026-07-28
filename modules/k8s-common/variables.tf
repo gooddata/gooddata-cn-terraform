@@ -127,9 +127,29 @@ variable "gdcn_orgs" {
   }))
 }
 
+variable "enable_gdcn_autoscaling" {
+  description = "Enable KEDA-based horizontal autoscaling for the GoodData.CN UI and core services. Requires helm_gdcn_version >= 4.12.0."
+  type        = bool
+  default     = false
+}
+
 variable "helm_cert_manager_version" { type = string }
 
 variable "helm_gdcn_version" { type = string }
+
+variable "helm_keda_version" {
+  description = "Version of the KEDA Helm chart to deploy. https://artifacthub.io/packages/helm/kedacore/keda"
+  type        = string
+  # renovate: depName=keda registryUrl=https://kedacore.github.io/charts
+  default = "2.20.1"
+}
+
+variable "helm_metrics_server_version" {
+  description = "Version of the metrics-server Helm chart to deploy (AWS only; AKS and k3d ship metrics-server out of the box). https://artifacthub.io/packages/helm/metrics-server/metrics-server"
+  type        = string
+  # renovate: depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server/
+  default = "3.13.1"
+}
 
 variable "helm_grafana_version" { type = string }
 

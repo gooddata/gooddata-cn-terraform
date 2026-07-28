@@ -18,5 +18,9 @@ locals {
   resolved_ingress_class_name = var.ingress_controller == "alb" ? "alb" : (
     var.ingress_controller == "istio_gateway" ? "" : "nginx"
   )
+
+  # Autoscaling bounds: dev runs single replicas, production keeps an HA floor.
+  gdcn_autoscaling_min_replicas = var.gdcn_size == "dev" ? 1 : 2
+  gdcn_autoscaling_max_replicas = var.gdcn_size == "dev" ? 3 : 5
 }
 
