@@ -267,6 +267,8 @@ resource "helm_release" "aws_load_balancer_controller" {
   wait_for_jobs = true
   timeout       = 1800
 
+  # Tolerate the system pool taint: this runs before Karpenter has provisioned
+  # any untainted capacity, so the system nodes are the only place it can land.
   values = [<<EOF
     replicaCount: ${var.ingress_replicas}
     clusterName: ${var.deployment_name}
@@ -275,6 +277,9 @@ resource "helm_release" "aws_load_balancer_controller" {
     serviceAccount:
       create: false
       name: aws-load-balancer-controller
+    tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
 EOF
   ]
 

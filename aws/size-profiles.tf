@@ -1,9 +1,9 @@
 ###
-# Single source of truth for AWS sizing per size_profile: managed infra (RDS,
-# EKS nodes, Karpenter node CPU ceiling, ingress replicas) inline, plus workload
-# (GoodData.CN/Pulsar/observability) sizing referenced by name. StarRocks (AI
-# Lake) is sized separately via var.starrocks_size_profile. Override any managed
-# value via the matching var.* input.
+# All AWS sizing per size_profile. Managed infra (RDS, EKS system nodes,
+# Karpenter vCPU bounds, ingress replicas) is defined inline; GoodData.CN,
+# Pulsar and observability sizing is referenced by name. AI Lake has its own
+# tier, var.ai_lake_size_profile. Any managed value can be
+# overridden by the matching var.* input.
 ###
 
 locals {
@@ -13,11 +13,13 @@ locals {
         instance_class    = "db.t4g.medium"
         allocated_storage = 20
       }
-      system_node_type = "m6a.xlarge"
-      node_cpu_limit   = 48
-      node_cpu_max     = 8
-      ingress_replicas = 1
-      storage_class    = "gp3"
+      system_node_type   = "m6a.xlarge"
+      system_node_count  = 1
+      node_cpu_limit     = 48
+      node_cpu_max       = 8
+      ingress_replicas   = 1
+      storage_class      = "gp3"
+      fast_storage_class = "gp3"
       postgres = {
         work_mem_mb             = 8
         maintenance_work_mem_mb = 128
@@ -31,11 +33,13 @@ locals {
         instance_class    = "db.r6g.large"
         allocated_storage = 100
       }
-      system_node_type = "m8a.xlarge"
-      node_cpu_limit   = 96
-      node_cpu_max     = 8
-      ingress_replicas = 2
-      storage_class    = "gp3-perf"
+      system_node_type   = "m8a.xlarge"
+      system_node_count  = 2
+      node_cpu_limit     = 96
+      node_cpu_max       = 8
+      ingress_replicas   = 2
+      storage_class      = "gp3"
+      fast_storage_class = "gp3-perf"
       postgres = {
         work_mem_mb             = 16
         maintenance_work_mem_mb = 256
@@ -49,11 +53,13 @@ locals {
         instance_class    = "db.r6g.xlarge"
         allocated_storage = 100
       }
-      system_node_type = "m8a.xlarge"
-      node_cpu_limit   = 320
-      node_cpu_max     = 16
-      ingress_replicas = 3
-      storage_class    = "gp3-perf"
+      system_node_type   = "m8a.xlarge"
+      system_node_count  = 3
+      node_cpu_limit     = 320
+      node_cpu_max       = 16
+      ingress_replicas   = 3
+      storage_class      = "gp3"
+      fast_storage_class = "gp3-perf"
       postgres = {
         work_mem_mb             = 32
         maintenance_work_mem_mb = 512
@@ -65,29 +71,29 @@ locals {
     prod-xl = {
       rds = {
         instance_class    = "db.r6g.2xlarge"
-        allocated_storage = 200
+        allocated_storage = 100
       }
-      system_node_type = "m8a.xlarge"
-      node_cpu_limit   = 480
-      node_cpu_max     = 16
-      ingress_replicas = 3
-      storage_class    = "gp3-perf"
+      system_node_type   = "m8a.xlarge"
+      system_node_count  = 3
+      node_cpu_limit     = 480
+      node_cpu_max       = 16
+      ingress_replicas   = 3
+      storage_class      = "gp3"
+      fast_storage_class = "gp3-perf"
       postgres = {
         work_mem_mb             = 64
         maintenance_work_mem_mb = 1024
       }
-      # No prod-xl GDCN/Pulsar/observability spec; fold to prod-large (explicit).
+      # There is no prod-xl workload spec, so prod-xl reuses prod-large.
       gdcn_size          = "prod-large"
       pulsar_size        = "prod-large"
       observability_size = "prod-large"
     }
   }
 
-  # StarRocks node pools are a separate dimension from size_profile: they are
-  # selected by var.starrocks_size_profile (dev/prod-small/prod-xl), which is
-  # decoupled from size_profile, so they live in their own map keyed only by the
-  # valid StarRocks tiers. There is intentionally no prod-large entry.
-  starrocks_node_type_presets = {
+  # Keyed by var.ai_lake_size_profile, which is chosen independently of
+  # size_profile. Only dev/prod-small/prod-xl exist; prod-large has no tier.
+  ai_lake_node_type_presets = {
     dev        = ["r8a.large", "m8a.xlarge"]
     prod-small = ["r8a.large", "r8a.xlarge"]
     prod-xl    = ["r8a.large", "r8a.8xlarge"]
@@ -95,28 +101,31 @@ locals {
 
   profile = local.size_profiles[var.size_profile]
 
-  # Resolved size_profile values (profile default, overridable via var.*).
+  # Resolved values: profile default unless the matching var.* is set.
   rds_instance_class    = coalesce(var.rds_instance_class, local.profile.rds.instance_class)
   rds_allocated_storage = coalesce(var.rds_allocated_storage, local.profile.rds.allocated_storage)
-  # Prod tiers get deletion protection and a final snapshot on destroy; dev stays
-  # disposable. PITR is 14 days for prod, 7 for dev. Overridable via var.*.
+  # Prod keeps deletion protection, a final snapshot on destroy, and 14 days of
+  # point-in-time recovery; dev is disposable and keeps 7 days.
   rds_is_prod                 = startswith(var.size_profile, "prod")
   rds_deletion_protection     = var.rds_deletion_protection != null ? var.rds_deletion_protection : local.rds_is_prod
   rds_skip_final_snapshot     = var.rds_skip_final_snapshot != null ? var.rds_skip_final_snapshot : !local.rds_is_prod
   rds_backup_retention_period = coalesce(var.rds_backup_retention_period, local.rds_is_prod ? 14 : 7)
-  # System node group instance type (not user-configurable). Workload nodes are
-  # sized by Karpenter (instance-category + CPU bounds below).
-  system_node_type = local.profile.system_node_type
-  # Total workload vCPU ceiling (NodePool spec.limits.cpu).
+  # Instance type and count of the system node group; not user-configurable.
+  # Karpenter sizes the workload nodes, using the vCPU bounds below.
+  system_node_type  = local.profile.system_node_type
+  system_node_count = local.profile.system_node_count
+  # Ceiling on total workload vCPUs Karpenter may run (NodePool spec.limits.cpu).
   eks_node_cpu_limit = coalesce(var.eks_node_cpu_limit, local.profile.node_cpu_limit)
-  # Per-node vCPU cap for workload nodes (NodePool instance-cpu Lt) within the m category.
+  # Largest workload node Karpenter may pick, in vCPUs (NodePool instance-cpu Lt).
+  # The m*a types it selects from have no member below 2 vCPU, so no floor is set.
   eks_node_cpu_max = coalesce(var.eks_node_cpu_max, local.profile.node_cpu_max)
-  # StorageClass for GoodData.CN chart PVCs (gp3 for dev, gp3-perf for prod).
-  # Overridable via var.eks_storage_class.
+  # StorageClass for GoodData.CN chart PVCs. Overridable via var.eks_storage_class.
   storage_class = coalesce(var.eks_storage_class, local.profile.storage_class)
+  # Class for latency-sensitive PVCs, etcd only for now. Its 5000 IOPS need a
+  # volume of at least 10 GiB, since gp3 caps provisioned IOPS at 500/GiB.
+  fast_storage_class = local.profile.fast_storage_class
 
-  # StarRocks node pool: indexed by the explicit var.starrocks_size_profile, NOT
-  # size_profile (the two are decoupled). Only used when enable_ai_lake is true,
-  # which the variable's validation requires.
-  eks_starrocks_node_types = var.enable_ai_lake ? coalesce(var.eks_starrocks_node_types, local.starrocks_node_type_presets[var.starrocks_size_profile]) : []
+  # AI Lake node types come from var.ai_lake_size_profile, not size_profile.
+  # Empty unless AI Lake is enabled, since nothing consumes them otherwise.
+  eks_ai_lake_node_types = var.enable_ai_lake ? coalesce(var.eks_ai_lake_node_types, local.ai_lake_node_type_presets[var.ai_lake_size_profile]) : []
 }

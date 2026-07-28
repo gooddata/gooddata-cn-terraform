@@ -15,6 +15,8 @@ resource "kubernetes_storage_class_v1" "gp3_perf" {
   volume_binding_mode    = "WaitForFirstConsumer"
   allow_volume_expansion = true
 
+  # Fast class for latency-sensitive PVCs. EBS caps gp3 provisioned IOPS at
+  # 500/GiB, so volumes on this class must be at least 10 GiB.
   parameters = {
     type       = "gp3"
     iops       = "5000"

@@ -44,6 +44,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
   administrator_login    = local.db_username
   administrator_password = local.db_password
   storage_mb             = local.postgresql_storage_mb
+  storage_tier           = local.postgresql_storage_tier
   sku_name               = local.postgresql_sku_name
 
   # Disable public network access when using VNet integration

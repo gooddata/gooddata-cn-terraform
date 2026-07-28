@@ -149,6 +149,10 @@ resource "kubectl_manifest" "gdcn_organization" {
     }, each.value.tls)
   })
 
+  # Block destroy until the controller clears its kopf finalizer, which it can only
+  # do while the gooddata-cn release is still running.
+  wait = true
+
   lifecycle {
     precondition {
       condition     = each.value.name != ""

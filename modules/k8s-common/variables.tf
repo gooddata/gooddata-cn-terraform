@@ -1,3 +1,9 @@
+# Required only when enable_ai_lake is true (AI Lake is AWS-only); null otherwise.
+variable "ai_lake_size_profile" {
+  type    = string
+  default = null
+}
+
 variable "auth_hostname" { type = string }
 
 variable "aws_region" {
@@ -66,6 +72,12 @@ variable "enable_ai_lake" {
   default     = false
 }
 
+variable "fast_storage_class" {
+  description = "StorageClass for latency-sensitive GoodData.CN PVCs (etcd today). Falls back to gdcn_storage_class when empty."
+  type        = string
+  default     = ""
+}
+
 variable "s3_tables_bucket_arn" {
   description = "ARN of the AWS S3 Tables bucket used by AI Lake."
   type        = string
@@ -85,7 +97,7 @@ variable "glue_etl_role_arn" {
 }
 
 variable "starrocks_s3_tables_iam_user_arn" {
-  description = "ARN of the IAM user used by StarRocks to access AWS S3 Tables."
+  description = "ARN of the IAM user used by AI Lake to access AWS S3 Tables."
   type        = string
   default     = ""
 }
@@ -287,12 +299,6 @@ variable "pulsar_size" {
     condition     = contains(local.workload_size_tiers, var.pulsar_size)
     error_message = "pulsar_size must be one of: dev, prod-small, prod-large (fold prod-xl to prod-large in the env's size-profiles.tf)."
   }
-}
-
-# Required only when enable_ai_lake is true (StarRocks is AWS-only); null otherwise.
-variable "starrocks_size_profile" {
-  type    = string
-  default = null
 }
 
 variable "starrocks_cn_image_tag" {

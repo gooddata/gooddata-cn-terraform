@@ -37,7 +37,7 @@ locals {
     AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
   }, local.ecr_pull_through_cache_policy)
 
-  # Node sizing / StarRocks node types: resolved in size-profiles.tf and applied
+  # Node sizing / AI Lake node types: resolved in size-profiles.tf and applied
   # via Karpenter NodePools (see karpenter.tf), not managed node groups.
 }
 
@@ -67,10 +67,19 @@ module "eks" {
     kube-proxy             = {}
     vpc-cni = {
       before_compute = true
+      # Prefix delegation: each ENI slot carries a /28, not one IP, so pod
+      # density stops tracking instance size. maxPods pinned to match below.
+      configuration_values = jsonencode({
+        env = {
+          ENABLE_PREFIX_DELEGATION = "true"
+          WARM_PREFIX_TARGET       = "1"
+        }
+      })
     }
     aws-ebs-csi-driver = {
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
+      service_account_role_arn    = aws_iam_role.ebs_csi_irsa.arn
     }
   }
 
@@ -85,10 +94,29 @@ module "eks" {
   # workload capacity just-in-time.
   eks_managed_node_groups = {
     system = {
-      ami_type                   = "BOTTLEROCKET_x86_64"
-      instance_types             = [local.system_node_type]
-      use_custom_launch_template = false
-      disk_size                  = 100
+      ami_type       = "BOTTLEROCKET_x86_64"
+      instance_types = [local.system_node_type]
+
+      # A custom launch template is what puts these nodes in the shared node
+      # security group. Bottlerocket stores containers on /dev/xvdb.
+      block_device_mappings = {
+        xvdb = {
+          device_name = "/dev/xvdb"
+          ebs = {
+            volume_size           = var.eks_node_disk_size
+            volume_type           = "gp3"
+            encrypted             = true
+            delete_on_termination = true
+          }
+        }
+      }
+
+      # Without this the kubelet keeps the secondary-IP pod limit, leaving
+      # prefix delegation inert here. EKS merges this with its own TOML.
+      bootstrap_extra_args = <<-EOT
+        [settings.kubernetes]
+        max-pods = ${var.eks_node_max_pods}
+      EOT
 
       # Isolate the system pool: only system pods (which tolerate this taint)
       # run here; all workloads go to Karpenter-provisioned nodes. CoreDNS
@@ -105,9 +133,11 @@ module "eks" {
 
       iam_role_additional_policies = local.node_iam_role_additional_policies
 
-      min_size     = 2
-      max_size     = 3
-      desired_size = 2
+      # Sized per size_profile (size-profiles.tf), matching AKS. One spare slot
+      # above desired so a node can be replaced without losing capacity.
+      min_size     = local.system_node_count
+      max_size     = local.system_node_count + 1
+      desired_size = local.system_node_count
     }
   }
 
@@ -117,7 +147,17 @@ module "eks" {
     "karpenter.sh/discovery" = var.deployment_name
   }
 
-  node_security_group_additional_rules = var.ingress_controller == "istio_gateway" ? {
+  # Pod IPs live on node ENIs, so this group governs all pod-to-pod traffic.
+  node_security_group_additional_rules = merge({
+    node_to_node_all = {
+      description = "Node to node, all ports and protocols"
+      protocol    = "-1"
+      from_port   = 0
+      to_port     = 0
+      type        = "ingress"
+      self        = true
+    }
+    }, var.ingress_controller == "istio_gateway" ? {
     istio_xds = {
       description                   = "Istio XDS (istiod) to workloads"
       protocol                      = "tcp"
@@ -134,7 +174,7 @@ module "eks" {
       type                          = "ingress"
       source_cluster_security_group = true
     }
-  } : {}
+  } : {})
 }
 
 # Outputs

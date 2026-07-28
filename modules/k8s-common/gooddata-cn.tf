@@ -16,6 +16,7 @@ locals {
   ingress_annotations     = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
+  fast_storage_class      = var.fast_storage_class != "" ? var.fast_storage_class : var.gdcn_storage_class
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
@@ -122,6 +123,7 @@ resource "helm_release" "gooddata_cn" {
       db_username             = var.db_username
       db_password             = var.db_password
       storage_class           = var.gdcn_storage_class
+      fast_storage_class      = local.fast_storage_class
       registry_dockerio       = var.registry_dockerio
       registry_quayio         = var.registry_quayio
       ingress_class_name      = local.resolved_ingress_class_name
@@ -160,7 +162,7 @@ resource "helm_release" "gooddata_cn" {
       aws_region       = var.aws_region
       organization_ids = local.org_ids
 
-      starrocks_fe_endpoint                = "kube-starrocks-fe-service.starrocks.svc.cluster.local"
+      starrocks_fe_endpoint                = "kube-starrocks-fe-service.${local.starrocks_namespace}.svc.cluster.local"
       starrocks_admin_password_secret_name = var.starrocks_admin_password_secret_name != "" ? var.starrocks_admin_password_secret_name : kubernetes_secret_v1.starrocks_admin_password[0].metadata[0].name
       starrocks_admin_password_secret_key  = var.starrocks_admin_password_secret_key != "" ? var.starrocks_admin_password_secret_key : "STARROCKS_ADMIN_PASSWORD"
 

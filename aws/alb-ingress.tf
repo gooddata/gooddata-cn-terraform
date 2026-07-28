@@ -224,6 +224,12 @@ resource "null_resource" "alb_cleanup_wait" {
     aws_profile = var.aws_profile_name
   }
 
+  lifecycle {
+    # Any trigger change replaces this resource, which force-deletes the ALB
+    # below. The profile is a local credential detail, so renaming it must not.
+    ignore_changes = [triggers["aws_profile"]]
+  }
+
   provisioner "local-exec" {
     when    = destroy
     command = <<-EOT
@@ -260,8 +266,8 @@ resource "null_resource" "alb_cleanup_wait" {
 
       # Give the LB controller up to 5 min to delete the ALB.
       echo "Waiting up to 300s for ALB '$lb_name' to be deleted by the AWS Load Balancer Controller..."
-      end=$((SECONDS + 300))
-      while [ "$SECONDS" -lt "$end" ]; do
+      end=$(($(date +%s) + 300))
+      while [ "$(date +%s)" -lt "$end" ]; do
         if ! alb_exists; then
           echo "ALB '$lb_name' deleted by the controller."
           exit 0

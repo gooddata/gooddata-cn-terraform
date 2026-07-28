@@ -376,12 +376,6 @@ variable "postgresql_sku_name" {
   default     = null
 }
 
-variable "postgresql_storage_mb" {
-  description = "Azure Database for PostgreSQL storage in MB. If null, chosen by size_profile."
-  type        = number
-  default     = null
-}
-
 variable "size_profile" {
   description = "Sizing profile for GoodData.CN and supporting services."
   type        = string

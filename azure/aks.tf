@@ -91,9 +91,12 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   tags = local.common_tags
 
-  # NAT gateway must be attached to the subnet before the cluster is created
-  # when outbound_type = userAssignedNATGateway.
-  depends_on = [azurerm_subnet_nat_gateway_association.aks]
+  # userAssignedNATGateway egress needs both bound before creation, and keeps node
+  # egress alive until the cluster is destroyed.
+  depends_on = [
+    azurerm_nat_gateway_public_ip_association.main,
+    azurerm_subnet_nat_gateway_association.aks,
+  ]
 }
 
 # The kubelet identity gets no resource-group-wide grant: any pod can reach it

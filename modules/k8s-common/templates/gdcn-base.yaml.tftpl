@@ -85,9 +85,10 @@ telemetry:
 
 # Pin PVC storage class per size profile (set from Terraform). Covers the
 # always-present chart PVCs (etcd, redis-ha) and qdrant when AI features are on.
+# etcd takes the fast class, since Quiver blocks on its fsync latency.
 customEtcd:
   persistence:
-    storageClassName: ${storage_class}
+    storageClassName: ${fast_storage_class}
 redis-ha:
   persistentVolume:
     storageClass: ${storage_class}

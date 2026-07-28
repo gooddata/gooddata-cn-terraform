@@ -56,6 +56,8 @@ resource "kubectl_manifest" "karpenter_node_pool" {
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
             # AMD general-purpose, 4 GiB/vCPU, premium-capable D-series only.
             # Excludes Intel (Ds/Dls), low-memory (Dals/Dls), and ARM (Dpls).
+            # Smallest member (D2as) gives an implicit 2 vCPU floor, matching the
+            # explicit eks_node_cpu_min on AWS; no Gt requirement needed here.
             { key = "karpenter.azure.com/sku-series", operator = "In", values = ["Das_v5", "Das_v6", "Das_v7"] },
             { key = "karpenter.azure.com/sku-cpu", operator = "Lt", values = [tostring(local.aks_node_cpu_max + 1)] },
             # Belt-and-suspenders: the series above are all premium-capable, but

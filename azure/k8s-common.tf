@@ -126,6 +126,12 @@ module "k8s_common" {
     # DNS must resolve before cert-manager issues its first Let's Encrypt cert;
     # a failed issuance backs off up to 32h. No-op unless dns_provider=azure-dns.
     helm_release.external_dns,
+    # Node capacity must outlive the helm releases too: deleting the NodePool
+    # taints every Karpenter node, leaving pre-delete hooks unschedulable.
+    kubectl_manifest.karpenter_node_pool,
+    # Deleting a LoadBalancer Service needs subnet join, so this grant must
+    # outlive the ingress release or the Azure LB can never be torn down.
+    azurerm_role_assignment.aks_system_identity_network_contributor,
   ]
 }
 

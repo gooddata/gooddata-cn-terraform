@@ -19,6 +19,10 @@ module "karpenter" {
   # association binding the kube-system/karpenter service account to the role.
   create_pod_identity_association = true
 
+  # The generated controller policy exceeds the 6144-char managed-policy quota.
+  # Inline role policies allow 10240, which fits.
+  enable_inline_policy = true
+
   # Lets Karpenter-launched nodes use the EBS CSI driver and pull images
   # (incl. via the optional pull-through cache).
   node_iam_role_additional_policies = local.node_iam_role_additional_policies
@@ -42,6 +46,9 @@ resource "helm_release" "karpenter" {
     serviceAccount = {
       name = "karpenter"
     }
+    # The chart's default 2 replicas require hostname anti-affinity to be
+    # satisfiable, so one system node means one replica.
+    replicas = min(local.system_node_count, 2)
     settings = {
       clusterName       = module.eks.cluster_name
       clusterEndpoint   = module.eks.cluster_endpoint
@@ -82,6 +89,22 @@ resource "kubectl_manifest" "karpenter_node_class" {
       tags = merge(local.common_tags, {
         "karpenter.sh/discovery" = var.deployment_name
       })
+      # Bottlerocket's default 20 GiB /dev/xvdb is below the ephemeral-storage
+      # some pods request, leaving them unschedulable on every instance type.
+      blockDeviceMappings = [{
+        deviceName = "/dev/xvdb"
+        ebs = {
+          volumeSize          = "${var.eks_node_disk_size}Gi"
+          volumeType          = "gp3"
+          encrypted           = true
+          deleteOnTermination = true
+        }
+      }]
+      # Karpenter sizes maxPods from secondary-IP limits, leaving prefix
+      # delegation (eks.tf) inert. 110 fits every node these pools build.
+      kubelet = {
+        maxPods = var.eks_node_max_pods
+      }
     }
   })
 
@@ -126,9 +149,11 @@ resource "kubectl_manifest" "karpenter_node_pool" {
       limits = {
         cpu = local.eks_node_cpu_limit
       }
+      # 15m of underutilization before reclaiming a node, so bursty workloads
+      # do not churn capacity.
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
-        consolidateAfter    = "1m"
+        consolidateAfter    = "15m"
       }
     }
   })
@@ -164,7 +189,7 @@ resource "kubectl_manifest" "karpenter_node_pool_starrocks" {
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-            { key = "node.kubernetes.io/instance-type", operator = "In", values = local.eks_starrocks_node_types },
+            { key = "node.kubernetes.io/instance-type", operator = "In", values = local.eks_ai_lake_node_types },
           ]
           nodeClassRef = {
             group = "karpenter.k8s.aws"
@@ -185,4 +210,120 @@ resource "kubectl_manifest" "karpenter_node_pool_starrocks" {
   })
 
   depends_on = [kubectl_manifest.karpenter_node_class]
+}
+
+# ---------------------------------------------------------------------------
+# Karpenter destroy-time NodeClaim drain
+# ---------------------------------------------------------------------------
+# Only Karpenter can reap its own nodes, by clearing each NodeClaim finalizer.
+# Removing the controller first orphans them: the instances keep billing and
+# their ENIs block subnet, security group and VPC deletion.
+#
+# Destroy order, enforced by depends_on here and in k8s-common.tf:
+#   helm releases  →  nodeclaim_drain  →  node pools  →  node class  →  karpenter
+# ---------------------------------------------------------------------------
+resource "null_resource" "karpenter_nodeclaim_drain" {
+  triggers = {
+    cluster_name = module.eks.cluster_name
+    aws_region   = var.aws_region
+    aws_profile  = var.aws_profile_name
+  }
+
+  lifecycle {
+    # Any trigger change replaces this resource, which runs the drain below. The
+    # profile is a local credential detail, so renaming it must not delete nodes.
+    ignore_changes = [triggers["aws_profile"]]
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      set -eu
+
+      command -v aws >/dev/null 2>&1 || { echo "ERROR: aws CLI not found"; exit 1; }
+      command -v kubectl >/dev/null 2>&1 || { echo "ERROR: kubectl not found"; exit 1; }
+
+      cluster_name="${self.triggers.cluster_name}"
+      aws_region="${self.triggers.aws_region}"
+      aws_profile="${self.triggers.aws_profile}"
+
+      kubeconfig=$(mktemp)
+      trap 'rm -f "$kubeconfig"' EXIT
+
+      # Distinguish an already-deleted cluster from a real API error (expired
+      # credentials, wrong profile, no network), which must not skip the drain.
+      if ! err=$(aws eks update-kubeconfig --name "$cluster_name" --region "$aws_region" \
+        --profile "$aws_profile" --kubeconfig "$kubeconfig" 2>&1); then
+        if echo "$err" | grep -q "ResourceNotFoundException"; then
+          echo "Cluster '$cluster_name' no longer exists. Nothing to drain."
+          exit 0
+        fi
+        echo "ERROR: cannot reach cluster '$cluster_name' in '$aws_region' (profile '$aws_profile'): $err" >&2
+        exit 1
+      fi
+
+      kc="kubectl --kubeconfig $kubeconfig"
+
+      # Warn rather than fail: blocking here would make the stack undestroyable.
+      if ! $kc get --raw /readyz >/dev/null 2>&1; then
+        echo "WARNING: cluster '$cluster_name' is unreachable, so NodeClaims cannot be drained."
+        echo "WARNING: check for leftover instances tagged karpenter.sh/nodepool and terminate them,"
+        echo "WARNING: or subnet, security group and VPC deletion will fail."
+        exit 0
+      fi
+
+      if ! $kc get crd nodeclaims.karpenter.sh >/dev/null 2>&1; then
+        echo "NodeClaim CRD not installed. Nothing to drain."
+        exit 0
+      fi
+
+      # Fails instead of printing 0 when the API call itself fails, so a
+      # transient error is never mistaken for an empty cluster.
+      count_claims() {
+        out=$($kc get nodeclaims --no-headers 2>/dev/null) || return 1
+        if [ -z "$out" ]; then echo 0; else echo "$out" | wc -l | tr -d ' '; fi
+      }
+
+      if ! remaining=$(count_claims); then
+        echo "ERROR: cannot list NodeClaims on '$cluster_name'." >&2
+        exit 1
+      fi
+      if [ "$remaining" = "0" ]; then
+        echo "No NodeClaims to drain."
+        exit 0
+      fi
+
+      echo "Deleting $remaining Karpenter NodeClaim(s)..."
+      $kc delete nodeclaims --all --wait=false >/dev/null 2>&1 || true
+
+      # The finalizer clears only after the instance is terminated, so a claim
+      # disappearing means its node is really gone.
+      echo "Waiting up to 900s for Karpenter to terminate them..."
+      i=0
+      while [ "$i" -lt 90 ]; do
+        if remaining=$(count_claims); then
+          if [ "$remaining" = "0" ]; then
+            echo "All NodeClaims drained."
+            exit 0
+          fi
+          echo "Still waiting for $remaining NodeClaim(s)..."
+        else
+          echo "WARNING: could not list NodeClaims, retrying..."
+        fi
+        sleep 10
+        i=$((i + 1))
+      done
+
+      echo "ERROR: NodeClaim(s) still present after 900s."
+      echo "Their instances would be orphaned and their ENIs will block subnet,"
+      echo "security group and VPC deletion. Check the karpenter deployment in"
+      echo "kube-system, then re-run destroy."
+      exit 1
+    EOT
+  }
+
+  depends_on = [
+    kubectl_manifest.karpenter_node_pool,
+    kubectl_manifest.karpenter_node_pool_starrocks,
+  ]
 }

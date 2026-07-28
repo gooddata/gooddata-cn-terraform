@@ -77,6 +77,10 @@ customEtcd:
     limits:
       cpu: 600m
       memory: 1024Mi
+  # Above the chart's 8Gi default, so the fast storage class can deliver its
+  # full provisioned IOPS (see the per-cloud class definitions).
+  persistence:
+    size: 20Gi
 dashboards:
   resources:
     limits:
