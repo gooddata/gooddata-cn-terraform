@@ -18,10 +18,10 @@ variable "helm_metrics_server_version" { type = string }
 
 variable "ingress_controller" { type = string }
 
+variable "ingress_replicas" { type = number }
+
 variable "registry_k8sio" { type = string }
 
 variable "route53_zone_id" { type = string }
-
-variable "size_profile" { type = string }
 
 variable "vpc_id" { type = string }
