@@ -184,6 +184,10 @@ resource "helm_release" "gooddata_cn" {
       s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
+    var.enable_gdcn_autoscaling ? templatefile("${path.module}/templates/gdcn-autoscaling.yaml.tftpl", {
+      min_replicas = local.gdcn_autoscaling_min_replicas
+      max_replicas = local.gdcn_autoscaling_max_replicas
+    }) : null,
     var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,
   ])
 
@@ -201,6 +205,8 @@ resource "helm_release" "gooddata_cn" {
     helm_release.istio_ingress_gateway,
     kubectl_manifest.istio_public_gateway,
     helm_release.kube_prometheus_stack,
+    helm_release.keda,
+    helm_release.metrics_server,
   ]
 }
 

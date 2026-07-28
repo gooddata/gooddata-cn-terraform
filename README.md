@@ -135,6 +135,12 @@ After `terraform apply`, Grafana is available at `https://<observability_hostnam
 
 To import the dashboard into a standalone Grafana instance, upload `modules/k8s-common/dashboards/gooddata-cn-overall-health.json` via **Dashboards → Import** and replace the datasource UIDs (`prometheus` → your Prometheus UID, `loki` → your Loki UID).
 
+## Autoscaling
+
+Set `enable_gdcn_autoscaling = true` in your `settings.tfvars` (requires `helm_gdcn_version >= 4.12.0`) to horizontally autoscale the GoodData.CN UI and core services (api-gw, metadata-api, afm-exec-api, calcique, result-cache, auth-service) on CPU utilization.
+
+This deploys [KEDA](https://keda.sh/) into the cluster (plus the Kubernetes Metrics Server on AWS, where EKS does not ship it) and enables the per-component `kedaAutoscaling` opt-ins in the gooddata-cn chart. CPU targets and scale-up/scale-down behavior use the chart defaults; replica bounds follow the size profile (`dev`: 1–3 replicas, production profiles: 2–5). Individual components can be tuned further via `gdcn_helm_extra_values`.
+
 ## Need help?
 
 Reach out to your GoodData contact and they'll point you in the right direction!
