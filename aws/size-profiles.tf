@@ -1,6 +1,6 @@
 ###
 # Single source of truth for AWS sizing per size_profile: managed infra (RDS,
-# EKS nodes, autoscaler ceiling, ingress replicas) inline, plus workload
+# EKS nodes, Karpenter node CPU ceiling, ingress replicas) inline, plus workload
 # (GoodData.CN/Pulsar/observability) sizing referenced by name. StarRocks (AI
 # Lake) is sized separately via var.starrocks_size_profile. Override any managed
 # value via the matching var.* input.
@@ -13,9 +13,11 @@ locals {
         instance_class    = "db.t4g.medium"
         allocated_storage = 20
       }
-      eks_node_types   = ["m6a.xlarge", "m6a.2xlarge"]
-      eks_max_nodes    = 6
+      system_node_type = "m6a.xlarge"
+      node_cpu_limit   = 48
+      node_cpu_max     = 8
       ingress_replicas = 1
+      storage_class    = "gp3"
       postgres = {
         work_mem_mb             = 8
         maintenance_work_mem_mb = 128
@@ -29,9 +31,11 @@ locals {
         instance_class    = "db.r6g.large"
         allocated_storage = 100
       }
-      eks_node_types   = ["m8a.xlarge", "m8a.2xlarge"]
-      eks_max_nodes    = 12
+      system_node_type = "m8a.xlarge"
+      node_cpu_limit   = 96
+      node_cpu_max     = 8
       ingress_replicas = 2
+      storage_class    = "gp3-perf"
       postgres = {
         work_mem_mb             = 16
         maintenance_work_mem_mb = 256
@@ -45,9 +49,11 @@ locals {
         instance_class    = "db.r6g.xlarge"
         allocated_storage = 100
       }
-      eks_node_types   = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
-      eks_max_nodes    = 20
+      system_node_type = "m8a.xlarge"
+      node_cpu_limit   = 320
+      node_cpu_max     = 16
       ingress_replicas = 3
+      storage_class    = "gp3-perf"
       postgres = {
         work_mem_mb             = 32
         maintenance_work_mem_mb = 512
@@ -61,9 +67,11 @@ locals {
         instance_class    = "db.r6g.2xlarge"
         allocated_storage = 200
       }
-      eks_node_types   = ["m8a.xlarge", "m8a.2xlarge", "m8a.4xlarge"]
-      eks_max_nodes    = 30
+      system_node_type = "m8a.xlarge"
+      node_cpu_limit   = 480
+      node_cpu_max     = 16
       ingress_replicas = 3
+      storage_class    = "gp3-perf"
       postgres = {
         work_mem_mb             = 64
         maintenance_work_mem_mb = 1024
@@ -90,8 +98,16 @@ locals {
   # Resolved size_profile values (profile default, overridable via var.*).
   rds_instance_class    = coalesce(var.rds_instance_class, local.profile.rds.instance_class)
   rds_allocated_storage = coalesce(var.rds_allocated_storage, local.profile.rds.allocated_storage)
-  eks_node_types        = coalesce(var.eks_node_types, local.profile.eks_node_types)
-  eks_max_nodes         = coalesce(var.eks_max_nodes, local.profile.eks_max_nodes)
+  # System node group instance type (not user-configurable). Workload nodes are
+  # sized by Karpenter (instance-category + CPU bounds below).
+  system_node_type = local.profile.system_node_type
+  # Total workload vCPU ceiling (NodePool spec.limits.cpu).
+  eks_node_cpu_limit = coalesce(var.eks_node_cpu_limit, local.profile.node_cpu_limit)
+  # Per-node vCPU cap for workload nodes (NodePool instance-cpu Lt) within the m category.
+  eks_node_cpu_max = coalesce(var.eks_node_cpu_max, local.profile.node_cpu_max)
+  # StorageClass for GoodData.CN chart PVCs (gp3 for dev, gp3-perf for prod).
+  # Overridable via var.eks_storage_class.
+  storage_class = coalesce(var.eks_storage_class, local.profile.storage_class)
 
   # StarRocks node pool: indexed by the explicit var.starrocks_size_profile, NOT
   # size_profile (the two are decoupled). Only used when enable_ai_lake is true,

@@ -51,6 +51,7 @@ module "k8s_common" {
   gdcn_helm_extra_values = var.gdcn_helm_extra_values
   ingress_replicas       = local.profile.ingress_replicas
   gdcn_size              = local.profile.gdcn_size
+  gdcn_storage_class     = local.storage_class
   pulsar_size            = local.profile.pulsar_size
   observability_size     = local.profile.observability_size
   starrocks_size_profile = var.starrocks_size_profile

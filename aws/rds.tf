@@ -28,16 +28,17 @@ resource "aws_security_group" "rds" {
   tags = local.common_tags
 }
 
-# Allow inbound PostgreSQL traffic from EKS node security group
+# Allow inbound PostgreSQL traffic from EKS node security group.
+# Karpenter nodes carry the node SG, not the cluster primary SG, and every
+# workload runs there (the system pool is tainted CriticalAddonsOnly).
 resource "aws_security_group_rule" "rds_postgres_ingress_from_nodes" {
-  type      = "ingress"
-  from_port = 5432
-  to_port   = 5432
-  protocol  = "tcp"
-  # Managed node groups attach the cluster primary security group (created by EKS)
-  source_security_group_id = module.eks.cluster_primary_security_group_id
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = module.eks.node_security_group_id
   security_group_id        = aws_security_group.rds.id
-  description              = "Allow PostgreSQL access from the EKS cluster primary security group"
+  description              = "Allow PostgreSQL access from the EKS node security group"
 }
 
 module "rds_postgresql" {
@@ -45,12 +46,17 @@ module "rds_postgresql" {
   version = "~> 7.0"
 
   # Identifier & engine
-  identifier                  = var.deployment_name
-  engine                      = "postgres"
-  engine_version              = data.aws_rds_engine_version.default.version
-  family                      = "postgres${split(".", data.aws_rds_engine_version.default.version)[0]}"
-  instance_class              = local.rds_instance_class
-  allocated_storage           = local.rds_allocated_storage
+  identifier        = var.deployment_name
+  engine            = "postgres"
+  engine_version    = data.aws_rds_engine_version.default.version
+  family            = "postgres${split(".", data.aws_rds_engine_version.default.version)[0]}"
+  instance_class    = local.rds_instance_class
+  allocated_storage = local.rds_allocated_storage
+  # gp3 gives a 3000 IOPS / 125 MBps baseline (free), vs gp2's ~3 IOPS/GB
+  # (~300 @ 100 GB). For >3000 IOPS, bump allocated_storage >=400 GB and set
+  # iops/storage_throughput. Autoscale storage to avoid full-disk outages.
+  storage_type                = "gp3"
+  max_allocated_storage       = local.rds_allocated_storage * 4
   apply_immediately           = var.rds_apply_immediately
   allow_major_version_upgrade = var.rds_allow_major_version_upgrade
 

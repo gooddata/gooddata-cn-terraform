@@ -4,27 +4,22 @@ variable "aks_api_server_authorized_ip_ranges" {
   default     = []
 }
 
-variable "aks_max_nodes" {
-  description = "Maximum worker nodes PER node pool (autoscaler ceiling applied to the default pool and to each additional aks_node_vm_sizes pool independently, so the cluster-wide max is this value times the number of pools). If null, chosen by size_profile."
-  type        = number
-  default     = null
-}
-
 variable "aks_min_nodes" {
-  description = "Minimum number of AKS worker nodes. If null, chosen by size_profile."
+  description = "Minimum number of AKS worker nodes (sizes the fixed system node pool's node_count). If null, chosen by size_profile."
   type        = number
   default     = null
 }
 
-variable "aks_node_vm_sizes" {
-  description = "VM sizes for AKS worker pools. The first entry sizes the default (system) node pool; any additional entries each create a separate autoscaling user node pool (scaling from 0). With least-waste autoscaling this lets the cluster pick the cheapest size that fits pending pods, mirroring the AWS eks_node_types list. If null, chosen by size_profile. E.g. [\"Standard_D4as_v6\", \"Standard_D8as_v6\", \"Standard_D16as_v6\"]."
-  type        = list(string)
+variable "aks_node_cpu_limit" {
+  description = "Total vCPU ceiling for Karpenter/NAP-provisioned workload nodes, applied as the general NodePool's spec.limits.cpu. NAP stops provisioning once exceeded. If null, chosen by size_profile."
+  type        = number
   default     = null
+}
 
-  validation {
-    condition     = var.aks_node_vm_sizes == null || length(var.aks_node_vm_sizes) > 0
-    error_message = "aks_node_vm_sizes must contain at least one VM size (the default node pool)."
-  }
+variable "aks_node_cpu_max" {
+  description = "Per-node vCPU cap for Karpenter/NAP-provisioned workload nodes, applied as the general NodePool's karpenter.azure.com/sku-cpu Lt requirement. Bounds the size of any single workload node within the D family. If null, chosen by size_profile."
+  type        = number
+  default     = null
 }
 
 variable "aks_version" {
@@ -72,6 +67,12 @@ variable "azure_location" {
   description = "Azure location to deploy resources to."
   type        = string
   default     = "East US"
+}
+
+variable "azure_storage_class" {
+  description = "Kubernetes StorageClass for GoodData.CN chart PVCs. If null, chosen by size_profile (standard for dev, premium for prod)."
+  type        = string
+  default     = null
 }
 
 variable "azure_subscription_id" {

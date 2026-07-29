@@ -81,3 +81,17 @@ tools:
 # Disable telemetry
 telemetry:
   enabled: false
+%{ if storage_class != "" }
+
+# Pin PVC storage class per size profile (set from Terraform). Covers the
+# always-present chart PVCs (etcd, redis-ha) and qdrant when AI features are on.
+customEtcd:
+  persistence:
+    storageClassName: ${storage_class}
+redis-ha:
+  persistentVolume:
+    storageClass: ${storage_class}
+qdrant:
+  persistence:
+    storageClassName: ${storage_class}
+%{ endif }
