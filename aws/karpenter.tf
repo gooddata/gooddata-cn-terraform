@@ -314,16 +314,50 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
         i=$((i + 1))
       done
 
-      echo "ERROR: NodeClaim(s) still present after 900s."
-      echo "Their instances would be orphaned and their ENIs will block subnet,"
-      echo "security group and VPC deletion. Check the karpenter deployment in"
-      echo "kube-system, then re-run destroy."
-      exit 1
+      # Karpenter is wedged. Failing here would leave the stack undestroyable,
+      # so do its job directly: terminate the instances, then clear finalizers.
+      echo "WARNING: NodeClaim(s) still present after 900s; forcing cleanup."
+
+      ids=$(aws ec2 describe-instances --region "$aws_region" --profile "$aws_profile" \
+        --filters "Name=tag:kubernetes.io/cluster/$cluster_name,Values=owned" \
+                  "Name=tag-key,Values=karpenter.sh/nodeclaim" \
+                  "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+        --query 'Reservations[].Instances[].InstanceId' --output text) || {
+        echo "ERROR: cannot list Karpenter instances to force-terminate." >&2
+        exit 1
+      }
+
+      # Terminate before clearing finalizers, so no instance is left orphaned.
+      if [ -n "$ids" ]; then
+        echo "Terminating $ids"
+        aws ec2 terminate-instances --region "$aws_region" --profile "$aws_profile" \
+          --instance-ids $ids >/dev/null || {
+          echo "ERROR: terminate-instances failed." >&2
+          exit 1
+        }
+        # ENIs only detach once instances reach terminated, and they block
+        # subnet, security group and VPC deletion until they do.
+        echo "Waiting for termination so their ENIs are released..."
+        aws ec2 wait instance-terminated --region "$aws_region" --profile "$aws_profile" \
+          --instance-ids $ids || echo "WARNING: waiter timed out; VPC deletion may retry."
+      fi
+
+      # Karpenter clears the finalizer only after it observes the instance gone,
+      # which it cannot do once it has lost EC2 API reachability.
+      for nc in $($kc get nodeclaims -o name 2>/dev/null); do
+        $kc patch "$nc" --type=merge -p '{"metadata":{"finalizers":null}}' >/dev/null 2>&1 || true
+      done
+
+      echo "Forced cleanup complete."
     EOT
   }
 
+  # Node egress must outlive the drain: kubelets reach the public EKS endpoint
+  # and Karpenter the EC2 API over module.vpc's NAT gateway.
   depends_on = [
     kubectl_manifest.karpenter_node_pool,
     kubectl_manifest.karpenter_node_pool_starrocks,
+    module.vpc,
+    aws_vpc_endpoint.s3,
   ]
 }
