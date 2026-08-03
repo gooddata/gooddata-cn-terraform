@@ -349,7 +349,7 @@ variable "helm_starrocks_version" {
   description = "Version of the kube-starrocks Helm chart to deploy. https://artifacthub.io/packages/helm/kube-starrocks/kube-starrocks"
   type        = string
   # renovate: depName=kube-starrocks registryUrl=https://starrocks.github.io/starrocks-kubernetes-operator
-  default = "1.11.6"
+  default = "1.11.7"
 }
 
 variable "helm_tempo_version" {
