@@ -85,30 +85,60 @@ variable "seaweedfs_bucket_datasource_fs" {
   description = "Bucket used for Quiver datasource filesystem (CSV uploads)."
   type        = string
   default     = "gooddata-datasource-fs"
+
+  # Interpolated into the bucket-creation shell script in seaweedfs.tf.
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.seaweedfs_bucket_datasource_fs))
+    error_message = "seaweedfs_bucket_datasource_fs must be a valid S3 bucket name: 3-63 chars, lowercase alphanumeric, dots and hyphens, starting and ending alphanumeric."
+  }
 }
 
 variable "seaweedfs_bucket_exports" {
   description = "Bucket used for exports."
   type        = string
   default     = "gooddata-exports"
+
+  # Interpolated into the bucket-creation shell script in seaweedfs.tf.
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.seaweedfs_bucket_exports))
+    error_message = "seaweedfs_bucket_exports must be a valid S3 bucket name: 3-63 chars, lowercase alphanumeric, dots and hyphens, starting and ending alphanumeric."
+  }
 }
 
 variable "seaweedfs_bucket_loki" {
   description = "Bucket used for Loki object storage (chunks/index)."
   type        = string
   default     = "gooddata-loki"
+
+  # Interpolated into the bucket-creation shell script in seaweedfs.tf.
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.seaweedfs_bucket_loki))
+    error_message = "seaweedfs_bucket_loki must be a valid S3 bucket name: 3-63 chars, lowercase alphanumeric, dots and hyphens, starting and ending alphanumeric."
+  }
 }
 
 variable "seaweedfs_bucket_quiver_cache" {
   description = "Bucket used for Quiver durable cache."
   type        = string
   default     = "gooddata-quiver-cache"
+
+  # Interpolated into the bucket-creation shell script in seaweedfs.tf.
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.seaweedfs_bucket_quiver_cache))
+    error_message = "seaweedfs_bucket_quiver_cache must be a valid S3 bucket name: 3-63 chars, lowercase alphanumeric, dots and hyphens, starting and ending alphanumeric."
+  }
 }
 
 variable "seaweedfs_bucket_tempo" {
   description = "Bucket used for Tempo trace object storage."
   type        = string
   default     = "gooddata-tempo"
+
+  # Interpolated into the bucket-creation shell script in seaweedfs.tf.
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.seaweedfs_bucket_tempo))
+    error_message = "seaweedfs_bucket_tempo must be a valid S3 bucket name: 3-63 chars, lowercase alphanumeric, dots and hyphens, starting and ending alphanumeric."
+  }
 }
 
 variable "seaweedfs_release_name" {
@@ -124,7 +154,7 @@ variable "seaweedfs_storage_class" {
 }
 
 variable "seaweedfs_storage_size" {
-  description = "Size of the SeaweedFS data PVC. Backs all S3 buckets (Quiver cache, exports, datasource FS, Loki chunks, Tempo traces), so it must hold object-storage retention for every signal."
+  description = "Size of the SeaweedFS data PVC. Backs all S3 buckets (Quiver cache, exports, datasource FS, Loki chunks, Tempo traces), so it must hold object-storage retention for every signal. local-path cannot expand a PVC in place, so raising this on an existing deployment means deleting and recreating the SeaweedFS PVC (losing its buckets)."
   type        = string
   default     = "50Gi"
 }

@@ -294,6 +294,12 @@ variable "registry_quayio" {
   default     = "quay.io"
 }
 
+variable "seaweedfs_storage_size" {
+  description = "Size of the SeaweedFS data PVC backing every local S3 bucket (Quiver cache, exports, datasource FS, Loki chunks, Tempo traces). local-path cannot expand a PVC in place, so raising this on an existing deployment means deleting and recreating the PVC."
+  type        = string
+  default     = "50Gi"
+}
+
 variable "size_profile" {
   description = "Sizing profile for GoodData.CN and supporting services. Local installs only support \"dev\"."
   type        = string

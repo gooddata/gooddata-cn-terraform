@@ -263,7 +263,7 @@ variable "gdcn_size" {
   type = string
   validation {
     condition     = contains(local.workload_size_tiers, var.gdcn_size)
-    error_message = "gdcn_size must be one of: dev, prod-small, prod-large (fold prod-xl to prod-large in the env's size-profiles.tf)."
+    error_message = "gdcn_size must be one of: ${join(", ", local.workload_size_tiers)} (fold prod-xl to prod-large in the env's size-profiles.tf)."
   }
 }
 
@@ -277,7 +277,7 @@ variable "observability_size" {
   type = string
   validation {
     condition     = contains(local.workload_size_tiers, var.observability_size)
-    error_message = "observability_size must be one of: dev, prod-small, prod-large (fold prod-xl to prod-large in the env's size-profiles.tf)."
+    error_message = "observability_size must be one of: ${join(", ", local.workload_size_tiers)} (fold prod-xl to prod-large in the env's size-profiles.tf)."
   }
 }
 
@@ -285,7 +285,7 @@ variable "pulsar_size" {
   type = string
   validation {
     condition     = contains(local.workload_size_tiers, var.pulsar_size)
-    error_message = "pulsar_size must be one of: dev, prod-small, prod-large (fold prod-xl to prod-large in the env's size-profiles.tf)."
+    error_message = "pulsar_size must be one of: ${join(", ", local.workload_size_tiers)} (fold prod-xl to prod-large in the env's size-profiles.tf)."
   }
 }
 

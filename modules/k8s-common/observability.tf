@@ -12,6 +12,9 @@ resource "kubernetes_namespace_v1" "observability" {
 locals {
   # Observability sizing (obs_mem / obs_disk) lives in size-profiles.tf.
 
+  # Loki's backend name: the configured object store, else local filesystem.
+  loki_object_store = var.loki_objstore != null ? var.loki_objstore.object_store : "filesystem"
+
   # dotdc Kubernetes dashboards loaded into Grafana (see dashboards block below).
   grafana_kubernetes_dashboards = [
     "k8s-system-api-server",
@@ -125,7 +128,7 @@ resource "helm_release" "loki" {
           configs = [{
             from         = "2024-01-01"
             store        = "tsdb"
-            object_store = var.loki_objstore != null ? var.loki_objstore.object_store : "filesystem"
+            object_store = local.loki_object_store
             schema       = "v13"
             index = {
               prefix = "index_"
@@ -140,7 +143,7 @@ resource "helm_release" "loki" {
         }
         compactor = {
           retention_enabled    = true
-          delete_request_store = var.loki_objstore != null ? var.loki_objstore.object_store : "filesystem"
+          delete_request_store = local.loki_object_store
         }
         auth_enabled = false
       }

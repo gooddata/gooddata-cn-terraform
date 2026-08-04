@@ -19,15 +19,19 @@ locals {
   storage_account_prefix = substr(join("", regexall("[0-9a-z]", lower(var.deployment_name))), 0, 18)
   storage_account_name   = "${local.storage_account_prefix}${random_id.storage_suffix.hex}"
 
+  # Observability object storage (Loki chunks/index, Tempo trace blocks). Kept
+  # separate so the observability identity is scoped to just these containers.
+  observability_storage_containers = [
+    "loki",
+    "tempo",
+  ]
+
   # List of storage containers needed for GoodData.CN
-  storage_containers = [
+  storage_containers = concat([
     "quiver-cache",
     "quiver-datasource-fs",
     "exports",
-    # Observability object storage (Loki chunks/index, Tempo trace blocks).
-    "loki",
-    "tempo"
-  ]
+  ], local.observability_storage_containers)
 }
 
 resource "azurerm_storage_account" "main" {

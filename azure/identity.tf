@@ -26,9 +26,9 @@ resource "azurerm_federated_identity_credential" "gdcn" {
 
 ###
 # Workload Identity for observability (Loki + Tempo) -> Blob object storage.
-# One UAMI with Blob Data Contributor on the storage account, federated to the
-# loki and tempo service accounts in the observability namespace. Loki/Tempo
-# auth to Blob via the projected SA token (use_federated_token), no keys.
+# One UAMI federated to the loki and tempo service accounts in the observability
+# namespace. Loki/Tempo auth to Blob via the projected SA token
+# (use_federated_token), no keys.
 ###
 
 resource "azurerm_user_assigned_identity" "observability" {
@@ -39,8 +39,12 @@ resource "azurerm_user_assigned_identity" "observability" {
   tags = local.common_tags
 }
 
+# Scoped per container, not to the whole account, so observability pods cannot
+# reach the GoodData.CN containers (exports, quiver-cache, quiver-datasource-fs).
 resource "azurerm_role_assignment" "observability_blob_contrib" {
-  scope                = azurerm_storage_account.main.id
+  for_each = toset(local.observability_storage_containers)
+
+  scope                = azurerm_storage_container.containers[each.value].id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_user_assigned_identity.observability.principal_id
 }
