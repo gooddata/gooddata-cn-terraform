@@ -121,8 +121,8 @@ locals {
   eks_node_cpu_max = coalesce(var.eks_node_cpu_max, local.profile.node_cpu_max)
   # StorageClass for GoodData.CN chart PVCs. Overridable via var.eks_storage_class.
   storage_class = coalesce(var.eks_storage_class, local.profile.storage_class)
-  # Class for latency-sensitive PVCs, etcd only for now. Its 5000 IOPS need a
-  # volume of at least 10 GiB, since gp3 caps provisioned IOPS at 500/GiB.
+  # Class for latency-sensitive PVCs, etcd only for now. Differs from the default
+  # class by throughput, at an IOPS level valid for any volume size.
   fast_storage_class = local.profile.fast_storage_class
 
   # AI Lake node types come from var.ai_lake_size_profile, not size_profile.
