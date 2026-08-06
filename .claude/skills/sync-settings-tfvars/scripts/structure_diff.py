@@ -17,6 +17,52 @@ import sys
 from pathlib import Path
 
 ASSIGN = re.compile(r"^(\s*)(#\s*)?([a-z_][a-z0-9_]*)\s*=\s*(.*)$")
+LEADING_HASH = re.compile(r"^\s*#\s?")
+
+OPENERS = "[{("
+CLOSERS = "]})"
+
+
+def split_code_and_comment(s):
+    """Split a line into (code, comment) at the first unquoted `#` or `//`.
+
+    Quote-aware so a `#` inside a string value stays part of the value.
+    """
+    in_string = escaped = False
+    for i, c in enumerate(s):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif c == "\\":
+                escaped = True
+            elif c == '"':
+                in_string = False
+        elif c == '"':
+            in_string = True
+        elif c == "#" or (c == "/" and s[i + 1 : i + 2] == "/"):
+            return s[:i], s[i:]
+    return s, ""
+
+
+def depth_delta(code):
+    """Net bracket depth change for a line, ignoring brackets inside strings."""
+    in_string = escaped = False
+    depth = 0
+    for c in code:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif c == "\\":
+                escaped = True
+            elif c == '"':
+                in_string = False
+        elif c == '"':
+            in_string = True
+        elif c in OPENERS:
+            depth += 1
+        elif c in CLOSERS:
+            depth -= 1
+    return depth
 
 
 def normalize(text):
@@ -24,7 +70,9 @@ def normalize(text):
 
     Multi-line heredocs, lists, and maps are collapsed so the diff stays about
     structure. A commented-out assignment keeps its `#` because commenting a
-    variable out is itself a meaningful structural difference.
+    variable out is itself a meaningful structural difference. A trailing
+    comment survives: it is the developer's rationale, which is exactly the
+    kind of drift this diff exists to surface.
     """
     lines = text.splitlines()
     out, names = [], []
@@ -40,19 +88,25 @@ def normalize(text):
         indent, hashmark, name, value = m.groups()
         commented = hashmark is not None
         names.append((name, not commented))
-        value = value.strip()
-        out.append(f"{indent}{'# ' if commented else ''}{name} = <value>")
+        code, comment = split_code_and_comment(value)
+        code = code.strip()
+        suffix = f" {comment.strip()}" if comment.strip() else ""
+        out.append(f"{indent}{'# ' if commented else ''}{name} = <value>{suffix}")
         i += 1
 
-        if value.startswith("<<"):
-            term = (value.lstrip("<-").split() or ["EOT"])[0]
+        if code.startswith("<<"):
+            term = (code.lstrip("<-").split() or ["EOT"])[0]
             while i < len(lines) and lines[i].lstrip("# ").strip() != term:
                 i += 1
             i += 1  # consume the terminator
-        elif value in ("[", "{"):
-            closer = "]" if value == "[" else "}"
-            while i < len(lines) and not lines[i].lstrip("# ").strip().startswith(closer):
-                i += 1
+            continue
+
+        # Consume the rest of a multi-line collection by tracking bracket depth,
+        # so nested maps/lists and openers with trailing comments stay redacted.
+        depth = depth_delta(code)
+        while depth > 0 and i < len(lines):
+            body = LEADING_HASH.sub("", lines[i]) if commented else lines[i]
+            depth += depth_delta(split_code_and_comment(body)[0])
             i += 1
 
     return out, names

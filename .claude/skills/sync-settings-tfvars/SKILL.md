@@ -32,10 +32,20 @@ inventing values.
 ### 1. Back up outside the repo
 
 ```bash
-BACKUP=$(mktemp -d) && for e in aws azure local; do
-  [ -f "$e/settings.tfvars" ] && cp "$e/settings.tfvars" "$BACKUP/$e-settings.tfvars"
-done && echo "backup: $BACKUP"
+BACKUP=$(mktemp -d) || { echo "could not create backup dir — stop"; exit 1; }
+for e in aws azure local; do
+  [ -f "$e/settings.tfvars" ] || continue
+  cp "$e/settings.tfvars" "$BACKUP/$e-settings.tfvars" \
+    && cmp -s "$e/settings.tfvars" "$BACKUP/$e-settings.tfvars" \
+    || { echo "backup of $e/settings.tfvars failed — stop, do not merge"; exit 1; }
+done
+echo "backup: $BACKUP"
 ```
+
+Every copy is checked, and a failure stops the run before anything is edited.
+Don't collapse this into one `&&` chain per iteration: a `cp` that fails early
+is otherwise masked by a later iteration succeeding, and you would merge into an
+unrecoverable file believing it was backed up.
 
 Outside the repo on purpose: `.gitignore` matches `*.tfvars`, so a
 `settings.tfvars.bak` sitting in `aws/` would *not* be ignored and could be
@@ -67,38 +77,54 @@ developer still recognizes, not a regenerated one.
 
 ```bash
 # fmt only the files that exist — a developer using one cloud has no azure/local tfvars
+# no -diff: on a misformatted file it prints the offending lines, secrets included
 for e in aws azure local; do
-  [ -f "$e/settings.tfvars" ] && terraform fmt -check -diff "$e/settings.tfvars"
+  [ -f "$e/settings.tfvars" ] && terraform fmt -check "$e/settings.tfvars"
 done
 python3 .claude/skills/sync-settings-tfvars/scripts/structure_diff.py aws azure local
 
-# console takes one expression per invocation; loop to check several
+# definitive: exits non-zero if any value fails a validation block
+cd <env> && terraform plan -var-file=settings.tfvars
+
+# quick look, no init needed; console takes one expression per invocation
+# read the output — it exits 0 even when a validation fails
 cd <env> && for v in size_profile enable_ai_features; do
   echo "var.$v" | terraform console -var-file=settings.tfvars
 done
 ```
 
-- `fmt -check` must come back clean. It covers `.tfvars` but **not**
-  `.tfvars.example`.
+- `fmt -check` must come back clean (exit 0; it prints only the paths of files
+  that need reformatting). It covers `.tfvars` but **not** `.tfvars.example`.
+  Never add `-diff` here — the diff body quotes the misformatted lines verbatim,
+  which for these files means license keys and tokens on your terminal.
 - The second `structure_diff` run must show no example-only variables left. The
   remaining diff should be only intentional: real values against commented
   placeholders, the developer's own annotations, and their extra overrides.
-- `terraform console -var-file=settings.tfvars` is the real proof: it parses the
-  file *and* runs every `validation` block, catching a value the current schema
-  rejects — including cross-variable validations like AI Lake requiring
-  `ai_lake_size_profile`. It usually needs no `init`. If it does fail with
-  `Inconsistent dependency lock file`, that's pre-existing provider-constraint
-  drift unrelated to your edit: report it and leave it, because
-  `terraform init -upgrade` would rewrite a lock file the user didn't ask you to
-  touch.
+- `terraform console -var-file=settings.tfvars` does run every `validation`
+  block, but **it is not a pass/fail gate**: on a rejected value it prints the
+  validation error, then prints the value anyway and still **exits 0**. Read its
+  output; never infer success from its exit status or from a loop that "ran
+  clean". It usually needs no `init`, which is why it's the quick first look.
+- `terraform plan -var-file=settings.tfvars` is the definitive check — it exits
+  non-zero on a rejected value, including cross-variable validations like AI
+  Lake requiring `ai_lake_size_profile`. Input validation is evaluated before
+  provider credentials are needed, so it still reports variable errors in an env
+  with no cloud access; expect unrelated provider/credential errors alongside
+  and ignore those. Prefer it whenever you can run it.
+- If either fails with `Inconsistent dependency lock file`, don't assume it's
+  unrelated. Confirm it is pre-existing — reproduce it on the unmodified files
+  (e.g. `git stash` your edits, or run against a clean checkout) — and only then
+  report and leave it, because `terraform init -upgrade` would rewrite a lock
+  file the user didn't ask you to touch. If it appears only *after* your edit,
+  it is yours to fix.
 - **Re-run the whole sync mentally, or literally, once more.** A second pass must
   be a no-op. If it wouldn't be — if you'd reorder the same comment or re-add the
   same line — you applied a rule non-deterministically, and every future sync
   will churn the file. Idempotence is the cheapest signal that you followed the
   rules rather than rewrote to taste.
 
-Never run `terraform apply`. `terraform plan` is fine but usually needs cloud
-credentials and proves nothing extra here.
+Never run `terraform apply`. `terraform plan` is safe and is the check that
+actually gates on a bad value; run it where you can.
 
 ### 5. Report
 
@@ -177,7 +203,7 @@ list it in the report so the user can confirm it's still wanted.
 have genuinely different variable sets, so never copy a section across clouds by
 analogy. Confirm against that environment's `variables.tf` that a variable exists
 and a value is legal before introducing it. Two real examples: AI Lake
-(`enable_ai_lake`, `ai_lake_size_profile`) exists for AWS and has no Azure
+(`enable_ai_lake`, `starrocks_size_profile`) exists for AWS and has no Azure
 counterpart, and `size_profile` accepts `prod-xl` on AWS while Azure's validation
 block rejects it. Comments listing valid values are part of this — an
 AWS-accurate list pasted into Azure documents a value that fails validation.
@@ -201,7 +227,7 @@ behavior. This is usually the most consequential thing in the whole sync and the
 easiest to miss, because the mechanical diff is one comment line.
 
 **Structure changes can add a required companion.** A single variable can become
-a pair — `enable_ai_lake` gaining a mandatory `ai_lake_size_profile`. When an
+a pair — `enable_ai_lake` gaining a mandatory `starrocks_size_profile`. When an
 example's comment says two lines are required, carry both placeholders, or an
 opt-in later will fail. Read what the comment asserts, don't just copy lines.
 
