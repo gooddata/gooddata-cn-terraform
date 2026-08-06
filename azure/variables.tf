@@ -209,7 +209,7 @@ variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
   # renovate: depName=cert-manager registryUrl=https://charts.jetstack.io
-  default = "v1.21.0"
+  default = "v1.21.1"
 }
 
 variable "helm_external_dns_version" {

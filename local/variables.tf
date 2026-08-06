@@ -103,7 +103,7 @@ variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy."
   type        = string
   # renovate: depName=cert-manager registryUrl=https://charts.jetstack.io
-  default = "v1.21.0"
+  default = "v1.21.1"
 }
 
 variable "helm_cnpg_version" {
