@@ -87,10 +87,18 @@ gdcn_orgs = [
 # observability_hostname = "observability.localhost"
 
 # Uncomment to override data retention (defaults shown). Loki/Tempo store data
-# in SeaweedFS S3, so retention bounds bucket usage. Loki needs a multiple of 24h.
+# in SeaweedFS S3, so retention bounds their bucket usage. Loki needs a multiple
+# of 24h.
 # loki_retention_period       = "168h"
 # prometheus_retention_period = "168h"
 # tempo_retention_period      = "168h"
+
+# One SeaweedFS PVC backs every local bucket — Quiver cache, exports, datasource
+# FS and the Loki/Tempo buckets — so size it for all of them, not just for
+# observability retention. Under local-path this is not enforced as a quota, so
+# watch the node's free disk. Cannot be resized in place; raising it later means
+# deleting and recreating the PVC.
+# seaweedfs_storage_size = "50Gi"
 
 ###
 # Container registry authentication (optional)

@@ -62,6 +62,7 @@ module "k8s_local" {
   kubeconfig_path        = local.kubeconfig_path
   kubeconfig_context     = local.kubeconfig_context
   registry_dockerio      = var.registry_dockerio
+  seaweedfs_storage_size = var.seaweedfs_storage_size
 
   prometheus_crds_ready = helm_release.prometheus_operator_crds.name
 
@@ -123,7 +124,8 @@ module "k8s_common" {
 
   # Observability object storage: Loki + Tempo write to the local SeaweedFS S3
   # buckets instead of large PVCs. SeaweedFS has no workload identity, so static
-  # S3 credentials are passed; path-style + insecure (http) for the in-cluster
+  # S3 credentials are passed; each is a per-bucket SeaweedFS user, not the
+  # account-wide gdcn one. Path-style + insecure (http) for the in-cluster
   # endpoint. (obs_sa_annotations / obs_pod_labels stay empty — no IRSA/WI.)
   loki_objstore = {
     object_store = "s3"
@@ -139,8 +141,8 @@ module "k8s_common" {
       s3 = {
         endpoint         = local.local_obs_s3_endpoint_host
         region           = module.k8s_local.seaweedfs_region
-        accessKeyId      = module.k8s_local.seaweedfs_gdcn_access_key
-        secretAccessKey  = module.k8s_local.seaweedfs_gdcn_secret_key
+        accessKeyId      = module.k8s_local.seaweedfs_loki_access_key
+        secretAccessKey  = module.k8s_local.seaweedfs_loki_secret_key
         s3ForcePathStyle = true
         insecure         = true
       }
@@ -152,8 +154,8 @@ module "k8s_common" {
       bucket         = module.k8s_local.seaweedfs_bucket_tempo
       endpoint       = local.local_obs_s3_endpoint_host
       region         = module.k8s_local.seaweedfs_region
-      access_key     = module.k8s_local.seaweedfs_gdcn_access_key
-      secret_key     = module.k8s_local.seaweedfs_gdcn_secret_key
+      access_key     = module.k8s_local.seaweedfs_tempo_access_key
+      secret_key     = module.k8s_local.seaweedfs_tempo_secret_key
       forcepathstyle = true
       insecure       = true
     }

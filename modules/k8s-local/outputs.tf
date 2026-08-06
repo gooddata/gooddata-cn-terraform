@@ -34,6 +34,17 @@ output "seaweedfs_gdcn_secret_key" {
   sensitive   = true
 }
 
+output "seaweedfs_loki_access_key" {
+  description = "Access key for the Loki SeaweedFS S3 user (scoped to the Loki bucket)."
+  value       = "loki"
+}
+
+output "seaweedfs_loki_secret_key" {
+  description = "Secret key for the Loki SeaweedFS S3 user."
+  value       = random_password.seaweedfs_scoped_secret_key["loki"].result
+  sensitive   = true
+}
+
 output "seaweedfs_namespace" {
   description = "Namespace used for SeaweedFS resources."
   value       = kubernetes_namespace_v1.seaweedfs.metadata[0].name
@@ -52,6 +63,17 @@ output "seaweedfs_s3_endpoint" {
     kubernetes_namespace_v1.seaweedfs.metadata[0].name,
     "8333",
   )
+}
+
+output "seaweedfs_tempo_access_key" {
+  description = "Access key for the Tempo SeaweedFS S3 user (scoped to the Tempo bucket)."
+  value       = "tempo"
+}
+
+output "seaweedfs_tempo_secret_key" {
+  description = "Secret key for the Tempo SeaweedFS S3 user."
+  value       = random_password.seaweedfs_scoped_secret_key["tempo"].result
+  sensitive   = true
 }
 
 output "postgres_namespace" {

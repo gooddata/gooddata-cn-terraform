@@ -15,6 +15,36 @@ locals {
     var.seaweedfs_bucket_loki,
     var.seaweedfs_bucket_tempo,
   ]
+
+  # Observability S3 users, each confined to its own bucket. Keeps a compromised
+  # Loki/Tempo pod away from exports, datasource files and the Quiver cache.
+  seaweedfs_scoped_users = {
+    loki  = var.seaweedfs_bucket_loki
+    tempo = var.seaweedfs_bucket_tempo
+  }
+
+  # Identity/permission config handed to the S3 gateway via -s3.config. gdcn
+  # keeps the account-wide actions the chart's own secret would have granted.
+  seaweedfs_s3_config = {
+    identities = concat(
+      [{
+        name = local.seaweedfs_s3_access_key
+        credentials = [{
+          accessKey = local.seaweedfs_s3_access_key
+          secretKey = kubernetes_secret_v1.seaweedfs_s3_credentials.data["secretKey"]
+        }]
+        actions = ["Admin", "Read", "Write"]
+      }],
+      [for user, bucket in local.seaweedfs_scoped_users : {
+        name = user
+        credentials = [{
+          accessKey = user
+          secretKey = random_password.seaweedfs_scoped_secret_key[user].result
+        }]
+        actions = [for action in ["Read", "Write", "List", "Tagging"] : "${action}:${bucket}"]
+      }]
+    )
+  }
 }
 
 resource "kubernetes_namespace_v1" "seaweedfs" {
@@ -45,6 +75,25 @@ resource "kubernetes_secret_v1" "seaweedfs_s3_credentials" {
   lifecycle {
     # After first apply, don't rotate credentials unless explicitly tainted/replaced.
     ignore_changes = [data]
+  }
+}
+
+resource "random_password" "seaweedfs_scoped_secret_key" {
+  for_each = local.seaweedfs_scoped_users
+
+  length  = 40
+  special = false
+}
+
+resource "kubernetes_secret_v1" "seaweedfs_s3_config" {
+  metadata {
+    name      = "seaweedfs-s3-config"
+    namespace = kubernetes_namespace_v1.seaweedfs.metadata[0].name
+  }
+
+  type = "Opaque"
+  data = {
+    seaweedfs_s3_config = jsonencode(local.seaweedfs_s3_config)
   }
 }
 
@@ -88,9 +137,9 @@ resource "helm_release" "seaweedfs" {
         }
 
         # Single PVC backs every bucket (Quiver cache, exports, datasource FS,
-        # Loki/Tempo object storage), so it must be sized for all of them.
-        # local-path is thin-provisioned, so the request is a ceiling, not a
-        # preallocation.
+        # Loki chunks, Tempo traces), so it must be sized for all of them. Under
+        # local-path the request is neither preallocated nor enforced as a
+        # quota, so the real limit is the node's disk — size and watch that.
         data = {
           type         = "persistentVolumeClaim"
           size         = var.seaweedfs_storage_size
@@ -114,23 +163,18 @@ resource "helm_release" "seaweedfs" {
       volume = { enabled = false }
       filer  = { enabled = false }
 
-      # Credentials are read from the top-level s3 block regardless of mode.
-      # enableAuth must be set here (not only in allInOne.s3) so the chart's
-      # s3-secret template creates the seaweedfs-s3-secret Secret.
+      # The S3 gateway config is read from the top-level s3 block regardless of
+      # mode. existingConfigSecret supplies our own identities (the chart's
+      # generated secret only knows an account-wide admin and a read-only user).
       s3 = {
-        enableAuth = true
-        credentials = {
-          admin = {
-            accessKey = local.seaweedfs_s3_access_key
-            secretKey = kubernetes_secret_v1.seaweedfs_s3_credentials.data["secretKey"]
-          }
-        }
+        enableAuth           = true
+        existingConfigSecret = kubernetes_secret_v1.seaweedfs_s3_config.metadata[0].name
       }
     })
   ]
 
   depends_on = [
-    kubernetes_secret_v1.seaweedfs_s3_credentials,
+    kubernetes_secret_v1.seaweedfs_s3_config,
   ]
 }
 

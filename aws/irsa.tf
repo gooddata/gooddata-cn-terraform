@@ -97,6 +97,12 @@ data "aws_iam_policy_document" "observability_irsa_assume_role" {
         "system:serviceaccount:observability:tempo",
       ]
     }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
   }
 }
 
