@@ -154,7 +154,7 @@ variable "seaweedfs_storage_class" {
 }
 
 variable "seaweedfs_storage_size" {
-  description = "Size of the SeaweedFS data PVC. Backs all S3 buckets (Quiver cache, exports, datasource FS, Loki chunks, Tempo traces), so it must hold object-storage retention for every signal. local-path cannot expand a PVC in place, so raising this on an existing deployment means deleting and recreating the SeaweedFS PVC (losing its buckets)."
+  description = "Size of the SeaweedFS data PVC. Backs all S3 buckets (Quiver cache, exports, datasource FS, Loki chunks, Tempo traces), so it must hold object-storage retention for every signal. Under local-path this request is not enforced as a quota — the node's disk is the real limit — and the PVC cannot be expanded in place, so raising this on an existing deployment means deleting and recreating it (losing its buckets)."
   type        = string
   default     = "50Gi"
 }

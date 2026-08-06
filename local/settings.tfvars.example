@@ -95,7 +95,8 @@ gdcn_orgs = [
 
 # One SeaweedFS PVC backs every local bucket — Quiver cache, exports, datasource
 # FS and the Loki/Tempo buckets — so size it for all of them, not just for
-# observability retention. Cannot be resized in place; raising it later means
+# observability retention. Under local-path this is not enforced as a quota, so
+# watch the node's free disk. Cannot be resized in place; raising it later means
 # deleting and recreating the PVC.
 # seaweedfs_storage_size = "50Gi"
 

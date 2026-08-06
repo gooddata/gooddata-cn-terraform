@@ -137,9 +137,9 @@ resource "helm_release" "seaweedfs" {
         }
 
         # Single PVC backs every bucket (Quiver cache, exports, datasource FS,
-        # Loki chunks, Tempo traces), so it must be sized for all of them.
-        # local-path is thin-provisioned: the request is a ceiling, not a
-        # preallocation.
+        # Loki chunks, Tempo traces), so it must be sized for all of them. Under
+        # local-path the request is neither preallocated nor enforced as a
+        # quota, so the real limit is the node's disk — size and watch that.
         data = {
           type         = "persistentVolumeClaim"
           size         = var.seaweedfs_storage_size
