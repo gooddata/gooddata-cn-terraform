@@ -2,6 +2,11 @@
 # Configure Kubernetes storage class
 ###
 
+# encrypted = "true" on both classes, so PVC data is encrypted at rest even if
+# the account has no default-encryption setting. kmsKeyId is deliberately unset,
+# which means each volume uses whichever key the account has configured as its
+# EBS default — aws/managed unless someone has pointed it at a CMK.
+
 resource "kubernetes_storage_class_v1" "gp3_perf" {
   metadata {
     name = "gp3-perf"
@@ -12,10 +17,14 @@ resource "kubernetes_storage_class_v1" "gp3_perf" {
   volume_binding_mode    = "WaitForFirstConsumer"
   allow_volume_expansion = true
 
+  # Fast class for latency-sensitive PVCs. 3000 IOPS is the ceiling valid at any
+  # size; above it EBS caps gp3 provisioned IOPS at 500/GiB. Throughput is the
+  # real gain here: 300 MBps against the 125 the default class gets free.
   parameters = {
     type       = "gp3"
-    iops       = "5000"
+    iops       = "3000"
     throughput = "300"
+    encrypted  = "true"
   }
 }
 
@@ -34,6 +43,7 @@ resource "kubernetes_storage_class_v1" "gp3" {
   allow_volume_expansion = true
 
   parameters = {
-    type = "gp3"
+    type      = "gp3"
+    encrypted = "true"
   }
 }
