@@ -91,8 +91,13 @@ module "rds_postgresql" {
   # Connectivity & lifecycle
   publicly_accessible = false
   storage_encrypted   = true
-  skip_final_snapshot = var.rds_skip_final_snapshot
-  deletion_protection = var.rds_deletion_protection
+  skip_final_snapshot = local.rds_skip_final_snapshot
+  deletion_protection = local.rds_deletion_protection
+
+  # PITR window well past the RDS ~1-day fallback; fixed off-hours windows.
+  backup_retention_period = local.rds_backup_retention_period
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "Sun:04:30-Sun:05:30"
 
   tags = local.common_tags
 }
