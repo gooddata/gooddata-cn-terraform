@@ -101,10 +101,12 @@ done
   remaining diff should be only intentional: real values against commented
   placeholders, the developer's own annotations, and their extra overrides.
 - `terraform console -var-file=settings.tfvars` does run every `validation`
-  block, but **it is not a pass/fail gate**: on a rejected value it prints the
-  validation error, then prints the value anyway and still **exits 0**. Read its
-  output; never infer success from its exit status or from a loop that "ran
-  clean". It usually needs no `init`, which is why it's the quick first look.
+  block — observed on Terraform 1.15.6, where even `1 + 1` reports the errors
+  for *all* invalid variables — but **it is not a pass/fail gate**: it prints
+  the validation error, then prints the result anyway and still **exits 0**.
+  Read its output; never infer success from its exit status or from a loop that
+  "ran clean". It usually needs no `init`, which is why it's the quick first
+  look.
 - `terraform plan -var-file=settings.tfvars` is the definitive check — it exits
   non-zero on a rejected value, including cross-variable validations like AI
   Lake requiring `ai_lake_size_profile`. Input validation is evaluated before
