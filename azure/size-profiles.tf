@@ -77,9 +77,12 @@ locals {
   profile = local.size_profiles[var.size_profile]
 
   # Resolved managed values (profile default, overridable via var.*).
-  postgresql_sku_name   = coalesce(var.postgresql_sku_name, local.profile.postgresql.sku_name)
-  postgresql_storage_mb = coalesce(var.postgresql_storage_mb, local.profile.postgresql.storage_mb)
-  aks_min_nodes         = coalesce(var.aks_min_nodes, local.profile.aks_node_counts.min)
+  postgresql_sku_name = coalesce(var.postgresql_sku_name, local.profile.postgresql.sku_name)
+  # Prod keeps 14 days of point-in-time recovery, dev the 7-day minimum.
+  postgresql_is_prod               = startswith(var.size_profile, "prod")
+  postgresql_backup_retention_days = coalesce(var.postgresql_backup_retention_days, local.postgresql_is_prod ? 14 : 7)
+  postgresql_storage_mb            = coalesce(var.postgresql_storage_mb, local.profile.postgresql.storage_mb)
+  aks_min_nodes                    = coalesce(var.aks_min_nodes, local.profile.aks_node_counts.min)
   # System pool VM size (not user-configurable). Workload nodes are sized by
   # Karpenter (sku-family + CPU bounds below).
   system_node_vm_size = local.profile.system_node_vm_size
