@@ -81,13 +81,23 @@ tools:
 # Disable telemetry
 telemetry:
   enabled: false
-%{ if storage_class != "" }
+%{ if fast_storage_class != "" }
 
-# Pin PVC storage class per size profile (set from Terraform). Covers the
-# always-present chart PVCs (etcd, redis-ha) and qdrant when AI features are on.
+# etcd takes the fast class, since Quiver blocks on its fsync latency. Rendered
+# on its own so fast_storage_class still applies when gdcn_storage_class is
+# unset (it falls back to gdcn_storage_class when empty).
+#
+# storageClassName lands in a StatefulSet volumeClaimTemplate, which is
+# immutable: changing it on an existing release is rejected on upgrade. Treat
+# it as a new-deployment setting unless you migrate the etcd PVCs.
 customEtcd:
   persistence:
-    storageClassName: ${storage_class}
+    storageClassName: ${fast_storage_class}
+%{ endif ~}
+%{ if storage_class != "" }
+
+# Pin the remaining chart PVCs per size profile (set from Terraform): redis-ha
+# is always present, qdrant only when AI features are on.
 redis-ha:
   persistentVolume:
     storageClass: ${storage_class}

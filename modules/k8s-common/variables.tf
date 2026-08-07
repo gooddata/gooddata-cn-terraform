@@ -72,6 +72,12 @@ variable "enable_ai_lake" {
   default     = false
 }
 
+variable "fast_storage_class" {
+  description = "StorageClass for latency-sensitive GoodData.CN PVCs (etcd today). Falls back to gdcn_storage_class when empty."
+  type        = string
+  default     = ""
+}
+
 variable "s3_tables_bucket_arn" {
   description = "ARN of the AWS S3 Tables bucket used by AI Lake."
   type        = string
@@ -274,7 +280,7 @@ variable "gdcn_size" {
 }
 
 variable "gdcn_storage_class" {
-  description = "Kubernetes StorageClass for GoodData.CN chart PVCs (etcd, redis-ha, qdrant). Empty string leaves them on the cluster default class."
+  description = "Kubernetes StorageClass for GoodData.CN chart PVCs (redis-ha, qdrant, and etcd when fast_storage_class is unset). Empty string leaves them on the cluster default class."
   type        = string
   default     = ""
 }

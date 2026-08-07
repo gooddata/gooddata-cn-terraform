@@ -16,6 +16,7 @@ locals {
   ingress_annotations     = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
+  fast_storage_class      = var.fast_storage_class != "" ? var.fast_storage_class : var.gdcn_storage_class
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
@@ -122,6 +123,7 @@ resource "helm_release" "gooddata_cn" {
       db_username             = var.db_username
       db_password             = var.db_password
       storage_class           = var.gdcn_storage_class
+      fast_storage_class      = local.fast_storage_class
       registry_dockerio       = var.registry_dockerio
       registry_quayio         = var.registry_quayio
       ingress_class_name      = local.resolved_ingress_class_name
