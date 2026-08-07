@@ -376,17 +376,18 @@ variable "postgresql_geo_redundant_backup" {
   default     = false
 }
 
+variable "postgresql_storage_mb" {
+  description = "Azure Database for PostgreSQL storage in MB. If null, chosen by size_profile. Set this if auto_grow_enabled has raised the disk above the profile value, since Azure rejects storage decreases."
+  type        = number
+  default     = null
+}
+
 variable "postgresql_sku_name" {
   description = "Azure Database for PostgreSQL SKU name. If null, chosen by size_profile. E.g. B_Standard_B1ms, GP_Standard_D2s_v3, MO_Standard_E4s_v3"
   type        = string
   default     = null
 }
 
-variable "postgresql_storage_mb" {
-  description = "Azure Database for PostgreSQL storage in MB. If null, chosen by size_profile."
-  type        = number
-  default     = null
-}
 
 variable "size_profile" {
   description = "Sizing profile for GoodData.CN and supporting services."

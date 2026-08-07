@@ -19,7 +19,7 @@ aiLake:
     extraConfig:
       override.toml: |
 %{ for org_id in organization_ids ~}
-        # StarRocks cluster for ${org_id} org
+        # StarRocks compute cluster for ${org_id} org
         [compute_clusters.${org_id}]
         name = "starrocks-${org_id}"
         organization_id = "${org_id}"

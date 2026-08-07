@@ -3,8 +3,8 @@
 # the same across AWS/Azure/local at a given tier, so they live here once and
 # the environment selects a tier by name via var.observability_size. Only the
 # observability stack (no per-tier Helm chart) is sized here; GoodData.CN,
-# Pulsar, and StarRocks sizing is selected by var.gdcn_size / var.pulsar_size /
-# var.starrocks_size_profile against templates/*-size-<tier>.yaml.tftpl and
+# Pulsar, and AI Lake sizing is selected by var.gdcn_size / var.pulsar_size /
+# var.ai_lake_size_profile against templates/*-size-<tier>.yaml.tftpl and
 # starrocks.tf, not this file.
 #
 # Observability CPU is intentionally left flat per-service (these components are

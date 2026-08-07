@@ -1,8 +1,8 @@
 ###
-# Single source of truth for local (k3d) sizing. Local supports only "dev"
-# (smallest, non-HA). Holds the in-cluster postgres (CNPG) sizing inline plus
-# workload (GoodData.CN/Pulsar/observability) sizing referenced by name.
-# StarRocks (AI Lake) is not supported on local.
+# All local (k3d) sizing; "dev" is the only profile local supports. The
+# in-cluster Postgres (CNPG) sizing is defined inline; GoodData.CN, Pulsar and
+# observability sizing is referenced by name. AI Lake is not supported
+# on local.
 ###
 
 locals {

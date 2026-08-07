@@ -3,7 +3,7 @@
 ###
 
 # S3 gateway endpoint: routes S3 traffic (Quiver cache, datasource FS, exports,
-# StarRocks) over the AWS backbone instead of the NAT gateway, eliminating NAT
+# AI Lake) over the AWS backbone instead of the NAT gateway, eliminating NAT
 # data-processing charges on blob I/O. Gateway endpoints are free. Only created
 # for VPCs we manage; bring-your-own-VPC users add their own.
 resource "aws_vpc_endpoint" "s3" {
