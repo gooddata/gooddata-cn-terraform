@@ -114,13 +114,9 @@ resource "helm_release" "istio_ingress_gateway" {
       ]
       annotations = merge(
         { "external-dns.alpha.kubernetes.io/hostname" = join(",", local.istio_gateway_hosts) },
-        var.cloud == "aws" ? {
-          "service.beta.kubernetes.io/aws-load-balancer-name"                              = local.aws_istio_nlb_load_balancer_name
-          "service.beta.kubernetes.io/aws-load-balancer-type"                              = "external"
-          "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"                   = "ip"
-          "service.beta.kubernetes.io/aws-load-balancer-scheme"                            = "internet-facing"
-          "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled" = "true"
-        } : {}
+        var.cloud == "aws" ? merge(local.aws_nlb_common_annotations, {
+          "service.beta.kubernetes.io/aws-load-balancer-name" = local.aws_istio_nlb_load_balancer_name
+        }) : {}
       )
     }
   })]
