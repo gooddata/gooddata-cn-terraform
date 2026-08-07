@@ -12,6 +12,9 @@ resource "kubernetes_namespace_v1" "observability" {
 locals {
   # Observability sizing (obs_mem / obs_disk) lives in size-profiles.tf.
 
+  # Loki's backend name: the configured object store, else local filesystem.
+  loki_object_store = var.loki_objstore != null ? var.loki_objstore.object_store : "filesystem"
+
   # dotdc Kubernetes dashboards loaded into Grafana (see dashboards block below).
   grafana_kubernetes_dashboards = [
     "k8s-system-api-server",
@@ -79,11 +82,10 @@ resource "helm_release" "kube_prometheus_stack" {
           }
           storageSpec = {
             volumeClaimTemplate = {
-              spec = {
-                resources = {
-                  requests = { storage = local.obs_disk.prometheus }
-                }
-              }
+              spec = merge(
+                { resources = { requests = { storage = local.obs_disk.prometheus } } },
+                var.gdcn_storage_class != "" ? { storageClassName = var.gdcn_storage_class } : {}
+              )
             }
           }
           # Discover all PodMonitors/ServiceMonitors cluster-wide, not just
@@ -117,14 +119,16 @@ resource "helm_release" "loki" {
         commonConfig = {
           replication_factor = 1
         }
-        storage = {
-          type = "filesystem"
-        }
+        # Object storage (Azure Blob / S3 / SeaweedFS) when loki_objstore is
+        # set; else local filesystem. Retention then lives in the bucket. try()
+        # (not a ternary) sidesteps inconsistent-conditional-type errors, since
+        # the objstore block and the filesystem fallback have different shapes.
+        storage = try(var.loki_objstore.storage, { type = "filesystem" })
         schemaConfig = {
           configs = [{
             from         = "2024-01-01"
             store        = "tsdb"
-            object_store = "filesystem"
+            object_store = local.loki_object_store
             schema       = "v13"
             index = {
               prefix = "index_"
@@ -132,25 +136,31 @@ resource "helm_release" "loki" {
             }
           }]
         }
-        # Retention is enforced by the compactor loop below. retention_period
-        # caps log age; the PVC (size set per tier in size-profiles.tf) still
-        # caps total size, so at high log volume data may be evicted before this
-        # period is reached.
+        # Retention is enforced by the compactor loop below; retention_period
+        # caps log age and bounds object-storage usage.
         limits_config = {
           retention_period = var.loki_retention_period
         }
         compactor = {
           retention_enabled    = true
-          delete_request_store = "filesystem"
+          delete_request_store = local.loki_object_store
         }
         auth_enabled = false
       }
+      # Object-storage auth (workload identity / IRSA) rides on this SA.
+      serviceAccount = {
+        name        = "loki"
+        annotations = var.obs_sa_annotations
+      }
       singleBinary = {
-        replicas = 1
-        persistence = {
-          enabled = true
-          size    = local.obs_disk.loki
-        }
+        replicas  = 1
+        podLabels = var.obs_pod_labels
+        # On object storage this PVC holds only the WAL + index cache, so it is
+        # a small fixed size (obs_wal_disk), not retention-sized.
+        persistence = merge(
+          { enabled = true, size = var.obs_wal_disk },
+          var.gdcn_storage_class != "" ? { storageClass = var.gdcn_storage_class } : {}
+        )
         resources = {
           requests = {
             cpu    = "100m"
@@ -236,7 +246,7 @@ resource "helm_release" "tempo" {
 
   values = [
     yamlencode({
-      tempo = {
+      tempo = merge({
         image = { registry = var.registry_dockerio }
         receivers = {
           jaeger = {
@@ -269,11 +279,26 @@ resource "helm_release" "tempo" {
             }
           }
         }
+        }, var.tempo_objstore != null ? {
+        # Object-storage trace backend (Azure Blob / S3 / SeaweedFS).
+        storage = { trace = var.tempo_objstore }
+      } : {})
+      # NOTE: this chart reads pod labels from TOP-LEVEL podLabels, not
+      # tempo.podLabels. The label triggers the Azure workload-identity webhook
+      # to inject AZURE_CLIENT_ID (paired with the SA annotation below); without
+      # it Tempo's Blob client fails with "no client ID specified".
+      podLabels = var.obs_pod_labels
+      # Object-storage auth (workload identity / IRSA) rides on this SA.
+      serviceAccount = {
+        name        = "tempo"
+        annotations = var.obs_sa_annotations
       }
-      persistence = {
-        enabled = true
-        size    = local.obs_disk.tempo
-      }
+      # On object storage this PVC holds only the WAL, so it is a small fixed
+      # size (obs_wal_disk), not retention-sized.
+      persistence = merge(
+        { enabled = true, size = var.obs_wal_disk },
+        var.gdcn_storage_class != "" ? { storageClassName = var.gdcn_storage_class } : {}
+      )
       resources = {
         requests = {
           cpu    = "50m"
@@ -311,10 +336,10 @@ resource "helm_release" "grafana" {
       deploymentStrategy = {
         type = "Recreate"
       }
-      persistence = {
-        enabled = true
-        size    = "1Gi"
-      }
+      persistence = merge(
+        { enabled = true, size = "1Gi" },
+        var.gdcn_storage_class != "" ? { storageClassName = var.gdcn_storage_class } : {}
+      )
       resources = {
         requests = {
           cpu    = "50m"
@@ -471,7 +496,9 @@ resource "helm_release" "grafana" {
   wait_for_jobs = true
   timeout       = 1800
 
-  depends_on = [helm_release.kube_prometheus_stack, helm_release.loki, helm_release.tempo]
+  # ingress_nginx included so Grafana's Ingress isn't created until the admission
+  # webhook controller is up (it creates an Ingress; see ingress block above).
+  depends_on = [helm_release.kube_prometheus_stack, helm_release.loki, helm_release.tempo, helm_release.ingress_nginx]
 }
 
 resource "kubectl_manifest" "peerauth_observability_strict" {

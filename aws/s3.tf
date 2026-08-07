@@ -307,3 +307,91 @@ resource "aws_iam_policy" "gdcn_s3_access" {
     ]
   })
 }
+
+###
+# Observability S3 buckets (Loki chunks/index, Tempo trace blocks)
+###
+
+# Loki/Tempo store retention-sized data in S3 instead of large PVCs; the pods
+# keep only a small fixed WAL PVC. Kept separate from the GoodData.CN buckets so
+# the observability IRSA role grants access only to these two buckets.
+locals {
+  obs_s3_buckets = {
+    loki  = "-loki"
+    tempo = "-tempo"
+  }
+
+  obs_s3_bucket_arns = [for k in keys(local.obs_s3_buckets) : aws_s3_bucket.observability[k].arn]
+  obs_s3_object_arns = formatlist("%s/*", local.obs_s3_bucket_arns)
+}
+
+resource "aws_s3_bucket" "observability" {
+  for_each      = local.obs_s3_buckets
+  bucket        = substr("${local.bucket_prefix}${each.value}", 0, 63)
+  force_destroy = true
+
+  tags = local.common_tags
+}
+
+resource "aws_s3_bucket_public_access_block" "observability" {
+  for_each = aws_s3_bucket.observability
+  bucket   = each.value.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "observability" {
+  for_each = aws_s3_bucket.observability
+  bucket   = each.value.id
+
+  versioning_configuration {
+    status = "Suspended"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "observability" {
+  for_each = aws_s3_bucket.observability
+  bucket   = each.value.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_iam_policy" "observability_s3_access" {
+  name        = "${var.deployment_name}-ObservabilityS3Access"
+  description = "Allow Loki and Tempo to use S3 buckets for object storage."
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "AllowBucketListingAndLocation",
+        Effect = "Allow",
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation",
+          "s3:ListBucketMultipartUploads"
+        ],
+        Resource = local.obs_s3_bucket_arns
+      },
+      {
+        Sid    = "AllowObjectReadWriteAndMultipart",
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:AbortMultipartUpload",
+          "s3:ListMultipartUploadParts"
+        ],
+        Resource = local.obs_s3_object_arns
+      }
+    ]
+  })
+}

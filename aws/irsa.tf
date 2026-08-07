@@ -35,6 +35,52 @@ resource "aws_iam_role_policy_attachment" "gdcn_irsa_s3_access" {
 }
 
 ###
+# IAM role for observability (Loki + Tempo) service accounts (IRSA)
+###
+
+# One role assumed by both the loki and tempo service accounts in the
+# observability namespace. The EKS IRSA webhook injects the web-identity token
+# off the SA's eks.amazonaws.com/role-arn annotation (no pod label needed).
+data "aws_iam_policy_document" "observability_irsa_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:observability:loki",
+        "system:serviceaccount:observability:tempo",
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "observability_irsa" {
+  name               = "${var.deployment_name}-observability-irsa"
+  assume_role_policy = data.aws_iam_policy_document.observability_irsa_assume_role.json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "observability_irsa_s3_access" {
+  role       = aws_iam_role.observability_irsa.name
+  policy_arn = aws_iam_policy.observability_s3_access.arn
+}
+
+###
 # IAM role for StarRocks service account (IRSA)
 ###
 

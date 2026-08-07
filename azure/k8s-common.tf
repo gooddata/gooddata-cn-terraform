@@ -66,6 +66,41 @@ module "k8s_common" {
   azure_datasource_fs_container = azurerm_storage_container.containers["quiver-datasource-fs"].name
   azure_uami_client_id          = azurerm_user_assigned_identity.gdcn.client_id
 
+  # Observability object storage: Loki + Tempo write to Blob (no big PVC),
+  # authenticating via workload identity (obs UAMI federated to their SAs).
+  loki_objstore = {
+    object_store = "azure"
+    storage = {
+      type = "azure"
+      # The SingleBinary chart references all three bucket names even with
+      # ruler/admin features off; point them at the one loki container.
+      bucketNames = {
+        chunks = azurerm_storage_container.containers["loki"].name
+        ruler  = azurerm_storage_container.containers["loki"].name
+        admin  = azurerm_storage_container.containers["loki"].name
+      }
+      azure = {
+        accountName       = azurerm_storage_account.main.name
+        useFederatedToken = true
+      }
+    }
+  }
+  tempo_objstore = {
+    backend = "azure"
+    azure = {
+      container_name       = azurerm_storage_container.containers["tempo"].name
+      storage_account_name = azurerm_storage_account.main.name
+      use_federated_token  = true
+    }
+    wal = { path = "/var/tempo/wal" }
+  }
+  obs_sa_annotations = {
+    "azure.workload.identity/client-id" = azurerm_user_assigned_identity.observability.client_id
+  }
+  obs_pod_labels = {
+    "azure.workload.identity/use" = "true"
+  }
+
   depends_on = [
     azurerm_kubernetes_cluster.main,
     # Storage classes + the default-class annotations must exist before any Helm
@@ -75,6 +110,10 @@ module "k8s_common" {
     kubernetes_annotations.default_storage_class,
     azurerm_role_assignment.gdcn_blob_contrib,
     azurerm_federated_identity_credential.gdcn,
+    # Observability Blob access must exist before Loki/Tempo start.
+    azurerm_role_assignment.observability_blob_contrib,
+    azurerm_federated_identity_credential.loki,
+    azurerm_federated_identity_credential.tempo,
     # Image cache plumbing must outlive the helm releases: pre-delete hooks
     # pull images via the cache rules, and kubelet needs AcrPull. Listing
     # these here makes destroy tear down k8s_common first, ACR plumbing after.

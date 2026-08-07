@@ -7,6 +7,11 @@ locals {
   local_db_hostname = "postgres-rw.${module.k8s_local.postgres_namespace}.svc.cluster.local"
 
   local_db_username = "postgres"
+
+  # SeaweedFS S3 endpoint without the scheme. Loki/Tempo S3 clients take a
+  # host:port endpoint plus an explicit insecure (http) flag, whereas the
+  # GoodData.CN chart consumes the full URL form.
+  local_obs_s3_endpoint_host = replace(module.k8s_local.seaweedfs_s3_endpoint, "http://", "")
 }
 
 resource "random_password" "local_postgres_password" {
@@ -57,6 +62,7 @@ module "k8s_local" {
   kubeconfig_path        = local.kubeconfig_path
   kubeconfig_context     = local.kubeconfig_context
   registry_dockerio      = var.registry_dockerio
+  seaweedfs_storage_size = var.seaweedfs_storage_size
 
   prometheus_crds_ready = helm_release.prometheus_operator_crds.name
 
@@ -115,6 +121,46 @@ module "k8s_common" {
   loki_retention_period       = var.loki_retention_period
   prometheus_retention_period = var.prometheus_retention_period
   tempo_retention_period      = var.tempo_retention_period
+
+  # Observability object storage: Loki + Tempo write to the local SeaweedFS S3
+  # buckets instead of large PVCs. SeaweedFS has no workload identity, so static
+  # S3 credentials are passed; each is a per-bucket SeaweedFS user, not the
+  # account-wide gdcn one. Path-style + insecure (http) for the in-cluster
+  # endpoint. (obs_sa_annotations / obs_pod_labels stay empty — no IRSA/WI.)
+  loki_objstore = {
+    object_store = "s3"
+    storage = {
+      type = "s3"
+      # The SingleBinary chart references all three bucket names even with
+      # ruler/admin features off; point them at the one loki bucket.
+      bucketNames = {
+        chunks = module.k8s_local.seaweedfs_bucket_loki
+        ruler  = module.k8s_local.seaweedfs_bucket_loki
+        admin  = module.k8s_local.seaweedfs_bucket_loki
+      }
+      s3 = {
+        endpoint         = local.local_obs_s3_endpoint_host
+        region           = module.k8s_local.seaweedfs_region
+        accessKeyId      = module.k8s_local.seaweedfs_loki_access_key
+        secretAccessKey  = module.k8s_local.seaweedfs_loki_secret_key
+        s3ForcePathStyle = true
+        insecure         = true
+      }
+    }
+  }
+  tempo_objstore = {
+    backend = "s3"
+    s3 = {
+      bucket         = module.k8s_local.seaweedfs_bucket_tempo
+      endpoint       = local.local_obs_s3_endpoint_host
+      region         = module.k8s_local.seaweedfs_region
+      access_key     = module.k8s_local.seaweedfs_tempo_access_key
+      secret_key     = module.k8s_local.seaweedfs_tempo_secret_key
+      forcepathstyle = true
+      insecure       = true
+    }
+    wal = { path = "/var/tempo/wal" }
+  }
 
   gdcn_helm_extra_values = var.gdcn_helm_extra_values
 
