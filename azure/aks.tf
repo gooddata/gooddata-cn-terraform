@@ -97,12 +97,8 @@ resource "azurerm_kubernetes_cluster" "main" {
   depends_on = [azurerm_subnet_nat_gateway_association.aks]
 }
 
-# Grant AKS cluster permissions to manage the resource group
-resource "azurerm_role_assignment" "aks_cluster_contributor" {
-  scope                = azurerm_resource_group.main.id
-  role_definition_name = "Contributor"
-  principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
-}
+# The kubelet identity gets no resource-group-wide grant: any pod can reach it
+# via IMDS. Real needs use scoped identities (AcrPull below, UAMIs in identity.tf).
 
 # Grant AKS cluster's system identity Network Contributor permissions for LoadBalancer services
 resource "azurerm_role_assignment" "aks_system_identity_network_contributor" {

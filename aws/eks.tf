@@ -29,7 +29,16 @@ locals {
     ECRPullThroughCacheMin = aws_iam_policy.ecr_pull_through_cache_min[0].arn
   } : {}
 
-  # Node sizing / StarRocks node types: resolved in size-profiles.tf and applied
+  # Managed policies shared by every node role (system managed node group here,
+  # and the Karpenter node role in karpenter.tf): image pull, plus the
+  # pull-through cache policy when image caching is enabled. EBS volume calls
+  # are made by the CSI controller, which gets AmazonEBSCSIDriverPolicy through
+  # aws_iam_role.ebs_csi_irsa — nodes do not need it.
+  node_iam_role_additional_policies = merge({
+    AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
+  }, local.ecr_pull_through_cache_policy)
+
+  # Node sizing / AI Lake node types: resolved in size-profiles.tf and applied
   # via Karpenter NodePools (see karpenter.tf), not managed node groups.
 }
 
@@ -63,6 +72,7 @@ module "eks" {
     aws-ebs-csi-driver = {
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
+      service_account_role_arn    = aws_iam_role.ebs_csi_irsa.arn
     }
   }
 
@@ -95,10 +105,7 @@ module "eks" {
 
       tags = local.common_tags
 
-      iam_role_additional_policies = merge({
-        AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-        AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
-      }, local.ecr_pull_through_cache_policy)
+      iam_role_additional_policies = local.node_iam_role_additional_policies
 
       min_size     = 2
       max_size     = 3
@@ -112,7 +119,17 @@ module "eks" {
     "karpenter.sh/discovery" = var.deployment_name
   }
 
-  node_security_group_additional_rules = var.ingress_controller == "istio_gateway" ? {
+  # Pod IPs live on node ENIs, so this group governs all pod-to-pod traffic.
+  node_security_group_additional_rules = merge({
+    node_to_node_all = {
+      description = "Node to node, all ports and protocols"
+      protocol    = "-1"
+      from_port   = 0
+      to_port     = 0
+      type        = "ingress"
+      self        = true
+    }
+    }, var.ingress_controller == "istio_gateway" ? {
     istio_xds = {
       description                   = "Istio XDS (istiod) to workloads"
       protocol                      = "tcp"
@@ -129,7 +146,7 @@ module "eks" {
       type                          = "ingress"
       source_cluster_security_group = true
     }
-  } : {}
+  } : {})
 }
 
 # Outputs
