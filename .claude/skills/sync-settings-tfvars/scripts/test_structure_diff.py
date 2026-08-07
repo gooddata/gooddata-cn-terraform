@@ -96,6 +96,20 @@ class NoValueLeaks(unittest.TestCase):
     def test_commented_out_heredoc(self):
         self.assertRedacted(f"# body = <<EOT\n# {SECRET}\n# EOT\n")
 
+    def test_hyphenated_identifier(self):
+        self.assertRedacted(f'my-var = "{SECRET}"')
+
+    def test_uppercase_identifier(self):
+        self.assertRedacted(f'MyVar = "{SECRET}"')
+
+    def test_non_ascii_identifier(self):
+        self.assertRedacted(f'café_var = "{SECRET}"')
+
+    def test_unparsed_assignment_is_still_redacted(self):
+        # Backstop for anything the identifier pattern does not recognise.
+        self.assertRedacted(f'"odd.key" = "{SECRET}"')
+        self.assertRedacted(f'123bad = "{SECRET}"')
+
 
 class StructureIsPreserved(unittest.TestCase):
     def test_trailing_comment_survives(self):

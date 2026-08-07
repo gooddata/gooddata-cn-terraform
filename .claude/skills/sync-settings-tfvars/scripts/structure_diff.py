@@ -16,7 +16,10 @@ import re
 import sys
 from pathlib import Path
 
-ASSIGN = re.compile(r"^(\s*)(#\s*)?([a-z_][a-z0-9_]*)\s*=\s*(.*)$")
+# HCL identifiers allow letters (including non-ASCII), digits, underscores and
+# hyphens, and are not lowercase-only. Anything narrower would fall through to
+# the raw-line branch below and print the value.
+ASSIGN = re.compile(r"^(\s*)(#\s*)?([^\W\d][\w-]*)\s*=\s*(.*)$")
 LEADING_HASH = re.compile(r"^\s*#\s?")
 
 OPENERS = "[{("
@@ -130,7 +133,13 @@ def normalize(text):
         raw = lines[i]
         m = ASSIGN.match(raw)
         if not m:
-            out.append(raw.rstrip())
+            # Backstop: never print a line we failed to parse but that still
+            # carries an assignment. Comments and structure pass through as-is.
+            code, _ = split_code_and_comment(raw)
+            if "=" in code:
+                out.append(f"{raw[: len(raw) - len(raw.lstrip())]}<unparsed> = <value>")
+            else:
+                out.append(raw.rstrip())
             i += 1
             continue
 
