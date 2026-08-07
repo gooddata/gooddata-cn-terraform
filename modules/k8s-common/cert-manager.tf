@@ -73,7 +73,7 @@ resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
               local.cert_manager_http01_ingress_class == "nginx" ? {
                 ingressTemplate = {
                   metadata = {
-                    annotations = { "nginx.ingress.kubernetes.io/enable-validate-ingress" = "false" }
+                    annotations = local.cert_manager_http01_ingress_annotations
                   }
                 }
               } : {}

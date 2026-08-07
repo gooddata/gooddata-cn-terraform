@@ -98,7 +98,7 @@ data "aws_iam_policy_document" "s3tables_data_access" {
     ]
 
     resources = [
-      "arn:aws:s3tables:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/*"
+      local.s3tables_bucket_wildcard_arn
     ]
   }
 
@@ -115,11 +115,11 @@ data "aws_iam_policy_document" "s3tables_data_access" {
     ]
 
     resources = [
-      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog",
-      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog/s3tablescatalog",
-      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog/s3tablescatalog/*",
-      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:database/s3tablescatalog/*",
-      "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/s3tablescatalog/*",
+      "${local.glue_arn_prefix}:catalog",
+      "${local.glue_arn_prefix}:catalog/s3tablescatalog",
+      "${local.glue_arn_prefix}:catalog/s3tablescatalog/*",
+      "${local.glue_arn_prefix}:database/s3tablescatalog/*",
+      "${local.glue_arn_prefix}:table/s3tablescatalog/*",
     ]
   }
 }
@@ -147,7 +147,7 @@ resource "aws_iam_role_policy" "s3tables_lakeformation" {
 resource "aws_lakeformation_resource" "s3tables" {
   count = var.enable_ai_lake ? 1 : 0
 
-  arn                    = "arn:aws:s3tables:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/*"
+  arn                    = local.s3tables_bucket_wildcard_arn
   role_arn               = aws_iam_role.s3tables_lakeformation[0].arn
   with_federation        = true
   with_privileged_access = true
@@ -395,13 +395,7 @@ data "aws_iam_policy_document" "s3tables_ailake_access" {
       "glue:GetTable",
       "glue:GetTables",
     ]
-    resources = [
-      "${local.glue_arn_prefix}:catalog",
-      "${local.glue_arn_prefix}:catalog/s3tablescatalog",
-      "${local.glue_arn_prefix}:catalog/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}",
-      "${local.glue_arn_prefix}:database/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*",
-      "${local.glue_arn_prefix}:table/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*/*",
-    ]
+    resources = local.glue_s3tables_catalog_arns
   }
 
   statement {
@@ -507,13 +501,7 @@ data "aws_iam_policy_document" "glue_etl_job_access" {
       "glue:UpdateDatabase",
       "glue:GetCatalogImportStatus",
     ]
-    resources = [
-      "${local.glue_arn_prefix}:catalog",
-      "${local.glue_arn_prefix}:catalog/s3tablescatalog",
-      "${local.glue_arn_prefix}:catalog/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}",
-      "${local.glue_arn_prefix}:database/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*",
-      "${local.glue_arn_prefix}:table/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*/*",
-    ]
+    resources = local.glue_s3tables_catalog_arns
   }
 
   statement {

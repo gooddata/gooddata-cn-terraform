@@ -8,10 +8,8 @@ locals {
 
 resource "kubernetes_namespace_v1" "pulsar" {
   metadata {
-    name = local.pulsar_namespace
-    labels = local.use_istio_gateway ? {
-      "istio-injection" = "enabled"
-    } : null
+    name   = local.pulsar_namespace
+    labels = local.istio_injection_labels
   }
 }
 
