@@ -1,3 +1,17 @@
+variable "ai_lake_size_profile" {
+  description = "AI Lake sizing profile. Required when enable_ai_lake is true; one of: dev, prod-small, prod-xl. Not derived from size_profile."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.ai_lake_size_profile == null || contains(["dev", "prod-small", "prod-xl"], var.ai_lake_size_profile)
+    error_message = "ai_lake_size_profile must be one of: dev, prod-small, prod-xl."
+  }
+  validation {
+    condition     = !var.enable_ai_lake || var.ai_lake_size_profile != null
+    error_message = "ai_lake_size_profile must be set when enable_ai_lake is true."
+  }
+}
+
 variable "auth_hostname" {
   description = "Hostname for the default GoodData identity provider (Dex) ingress."
   type        = string
@@ -66,6 +80,12 @@ variable "dockerhub_username" {
   }
 }
 
+variable "eks_ai_lake_node_types" {
+  description = "EC2 instance types for the dedicated AI Lake node pool (taint workload=starrocks). If null, defaults to a preset chosen by ai_lake_size_profile."
+  type        = list(string)
+  default     = null
+}
+
 variable "eks_endpoint_private_access" {
   description = "Whether the EKS API server is reachable privately from within the VPC."
   type        = bool
@@ -100,14 +120,20 @@ variable "eks_node_cpu_max" {
   default     = null
 }
 
-variable "eks_starrocks_node_types" {
-  description = "EC2 instance types for the StarRocks-dedicated EKS pool (taint workload=starrocks). If null, defaults to a preset chosen by starrocks_size_profile."
-  type        = list(string)
-  default     = null
+variable "eks_node_disk_size" {
+  description = "Data volume size in GiB for every node's /dev/xvdb, on both the system node group and the Karpenter EC2NodeClass. Bottlerocket otherwise defaults to 20 GiB, which is below the ephemeral-storage some GoodData.CN pods request and leaves them unschedulable on every instance type."
+  type        = number
+  default     = 100
+}
+
+variable "eks_node_max_pods" {
+  description = "Kubelet maxPods for every node, set on the Karpenter EC2NodeClass and in the system node group's Bottlerocket settings. Both otherwise derive it from the instance type's secondary-IP limits, which leaves VPC CNI prefix delegation inert. 110 is the AWS-recommended ceiling for instances under 30 vCPU."
+  type        = number
+  default     = 110
 }
 
 variable "eks_storage_class" {
-  description = "Kubernetes StorageClass for GoodData.CN chart PVCs. If null, chosen by size_profile (gp3 for dev, gp3-perf for prod)."
+  description = "Kubernetes StorageClass for GoodData.CN chart PVCs. If null, chosen by size_profile. Latency-sensitive PVCs use the fast class instead, which is not user-configurable."
   type        = string
   default     = null
 }
@@ -143,7 +169,7 @@ variable "enable_observability" {
 }
 
 variable "enable_ai_lake" {
-  description = "Enable StarRocks deployment for analytics query acceleration"
+  description = "Enable AI Lake deployment for analytics query acceleration"
   type        = bool
   default     = false
 }
@@ -498,20 +524,6 @@ variable "starrocks_fe_image_tag" {
   description = "Docker image tag for StarRocks FE nodes"
   type        = string
   default     = "4.0.6-20260507-091022-3c12ee9"
-}
-
-variable "starrocks_size_profile" {
-  description = "StarRocks (AI Lake) sizing profile. Required when enable_ai_lake is true; one of: dev, prod-small, prod-xl. Not derived from size_profile."
-  type        = string
-  default     = null
-  validation {
-    condition     = var.starrocks_size_profile == null || contains(["dev", "prod-small", "prod-xl"], var.starrocks_size_profile)
-    error_message = "starrocks_size_profile must be one of: dev, prod-small, prod-xl."
-  }
-  validation {
-    condition     = !var.enable_ai_lake || var.starrocks_size_profile != null
-    error_message = "starrocks_size_profile must be set when enable_ai_lake is true."
-  }
 }
 
 variable "tls_mode" {

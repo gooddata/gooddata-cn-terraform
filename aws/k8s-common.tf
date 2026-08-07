@@ -54,7 +54,7 @@ module "k8s_common" {
   gdcn_storage_class     = local.storage_class
   pulsar_size            = local.profile.pulsar_size
   observability_size     = local.profile.observability_size
-  starrocks_size_profile = var.starrocks_size_profile
+  ai_lake_size_profile   = var.ai_lake_size_profile
   cloud                  = "aws"
   ingress_controller     = var.ingress_controller
   gdcn_irsa_role_arn     = aws_iam_role.gdcn_irsa.arn
