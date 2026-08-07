@@ -19,8 +19,9 @@ from pathlib import Path
 # HCL identifiers allow letters (including non-ASCII), digits, underscores and
 # hyphens, and are not lowercase-only. Anything narrower would fall through to
 # the raw-line branch below and print the value.
-ASSIGN = re.compile(r"^(\s*)(#\s*)?([^\W\d][\w-]*)\s*=\s*(.*)$")
-LEADING_HASH = re.compile(r"^\s*#\s?")
+ASSIGN = re.compile(r"^(\s*)((?:#|//)\s*)?([^\W\d][\w-]*)\s*=\s*(.*)$")
+# Leading comment marker on the lines of a commented-out block.
+LEADING_MARKER = re.compile(r"^\s*(?:#|//)\s?")
 
 OPENERS = "[{("
 CLOSERS = "]})"
@@ -148,7 +149,8 @@ def normalize(text):
         names.append((name, not commented))
         _, comment = split_code_and_comment(value)
         suffix = f" {comment.strip()}" if comment.strip() else ""
-        out.append(f"{indent}{'# ' if commented else ''}{name} = <value>{suffix}")
+        marker = hashmark.strip() + " " if commented else ""
+        out.append(f"{indent}{marker}{name} = <value>{suffix}")
         i += 1
 
         # Consume the rest of a multi-line value with one stateful pass, so
@@ -157,7 +159,7 @@ def normalize(text):
         st = new_state()
         scan_line(value, st)
         while incomplete(st) and i < len(lines):
-            body = LEADING_HASH.sub("", lines[i]) if commented else lines[i]
+            body = LEADING_MARKER.sub("", lines[i]) if commented else lines[i]
             scan_line(body, st)
             i += 1
 

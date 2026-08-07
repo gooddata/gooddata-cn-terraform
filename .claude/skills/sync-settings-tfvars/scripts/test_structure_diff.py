@@ -105,6 +105,15 @@ class NoValueLeaks(unittest.TestCase):
     def test_non_ascii_identifier(self):
         self.assertRedacted(f'café_var = "{SECRET}"')
 
+    def test_slash_commented_assignment(self):
+        self.assertRedacted(f'// api_token = "{SECRET}"')
+
+    def test_slash_commented_block(self):
+        self.assertRedacted(f'// m = {{\n//   k = "{SECRET}"\n// }}\n')
+
+    def test_slash_commented_heredoc(self):
+        self.assertRedacted(f"// body = <<EOT\n// {SECRET}\n// EOT\n")
+
     def test_unparsed_assignment_is_still_redacted(self):
         # Backstop for anything the identifier pattern does not recognise.
         self.assertRedacted(f'"odd.key" = "{SECRET}"')
@@ -119,6 +128,14 @@ class StructureIsPreserved(unittest.TestCase):
     def test_commented_assignment_keeps_its_hash(self):
         out, _ = run("# enable = true")
         self.assertEqual(out, "# enable = <value>")
+
+    def test_commented_assignment_keeps_its_slashes(self):
+        out, _ = run("// enable = true")
+        self.assertEqual(out, "// enable = <value>")
+
+    def test_slash_comment_line_passes_through(self):
+        out, _ = run("// a standalone note\nk = 1")
+        self.assertEqual(out, "// a standalone note\nk = <value>")
 
     def test_nested_keys_are_not_reported_as_variables(self):
         _, names = run('outer = {\n  inner = {\n    tok = "x"\n  }\n  after = "y"\n}\n')
