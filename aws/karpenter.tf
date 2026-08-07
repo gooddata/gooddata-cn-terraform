@@ -227,6 +227,9 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
     cluster_name = module.eks.cluster_name
     aws_region   = var.aws_region
     aws_profile  = var.aws_profile_name
+    # Pins the account these nodes live in, so destroy-time credentials can be
+    # checked against it before anything is terminated.
+    aws_account_id = data.aws_caller_identity.current.account_id
   }
 
   lifecycle {
@@ -247,24 +250,38 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
       aws_region="${self.triggers.aws_region}"
       aws_profile="${self.triggers.aws_profile}"
 
+      expected_account="${self.triggers.aws_account_id}"
+
       # The recorded profile is deliberately not replacement-sensitive, so it can
       # be stale by destroy time (renamed or removed). Prefer it, fall back to
-      # whatever credentials the environment provides, rather than leaving nodes
-      # running whose ENIs block VPC deletion.
-      if aws sts get-caller-identity --profile "$aws_profile" >/dev/null 2>&1; then
-        aws_creds="--profile $aws_profile"
-      elif aws sts get-caller-identity >/dev/null 2>&1; then
-        echo "WARNING: profile '$aws_profile' is unusable; using ambient AWS credentials."
-        aws_creds=""
-      else
-        echo "ERROR: no usable AWS credentials (profile '$aws_profile' and environment both failed)." >&2
-        exit 1
+      # ambient credentials — but only ever accept credentials for the account
+      # these nodes live in. This check gates instance termination, so the wrong
+      # account must fail closed rather than act on whatever it can reach.
+      account_of() { aws "$@" sts get-caller-identity --query Account --output text 2>/dev/null || true; }
+
+      use_profile=1
+      if [ "$(account_of --profile "$aws_profile")" != "$expected_account" ]; then
+        use_profile=""
+        if [ "$(account_of)" != "$expected_account" ]; then
+          echo "ERROR: no credentials for account $expected_account; profile '$aws_profile' and the environment both fail or resolve elsewhere." >&2
+          exit 1
+        fi
+        echo "WARNING: profile '$aws_profile' unusable or bound to another account; using ambient credentials for $expected_account."
       fi
+
+      # Keeps the profile one argument whatever characters it contains.
+      awsx() {
+        if [ -n "$use_profile" ]; then
+          aws --profile "$aws_profile" "$@"
+        else
+          aws "$@"
+        fi
+      }
 
       # Terminate any instance Karpenter still owns. Only needs the EC2 API, so
       # it is also the fallback when the cluster itself is unreachable.
       force_terminate_instances() {
-        ids=$(aws ec2 describe-instances --region "$aws_region" $aws_creds \
+        ids=$(awsx ec2 describe-instances --region "$aws_region" \
           --filters "Name=tag:kubernetes.io/cluster/$cluster_name,Values=owned" \
                     "Name=tag-key,Values=karpenter.sh/nodeclaim" \
                     "Name=instance-state-name,Values=pending,running,stopping,stopped" \
@@ -279,7 +296,7 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
         fi
 
         echo "Terminating $ids"
-        aws ec2 terminate-instances --region "$aws_region" $aws_creds \
+        awsx ec2 terminate-instances --region "$aws_region" \
           --instance-ids $ids >/dev/null || {
           echo "ERROR: terminate-instances failed." >&2
           exit 1
@@ -287,7 +304,7 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
         # ENIs only detach once instances reach terminated, and they block
         # subnet, security group and VPC deletion until they do.
         echo "Waiting for termination so their ENIs are released..."
-        aws ec2 wait instance-terminated --region "$aws_region" $aws_creds \
+        awsx ec2 wait instance-terminated --region "$aws_region" \
           --instance-ids $ids || echo "WARNING: waiter timed out; VPC deletion may retry."
       }
 
@@ -296,8 +313,8 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
 
       # Distinguish an already-deleted cluster from a real API error (expired
       # credentials, wrong profile, no network), which must not skip the drain.
-      if ! err=$(aws eks update-kubeconfig --name "$cluster_name" --region "$aws_region" \
-        $aws_creds --kubeconfig "$kubeconfig" 2>&1); then
+      if ! err=$(awsx eks update-kubeconfig --name "$cluster_name" --region "$aws_region" \
+        --kubeconfig "$kubeconfig" 2>&1); then
         if echo "$err" | grep -q "ResourceNotFoundException"; then
           echo "Cluster '$cluster_name' no longer exists; checking for orphaned instances."
           force_terminate_instances

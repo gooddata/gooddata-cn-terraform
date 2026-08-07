@@ -241,27 +241,42 @@ resource "null_resource" "alb_cleanup_wait" {
       aws_region="${self.triggers.aws_region}"
       aws_profile="${self.triggers.aws_profile}"
 
+      expected_account="${self.triggers.aws_account_id}"
+
       # The recorded profile is deliberately not replacement-sensitive, so it can
       # be stale by destroy time (renamed or removed). Prefer it, fall back to
-      # whatever credentials the environment provides, rather than stranding the
-      # ALB and with it the VPC.
-      if aws sts get-caller-identity --profile "$aws_profile" >/dev/null 2>&1; then
-        aws_creds="--profile $aws_profile"
-      elif aws sts get-caller-identity >/dev/null 2>&1; then
-        echo "WARNING: profile '$aws_profile' is unusable; using ambient AWS credentials."
-        aws_creds=""
-      else
-        echo "ERROR: no usable AWS credentials (profile '$aws_profile' and environment both failed)." >&2
-        exit 1
+      # ambient credentials — but only ever accept credentials for the account
+      # this ALB was created in. Against another account describe-load-balancers
+      # returns LoadBalancerNotFound, so we would report the ALB gone while the
+      # real one survives, or delete a same-named ALB over there.
+      account_of() { aws "$@" sts get-caller-identity --query Account --output text 2>/dev/null || true; }
+
+      use_profile=1
+      if [ "$(account_of --profile "$aws_profile")" != "$expected_account" ]; then
+        use_profile=""
+        if [ "$(account_of)" != "$expected_account" ]; then
+          echo "ERROR: no credentials for account $expected_account; profile '$aws_profile' and the environment both fail or resolve elsewhere." >&2
+          exit 1
+        fi
+        echo "WARNING: profile '$aws_profile' unusable or bound to another account; using ambient credentials for $expected_account."
       fi
+
+      # Keeps the profile one argument whatever characters it contains.
+      awsx() {
+        if [ -n "$use_profile" ]; then
+          aws --profile "$aws_profile" "$@"
+        else
+          aws "$@"
+        fi
+      }
 
       # Distinguish "ALB not found" from real API errors (auth, throttling, etc.).
       alb_exists() {
         local output
-        output=$(aws elbv2 describe-load-balancers \
+        output=$(awsx elbv2 describe-load-balancers \
           --names "$lb_name" \
           --region "$aws_region" \
-          $aws_creds 2>&1)
+          2>&1)
         local rc=$?
         if [ $rc -eq 0 ]; then
           return 0
@@ -291,10 +306,9 @@ resource "null_resource" "alb_cleanup_wait" {
 
       # Controller didn't clean up in time — force-delete the ALB.
       echo "WARNING: ALB '$lb_name' still exists after 300s. Force-deleting..."
-      lb_arn=$(aws elbv2 describe-load-balancers \
+      lb_arn=$(awsx elbv2 describe-load-balancers \
         --names "$lb_name" \
         --region "$aws_region" \
-        $aws_creds \
         --query 'LoadBalancers[0].LoadBalancerArn' \
         --output text 2>&1) || {
         echo "ERROR: Failed to fetch ALB ARN for '$lb_name' in region '$aws_region' (profile: '$aws_profile'): $lb_arn"
@@ -306,10 +320,10 @@ resource "null_resource" "alb_cleanup_wait" {
         exit 0
       fi
 
-      delete_output=$(aws elbv2 delete-load-balancer \
+      delete_output=$(awsx elbv2 delete-load-balancer \
         --load-balancer-arn "$lb_arn" \
         --region "$aws_region" \
-        $aws_creds 2>&1) || {
+        2>&1) || {
         if echo "$delete_output" | grep -q "LoadBalancerNotFound"; then
           echo "ALB was already deleted (race condition). Continuing."
         else
@@ -323,10 +337,9 @@ resource "null_resource" "alb_cleanup_wait" {
       eni_count=""
       end_eni=$((SECONDS + 120))
       while [ "$SECONDS" -lt "$end_eni" ]; do
-        eni_output=$(aws ec2 describe-network-interfaces \
+        eni_output=$(awsx ec2 describe-network-interfaces \
           --filters "Name=description,Values=*ELB app/$${lb_name}/*" \
           --region "$aws_region" \
-          $aws_creds \
           --query 'length(NetworkInterfaces)' \
           --output text 2>&1) || {
           echo "WARNING: Failed to query ENIs in region '$aws_region' (profile: '$aws_profile'): $eni_output (will retry)"
