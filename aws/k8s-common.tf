@@ -54,6 +54,7 @@ module "k8s_common" {
   gdcn_storage_class     = local.storage_class
   pulsar_size            = local.profile.pulsar_size
   observability_size     = local.profile.observability_size
+  fast_storage_class     = local.fast_storage_class
   ai_lake_size_profile   = var.ai_lake_size_profile
   cloud                  = "aws"
   ingress_controller     = var.ingress_controller

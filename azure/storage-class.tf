@@ -28,7 +28,10 @@ resource "kubernetes_storage_class_v1" "premium_ssd_v2" {
     DiskMBpsReadWrite = "125"
   }
 
-  depends_on = [azurerm_kubernetes_cluster.main]
+  depends_on = [
+    azurerm_kubernetes_cluster.main,
+    azurerm_role_assignment.aks_creator_cluster_admin,
+  ]
 }
 
 # Premium SSD v1 (Premium_LRS) kept as a non-default class so workloads can pin
@@ -51,7 +54,10 @@ resource "kubernetes_storage_class_v1" "premium_ssd" {
     skuname = "Premium_LRS"
   }
 
-  depends_on = [azurerm_kubernetes_cluster.main]
+  depends_on = [
+    azurerm_kubernetes_cluster.main,
+    azurerm_role_assignment.aks_creator_cluster_admin,
+  ]
 }
 
 # Cluster default = the built-in StandardSSD class "managed-csi" (standard tier).
@@ -81,5 +87,8 @@ resource "kubernetes_annotations" "default_storage_class" {
   # take ownership of it rather than erroring on the conflict.
   force = true
 
-  depends_on = [azurerm_kubernetes_cluster.main]
+  depends_on = [
+    azurerm_kubernetes_cluster.main,
+    azurerm_role_assignment.aks_creator_cluster_admin,
+  ]
 }
