@@ -142,3 +142,6 @@ gdcn_orgs = [
 # Uncomment to override AKS defaults
 # aks_version                         = "1.36"
 # aks_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
+
+# Uncomment to replicate backups to the Azure paired region.
+# postgresql_geo_redundant_backup = true

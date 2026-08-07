@@ -434,10 +434,26 @@ variable "rds_apply_immediately" {
   default     = false
 }
 
+variable "rds_backup_retention_period" {
+  description = "Days of automated RDS backups / point-in-time recovery. If null, chosen by size_profile (14 for prod, 7 for dev)."
+  type        = number
+  default     = null
+  validation {
+    # coalesce keeps floor() off a null value: Terraform before 1.12
+    # evaluates both sides of ||.
+    condition = (
+      coalesce(var.rds_backup_retention_period, 0) == floor(coalesce(var.rds_backup_retention_period, 0))
+      && coalesce(var.rds_backup_retention_period, 0) >= 0
+      && coalesce(var.rds_backup_retention_period, 0) <= 35
+    )
+    error_message = "rds_backup_retention_period must be a whole number of days between 0 and 35."
+  }
+}
+
 variable "rds_deletion_protection" {
-  description = "Enable deletion protection on the RDS instance."
+  description = "Enable deletion protection on the RDS instance. If null, chosen by size_profile (on for prod, off for dev)."
   type        = bool
-  default     = false
+  default     = null
 }
 
 variable "rds_instance_class" {
@@ -447,9 +463,9 @@ variable "rds_instance_class" {
 }
 
 variable "rds_skip_final_snapshot" {
-  description = "Skip taking a final snapshot when destroying the RDS instance."
+  description = "Skip taking a final snapshot when destroying the RDS instance. If null, chosen by size_profile (final snapshot for prod, skipped for dev)."
   type        = bool
-  default     = true
+  default     = null
 }
 
 variable "route53_zone_id" {
