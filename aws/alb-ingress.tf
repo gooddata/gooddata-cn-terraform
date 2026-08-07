@@ -222,6 +222,9 @@ resource "null_resource" "alb_cleanup_wait" {
     lb_name     = local.alb_load_balancer_name
     aws_region  = var.aws_region
     aws_profile = var.aws_profile_name
+    # Pins the account this ALB lives in, so destroy-time credentials can be
+    # checked against it rather than trusted for being merely valid.
+    aws_account_id = data.aws_caller_identity.current.account_id
   }
 
   lifecycle {
