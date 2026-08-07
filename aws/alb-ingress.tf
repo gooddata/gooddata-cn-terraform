@@ -225,6 +225,9 @@ resource "null_resource" "alb_cleanup_wait" {
     # Pins the account this ALB lives in, so destroy-time credentials can be
     # checked against it rather than trusted for being merely valid.
     aws_account_id = data.aws_caller_identity.current.account_id
+    # Recorded here rather than read from path.module: a destroy provisioner
+    # may only reference self.
+    cleanup_script = "${path.module}/../scripts/alb-cleanup.sh"
   }
 
   lifecycle {
@@ -235,136 +238,14 @@ resource "null_resource" "alb_cleanup_wait" {
 
   provisioner "local-exec" {
     when    = destroy
-    command = <<-EOT
-      set -euo pipefail
+    command = self.triggers.cleanup_script
 
-      command -v aws >/dev/null 2>&1 || { echo "ERROR: aws CLI not found"; exit 1; }
-
-      lb_name="${self.triggers.lb_name}"
-      aws_region="${self.triggers.aws_region}"
-      aws_profile="${self.triggers.aws_profile}"
-
-      expected_account="${self.triggers.aws_account_id}"
-
-      # The recorded profile is deliberately not replacement-sensitive, so it can
-      # be stale by destroy time (renamed or removed). Prefer it, fall back to
-      # ambient credentials — but only ever accept credentials for the account
-      # this ALB was created in. Against another account describe-load-balancers
-      # returns LoadBalancerNotFound, so we would report the ALB gone while the
-      # real one survives, or delete a same-named ALB over there.
-      account_of() { aws "$@" sts get-caller-identity --query Account --output text 2>/dev/null || true; }
-
-      use_profile=1
-      if [ "$(account_of --profile "$aws_profile")" != "$expected_account" ]; then
-        use_profile=""
-        if [ "$(account_of)" != "$expected_account" ]; then
-          echo "ERROR: no credentials for account $expected_account; profile '$aws_profile' and the environment both fail or resolve elsewhere." >&2
-          exit 1
-        fi
-        echo "WARNING: profile '$aws_profile' unusable or bound to another account; using ambient credentials for $expected_account."
-      fi
-
-      # Keeps the profile one argument whatever characters it contains.
-      awsx() {
-        if [ -n "$use_profile" ]; then
-          aws --profile "$aws_profile" "$@"
-        else
-          aws "$@"
-        fi
-      }
-
-      # Distinguish "ALB not found" from real API errors (auth, throttling, etc.).
-      alb_exists() {
-        local output
-        output=$(awsx elbv2 describe-load-balancers \
-          --names "$lb_name" \
-          --region "$aws_region" \
-          2>&1)
-        local rc=$?
-        if [ $rc -eq 0 ]; then
-          return 0
-        elif echo "$output" | grep -q "LoadBalancerNotFound"; then
-          return 1
-        else
-          echo "ERROR: Unexpected AWS API error in region '$aws_region' (profile: '$aws_profile'): $output" >&2
-          exit 1
-        fi
-      }
-
-      if ! alb_exists; then
-        echo "ALB '$lb_name' does not exist. Nothing to clean up."
-        exit 0
-      fi
-
-      # Give the LB controller up to 5 min to delete the ALB.
-      echo "Waiting up to 300s for ALB '$lb_name' to be deleted by the AWS Load Balancer Controller..."
-      end=$(($(date +%s) + 300))
-      while [ "$(date +%s)" -lt "$end" ]; do
-        if ! alb_exists; then
-          echo "ALB '$lb_name' deleted by the controller."
-          exit 0
-        fi
-        sleep 10
-      done
-
-      # Controller didn't clean up in time — force-delete the ALB.
-      echo "WARNING: ALB '$lb_name' still exists after 300s. Force-deleting..."
-      lb_arn=$(awsx elbv2 describe-load-balancers \
-        --names "$lb_name" \
-        --region "$aws_region" \
-        --query 'LoadBalancers[0].LoadBalancerArn' \
-        --output text 2>&1) || {
-        echo "ERROR: Failed to fetch ALB ARN for '$lb_name' in region '$aws_region' (profile: '$aws_profile'): $lb_arn"
-        exit 1
-      }
-
-      if [ -z "$lb_arn" ] || [ "$lb_arn" = "None" ]; then
-        echo "ALB '$lb_name' was deleted between check and ARN fetch. Continuing."
-        exit 0
-      fi
-
-      delete_output=$(awsx elbv2 delete-load-balancer \
-        --load-balancer-arn "$lb_arn" \
-        --region "$aws_region" \
-        2>&1) || {
-        if echo "$delete_output" | grep -q "LoadBalancerNotFound"; then
-          echo "ALB was already deleted (race condition). Continuing."
-        else
-          echo "ERROR: Failed to delete ALB '$lb_name' in region '$aws_region' (profile: '$aws_profile'): $delete_output"
-          exit 1
-        fi
-      }
-
-      # Wait for ALB ENIs to detach so VPC resources can be destroyed.
-      echo "Waiting for ALB ENIs to be released..."
-      eni_count=""
-      end_eni=$((SECONDS + 120))
-      while [ "$SECONDS" -lt "$end_eni" ]; do
-        eni_output=$(awsx ec2 describe-network-interfaces \
-          --filters "Name=description,Values=*ELB app/$${lb_name}/*" \
-          --region "$aws_region" \
-          --query 'length(NetworkInterfaces)' \
-          --output text 2>&1) || {
-          echo "WARNING: Failed to query ENIs in region '$aws_region' (profile: '$aws_profile'): $eni_output (will retry)"
-          sleep 5
-          continue
-        }
-        eni_count="$eni_output"
-        if [ "$eni_count" = "0" ]; then
-          echo "ALB ENIs released."
-          break
-        fi
-        echo "Still waiting for $eni_count ENI(s)..."
-        sleep 5
-      done
-
-      if [ "$eni_count" != "0" ]; then
-        echo "ERROR: $eni_count ALB ENI(s) still attached after 120s timeout for '$lb_name' in region '$aws_region' (profile: '$aws_profile')."
-        echo "VPC subnet/security-group deletion will likely fail."
-        echo "Manually detach ENIs for ELB app/$lb_name, then re-run destroy."
-        exit 1
-      fi
-    EOT
+    environment = {
+      LB_NAME          = self.triggers.lb_name
+      AWS_REGION       = self.triggers.aws_region
+      AWS_PROFILE_NAME = self.triggers.aws_profile
+      AWS_ACCOUNT_ID   = self.triggers.aws_account_id
+    }
   }
 
   # depends_on keeps k8s_aws and the ACM cert alive during the cleanup:
