@@ -1,0 +1,33 @@
+# KEDA autoscaling. Available from GoodData.CN 4.12.0.
+# Components are enabled individually; the chart-wide master switch stays off.
+# CPU targets and scaling behavior come from the chart defaults.
+kedaAutoscaling:
+  minReplicaCount: ${min_replicas}
+  maxReplicaCount: ${max_replicas}
+analyticalDesigner:
+  kedaAutoscaling:
+    enabled: true
+dashboards:
+  kedaAutoscaling:
+    enabled: true
+homeUi:
+  kedaAutoscaling:
+    enabled: true
+apiGw:
+  kedaAutoscaling:
+    enabled: true
+authService:
+  kedaAutoscaling:
+    enabled: true
+metadataApi:
+  kedaAutoscaling:
+    enabled: true
+afmExecApi:
+  kedaAutoscaling:
+    enabled: true
+calcique:
+  kedaAutoscaling:
+    enabled: true
+resultCache:
+  kedaAutoscaling:
+    enabled: true
