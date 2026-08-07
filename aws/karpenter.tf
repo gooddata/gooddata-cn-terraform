@@ -19,12 +19,9 @@ module "karpenter" {
   # association binding the kube-system/karpenter service account to the role.
   create_pod_identity_association = true
 
-  # Lets Karpenter-launched nodes use the EBS CSI driver and pull images
-  # (incl. via the optional pull-through cache).
-  node_iam_role_additional_policies = merge({
-    AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-    AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
-  }, local.ecr_pull_through_cache_policy)
+  # Lets Karpenter-launched nodes pull images (incl. via the optional
+  # pull-through cache). Same policy set as the system node group.
+  node_iam_role_additional_policies = local.node_iam_role_additional_policies
 
   tags = local.common_tags
 }
