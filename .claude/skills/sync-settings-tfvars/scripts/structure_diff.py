@@ -21,6 +21,7 @@ LEADING_HASH = re.compile(r"^\s*#\s?")
 
 OPENERS = "[{("
 CLOSERS = "]})"
+HEREDOC = re.compile(r"<<-?\s*([A-Za-z_][A-Za-z0-9_]*)")
 
 
 def split_code_and_comment(s):
@@ -44,11 +45,37 @@ def split_code_and_comment(s):
     return s, ""
 
 
-def depth_delta(code):
-    """Net bracket depth change for a line, ignoring brackets inside strings."""
+def new_state():
+    """Lexer state carried across the lines of one multi-line value."""
+    return {"depth": 0, "heredoc": None, "block": False}
+
+
+def scan_line(line, st):
+    """Advance the lexer over one line, updating `st` in place.
+
+    Stateful on purpose: a heredoc body or a `/* */` block comment can contain
+    brackets, `#`, or the terminator word, none of which may be mistaken for
+    structure. Getting this wrong ends a value early and prints the rest of it.
+    """
+    if st["heredoc"] is not None:
+        if line.strip() == st["heredoc"]:
+            st["heredoc"] = None
+        return st
+
+    i, n = 0, len(line)
     in_string = escaped = False
-    depth = 0
-    for c in code:
+    while i < n:
+        c = line[i]
+        nxt = line[i + 1 : i + 2]
+
+        if st["block"]:
+            if c == "*" and nxt == "/":
+                st["block"] = False
+                i += 2
+                continue
+            i += 1
+            continue
+
         if in_string:
             if escaped:
                 escaped = False
@@ -56,13 +83,35 @@ def depth_delta(code):
                 escaped = True
             elif c == '"':
                 in_string = False
-        elif c == '"':
+            i += 1
+            continue
+
+        if c == '"':
             in_string = True
+        elif c == "#" or (c == "/" and nxt == "/"):
+            return st  # rest of the line is a comment
+        elif c == "/" and nxt == "*":
+            st["block"] = True
+            i += 2
+            continue
+        elif c == "<" and nxt == "<":
+            m = HEREDOC.match(line, i)
+            if m:
+                st["heredoc"] = m.group(1)
+                return st  # heredoc body starts on the next line
+            i += 2
+            continue
         elif c in OPENERS:
-            depth += 1
+            st["depth"] += 1
         elif c in CLOSERS:
-            depth -= 1
-    return depth
+            st["depth"] -= 1
+        i += 1
+    return st
+
+
+def incomplete(st):
+    """True while the value continues onto further lines."""
+    return st["depth"] > 0 or st["heredoc"] is not None or st["block"]
 
 
 def normalize(text):
@@ -88,25 +137,19 @@ def normalize(text):
         indent, hashmark, name, value = m.groups()
         commented = hashmark is not None
         names.append((name, not commented))
-        code, comment = split_code_and_comment(value)
-        code = code.strip()
+        _, comment = split_code_and_comment(value)
         suffix = f" {comment.strip()}" if comment.strip() else ""
         out.append(f"{indent}{'# ' if commented else ''}{name} = <value>{suffix}")
         i += 1
 
-        if code.startswith("<<"):
-            term = (code.lstrip("<-").split() or ["EOT"])[0]
-            while i < len(lines) and lines[i].lstrip("# ").strip() != term:
-                i += 1
-            i += 1  # consume the terminator
-            continue
-
-        # Consume the rest of a multi-line collection by tracking bracket depth,
-        # so nested maps/lists and openers with trailing comments stay redacted.
-        depth = depth_delta(code)
-        while depth > 0 and i < len(lines):
+        # Consume the rest of a multi-line value with one stateful pass, so
+        # nested collections, heredoc bodies and block comments all stay
+        # redacted no matter what they contain.
+        st = new_state()
+        scan_line(value, st)
+        while incomplete(st) and i < len(lines):
             body = LEADING_HASH.sub("", lines[i]) if commented else lines[i]
-            depth += depth_delta(split_code_and_comment(body)[0])
+            scan_line(body, st)
             i += 1
 
     return out, names

@@ -15,7 +15,14 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from structure_diff import depth_delta, normalize, split_code_and_comment
+from structure_diff import incomplete, new_state, normalize, scan_line, split_code_and_comment
+
+
+def depth_after(*lines):
+    st = new_state()
+    for line in lines:
+        scan_line(line, st)
+    return st
 
 SECRET = "SHOULD_NEVER_APPEAR"
 
@@ -68,6 +75,27 @@ class NoValueLeaks(unittest.TestCase):
     def test_inline_function_call(self):
         self.assertRedacted(f'v = merge(\n  {{ k = "{SECRET}" }},\n)\n')
 
+    def test_heredoc_body_containing_commented_terminator(self):
+        self.assertRedacted(f"body = <<EOT\n# EOT\n{SECRET}\nEOT\n")
+
+    # An indented terminator does close a `<<EOT` heredoc — verified against
+    # Terraform 1.15.6 — so `line.strip()` is the correct comparison here.
+
+    def test_indent_marker_heredoc(self):
+        self.assertRedacted(f"body = <<-EOT\n  {SECRET}\n  EOT\n")
+
+    def test_heredoc_inside_collection_with_bracket_in_body(self):
+        self.assertRedacted(f'm = {{\n  k = <<EOT\n  ]\n  }}\n  EOT\n  s = "{SECRET}"\n}}\n')
+
+    def test_block_comment_with_bracket_inside_collection(self):
+        self.assertRedacted(f'm = {{\n  /* note ] and }} */\n  k = "{SECRET}"\n}}\n')
+
+    def test_multi_line_block_comment_inside_collection(self):
+        self.assertRedacted(f'm = {{\n  /* line one\n     line two ] */\n  k = "{SECRET}"\n}}\n')
+
+    def test_commented_out_heredoc(self):
+        self.assertRedacted(f"# body = <<EOT\n# {SECRET}\n# EOT\n")
+
 
 class StructureIsPreserved(unittest.TestCase):
     def test_trailing_comment_survives(self):
@@ -106,9 +134,28 @@ class Helpers(unittest.TestCase):
         self.assertEqual(split_code_and_comment(r'"a\"#b"'), (r'"a\"#b"', ""))
 
     def test_depth_ignores_brackets_in_strings(self):
-        self.assertEqual(depth_delta('"[[["'), 0)
-        self.assertEqual(depth_delta("[{"), 2)
-        self.assertEqual(depth_delta("}]"), -2)
+        self.assertEqual(depth_after('"[[["')["depth"], 0)
+        self.assertEqual(depth_after("[{")["depth"], 2)
+        self.assertEqual(depth_after("}]")["depth"], -2)
+
+    def test_heredoc_state_survives_until_terminator(self):
+        st = depth_after("x = <<EOT", "# EOT", "]")
+        self.assertEqual(st["heredoc"], "EOT")
+        self.assertTrue(incomplete(st))
+        scan_line("EOT", st)
+        self.assertIsNone(st["heredoc"])
+        self.assertFalse(incomplete(st))
+
+    def test_block_comment_spans_lines(self):
+        st = depth_after("m = {", "/* ] } ")
+        self.assertTrue(st["block"])
+        scan_line("*/", st)
+        self.assertFalse(st["block"])
+        self.assertEqual(st["depth"], 1)
+
+    def test_bracket_in_heredoc_does_not_change_depth(self):
+        st = depth_after("m = {", "k = <<EOT", "]", "}", "EOT")
+        self.assertEqual(st["depth"], 1)
 
 
 if __name__ == "__main__":
