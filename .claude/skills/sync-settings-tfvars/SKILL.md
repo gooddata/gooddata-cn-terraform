@@ -109,7 +109,7 @@ done
   look.
 - `terraform plan -var-file=settings.tfvars` is the definitive check — it exits
   non-zero on a rejected value, including cross-variable validations like AI
-  Lake requiring `ai_lake_size_profile`. Input validation is evaluated before
+  Lake requiring `starrocks_size_profile`. Input validation is evaluated before
   provider credentials are needed, so it still reports variable errors in an env
   with no cloud access; expect unrelated provider/credential errors alongside
   and ignore those. Prefer it whenever you can run it.
