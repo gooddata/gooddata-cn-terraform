@@ -17,9 +17,14 @@ resource "helm_release" "metrics-server" {
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
+  # Tolerate the system pool taint: this runs before Karpenter has provisioned
+  # any untainted capacity, so the system nodes are the only place it can land.
   values = [<<EOF
 image:
   repository: ${var.registry_k8sio}/metrics-server/metrics-server
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
 EOF
   ]
 }

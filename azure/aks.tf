@@ -56,11 +56,10 @@ resource "azurerm_kubernetes_cluster" "main" {
     tags = local.common_tags
   }
 
-  # Node Auto Provisioning (NAP / managed Karpenter) replaces the cluster
-  # autoscaler. mode=Auto installs and manages Karpenter in the control plane;
-  # default_node_pools=None means the only NodePools are the ones we define
-  # ourselves (see karpenter.tf). NAP cannot coexist with the cluster
-  # autoscaler, so node-pool autoscaling and auto_scaler_profile are removed.
+  # Node Auto Provisioning (NAP / managed Karpenter): mode=Auto installs and
+  # manages Karpenter in the control plane; default_node_pools=None means the
+  # only NodePools are the ones we define (karpenter.tf). NAP cannot coexist
+  # with the cluster autoscaler, so node-pool autoscaling must stay unset.
   node_provisioning_profile {
     mode               = "Auto"
     default_node_pools = "None"
@@ -72,7 +71,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   # Azure CNI Overlay powered by Cilium: pods get IPs from pod_cidr, not the AKS
-  # subnet, so node count is no longer subnet-bound. Overlay requires Cilium (not NPM).
+  # subnet, so node count isn't subnet-bound. Overlay requires Cilium (not NPM).
   network_profile {
     network_plugin      = "azure"
     network_plugin_mode = "overlay"
@@ -92,9 +91,12 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   tags = local.common_tags
 
-  # NAT gateway must be attached to the subnet before the cluster is created
-  # when outbound_type = userAssignedNATGateway.
-  depends_on = [azurerm_subnet_nat_gateway_association.aks]
+  # userAssignedNATGateway egress needs both bound before creation, and keeps node
+  # egress alive until the cluster is destroyed.
+  depends_on = [
+    azurerm_nat_gateway_public_ip_association.main,
+    azurerm_subnet_nat_gateway_association.aks,
+  ]
 }
 
 # The kubelet identity gets no resource-group-wide grant: any pod can reach it
