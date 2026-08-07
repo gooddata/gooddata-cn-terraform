@@ -2,7 +2,8 @@
 # All Azure sizing per size_profile. Managed infra (PostgreSQL, AKS system
 # nodes, Karpenter/NAP vCPU bounds, ingress replicas) is defined inline;
 # GoodData.CN, Pulsar and observability sizing is referenced by name. prod-xl
-# is AWS-only. Any managed value can be overridden by the matching var.* input.
+# is AWS-only. Managed values are overridable by the matching var.* input where
+# one exists; PostgreSQL storage size and tier are profile-fixed (see below).
 ###
 
 locals {

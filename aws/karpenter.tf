@@ -247,33 +247,80 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
       aws_region="${self.triggers.aws_region}"
       aws_profile="${self.triggers.aws_profile}"
 
+      # The recorded profile is deliberately not replacement-sensitive, so it can
+      # be stale by destroy time (renamed or removed). Prefer it, fall back to
+      # whatever credentials the environment provides, rather than leaving nodes
+      # running whose ENIs block VPC deletion.
+      if aws sts get-caller-identity --profile "$aws_profile" >/dev/null 2>&1; then
+        aws_creds="--profile $aws_profile"
+      elif aws sts get-caller-identity >/dev/null 2>&1; then
+        echo "WARNING: profile '$aws_profile' is unusable; using ambient AWS credentials."
+        aws_creds=""
+      else
+        echo "ERROR: no usable AWS credentials (profile '$aws_profile' and environment both failed)." >&2
+        exit 1
+      fi
+
+      # Terminate any instance Karpenter still owns. Only needs the EC2 API, so
+      # it is also the fallback when the cluster itself is unreachable.
+      force_terminate_instances() {
+        ids=$(aws ec2 describe-instances --region "$aws_region" $aws_creds \
+          --filters "Name=tag:kubernetes.io/cluster/$cluster_name,Values=owned" \
+                    "Name=tag-key,Values=karpenter.sh/nodeclaim" \
+                    "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+          --query 'Reservations[].Instances[].InstanceId' --output text) || {
+          echo "ERROR: cannot list Karpenter instances to force-terminate." >&2
+          exit 1
+        }
+
+        if [ -z "$ids" ]; then
+          echo "No Karpenter-owned instances remain."
+          return 0
+        fi
+
+        echo "Terminating $ids"
+        aws ec2 terminate-instances --region "$aws_region" $aws_creds \
+          --instance-ids $ids >/dev/null || {
+          echo "ERROR: terminate-instances failed." >&2
+          exit 1
+        }
+        # ENIs only detach once instances reach terminated, and they block
+        # subnet, security group and VPC deletion until they do.
+        echo "Waiting for termination so their ENIs are released..."
+        aws ec2 wait instance-terminated --region "$aws_region" $aws_creds \
+          --instance-ids $ids || echo "WARNING: waiter timed out; VPC deletion may retry."
+      }
+
       kubeconfig=$(mktemp)
       trap 'rm -f "$kubeconfig"' EXIT
 
       # Distinguish an already-deleted cluster from a real API error (expired
       # credentials, wrong profile, no network), which must not skip the drain.
       if ! err=$(aws eks update-kubeconfig --name "$cluster_name" --region "$aws_region" \
-        --profile "$aws_profile" --kubeconfig "$kubeconfig" 2>&1); then
+        $aws_creds --kubeconfig "$kubeconfig" 2>&1); then
         if echo "$err" | grep -q "ResourceNotFoundException"; then
-          echo "Cluster '$cluster_name' no longer exists. Nothing to drain."
+          echo "Cluster '$cluster_name' no longer exists; checking for orphaned instances."
+          force_terminate_instances
           exit 0
         fi
-        echo "ERROR: cannot reach cluster '$cluster_name' in '$aws_region' (profile '$aws_profile'): $err" >&2
+        echo "ERROR: cannot reach cluster '$cluster_name' in '$aws_region': $err" >&2
         exit 1
       fi
 
       kc="kubectl --kubeconfig $kubeconfig"
 
-      # Warn rather than fail: blocking here would make the stack undestroyable.
+      # Unreachable API means Karpenter cannot reap its own nodes, so do it via
+      # EC2 instead. Exiting here would strand instances whose ENIs then block
+      # subnet, security group and VPC deletion.
       if ! $kc get --raw /readyz >/dev/null 2>&1; then
-        echo "WARNING: cluster '$cluster_name' is unreachable, so NodeClaims cannot be drained."
-        echo "WARNING: check for leftover instances tagged karpenter.sh/nodepool and terminate them,"
-        echo "WARNING: or subnet, security group and VPC deletion will fail."
+        echo "WARNING: cluster '$cluster_name' is unreachable; terminating its instances directly."
+        force_terminate_instances
         exit 0
       fi
 
       if ! $kc get crd nodeclaims.karpenter.sh >/dev/null 2>&1; then
-        echo "NodeClaim CRD not installed. Nothing to drain."
+        echo "NodeClaim CRD not installed; checking for orphaned instances."
+        force_terminate_instances
         exit 0
       fi
 
@@ -318,29 +365,8 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
       # so do its job directly: terminate the instances, then clear finalizers.
       echo "WARNING: NodeClaim(s) still present after 900s; forcing cleanup."
 
-      ids=$(aws ec2 describe-instances --region "$aws_region" --profile "$aws_profile" \
-        --filters "Name=tag:kubernetes.io/cluster/$cluster_name,Values=owned" \
-                  "Name=tag-key,Values=karpenter.sh/nodeclaim" \
-                  "Name=instance-state-name,Values=pending,running,stopping,stopped" \
-        --query 'Reservations[].Instances[].InstanceId' --output text) || {
-        echo "ERROR: cannot list Karpenter instances to force-terminate." >&2
-        exit 1
-      }
-
       # Terminate before clearing finalizers, so no instance is left orphaned.
-      if [ -n "$ids" ]; then
-        echo "Terminating $ids"
-        aws ec2 terminate-instances --region "$aws_region" --profile "$aws_profile" \
-          --instance-ids $ids >/dev/null || {
-          echo "ERROR: terminate-instances failed." >&2
-          exit 1
-        }
-        # ENIs only detach once instances reach terminated, and they block
-        # subnet, security group and VPC deletion until they do.
-        echo "Waiting for termination so their ENIs are released..."
-        aws ec2 wait instance-terminated --region "$aws_region" --profile "$aws_profile" \
-          --instance-ids $ids || echo "WARNING: waiter timed out; VPC deletion may retry."
-      fi
+      force_terminate_instances
 
       # Karpenter clears the finalizer only after it observes the instance gone,
       # which it cannot do once it has lost EC2 API reachability.

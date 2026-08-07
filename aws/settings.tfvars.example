@@ -157,9 +157,14 @@ gdcn_orgs = [
 # eks_endpoint_public_access_cidrs = ["x.x.x.x/32"]
 # eks_endpoint_private_access      = false
 
-# Uncomment to override RDS defaults. These follow size_profile: prod keeps
-# deletion protection and takes a final snapshot on destroy. apply_immediately
-# reboots the DB instead of waiting for the maintenance window.
+# Uncomment to override RDS defaults. Left unset these follow size_profile:
+# prod keeps deletion protection and takes a final snapshot on destroy, dev does
+# neither. apply_immediately reboots the DB instead of waiting for the
+# maintenance window.
+#
+# With deletion protection on, `terraform destroy` fails until you first apply
+# with rds_deletion_protection = false. Set rds_skip_final_snapshot = false only
+# when you want that snapshot kept after the instance is gone.
 # rds_apply_immediately       = false
 # rds_backup_retention_period = 14
 # rds_deletion_protection     = true

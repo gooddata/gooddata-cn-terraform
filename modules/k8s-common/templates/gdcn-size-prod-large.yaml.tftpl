@@ -100,6 +100,9 @@ customEtcd:
     limits:
       cpu: 2000m
       memory: 4096Mi
+  # Down from 512Gi, which was far more than etcd can use. A StatefulSet
+  # volumeClaimTemplate cannot shrink in place, so an existing prod-large
+  # install rejects this on upgrade until its etcd PVCs are recreated.
   persistence:
     size: 30Gi
 dashboards:

@@ -359,8 +359,12 @@ variable "postgresql_backup_retention_days" {
   type        = number
   default     = null
   validation {
-    condition     = var.postgresql_backup_retention_days == null || (var.postgresql_backup_retention_days >= 7 && var.postgresql_backup_retention_days <= 35)
-    error_message = "postgresql_backup_retention_days must be between 7 and 35 days."
+    condition = var.postgresql_backup_retention_days == null || (
+      floor(var.postgresql_backup_retention_days) == var.postgresql_backup_retention_days
+      && var.postgresql_backup_retention_days >= 7
+      && var.postgresql_backup_retention_days <= 35
+    )
+    error_message = "postgresql_backup_retention_days must be a whole number of days between 7 and 35."
   }
 }
 

@@ -30,10 +30,11 @@ locals {
   } : {}
 
   # Managed policies shared by every node role (system managed node group here,
-  # and the Karpenter node role in karpenter.tf): EBS CSI driver + image pull,
-  # plus the pull-through cache policy when image caching is enabled.
+  # and the Karpenter node role in karpenter.tf): image pull, plus the
+  # pull-through cache policy when image caching is enabled. EBS volume calls
+  # are made by the CSI controller, which gets AmazonEBSCSIDriverPolicy through
+  # aws_iam_role.ebs_csi_irsa — nodes do not need it.
   node_iam_role_additional_policies = merge({
-    AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
     AmazonEC2ContainerRegistryPullOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
   }, local.ecr_pull_through_cache_policy)
 

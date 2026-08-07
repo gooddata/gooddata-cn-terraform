@@ -241,13 +241,27 @@ resource "null_resource" "alb_cleanup_wait" {
       aws_region="${self.triggers.aws_region}"
       aws_profile="${self.triggers.aws_profile}"
 
+      # The recorded profile is deliberately not replacement-sensitive, so it can
+      # be stale by destroy time (renamed or removed). Prefer it, fall back to
+      # whatever credentials the environment provides, rather than stranding the
+      # ALB and with it the VPC.
+      if aws sts get-caller-identity --profile "$aws_profile" >/dev/null 2>&1; then
+        aws_creds="--profile $aws_profile"
+      elif aws sts get-caller-identity >/dev/null 2>&1; then
+        echo "WARNING: profile '$aws_profile' is unusable; using ambient AWS credentials."
+        aws_creds=""
+      else
+        echo "ERROR: no usable AWS credentials (profile '$aws_profile' and environment both failed)." >&2
+        exit 1
+      fi
+
       # Distinguish "ALB not found" from real API errors (auth, throttling, etc.).
       alb_exists() {
         local output
         output=$(aws elbv2 describe-load-balancers \
           --names "$lb_name" \
           --region "$aws_region" \
-          --profile "$aws_profile" 2>&1)
+          $aws_creds 2>&1)
         local rc=$?
         if [ $rc -eq 0 ]; then
           return 0
@@ -280,7 +294,7 @@ resource "null_resource" "alb_cleanup_wait" {
       lb_arn=$(aws elbv2 describe-load-balancers \
         --names "$lb_name" \
         --region "$aws_region" \
-        --profile "$aws_profile" \
+        $aws_creds \
         --query 'LoadBalancers[0].LoadBalancerArn' \
         --output text 2>&1) || {
         echo "ERROR: Failed to fetch ALB ARN for '$lb_name' in region '$aws_region' (profile: '$aws_profile'): $lb_arn"
@@ -295,7 +309,7 @@ resource "null_resource" "alb_cleanup_wait" {
       delete_output=$(aws elbv2 delete-load-balancer \
         --load-balancer-arn "$lb_arn" \
         --region "$aws_region" \
-        --profile "$aws_profile" 2>&1) || {
+        $aws_creds 2>&1) || {
         if echo "$delete_output" | grep -q "LoadBalancerNotFound"; then
           echo "ALB was already deleted (race condition). Continuing."
         else
@@ -312,7 +326,7 @@ resource "null_resource" "alb_cleanup_wait" {
         eni_output=$(aws ec2 describe-network-interfaces \
           --filters "Name=description,Values=*ELB app/$${lb_name}/*" \
           --region "$aws_region" \
-          --profile "$aws_profile" \
+          $aws_creds \
           --query 'length(NetworkInterfaces)' \
           --output text 2>&1) || {
           echo "WARNING: Failed to query ENIs in region '$aws_region' (profile: '$aws_profile'): $eni_output (will retry)"

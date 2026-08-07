@@ -74,7 +74,10 @@ Requirements:
 1. Choose your provider and `cd` into its directory: `cd aws`, `cd azure`, or `cd local`
 
 1. Authenticate to your cloud provider's CLI:
-    - For AWS: `aws sso login` (or `aws configure`, or otherwise configure your AWS credentials)
+    - For AWS: `aws sso login` (or `aws configure`, or otherwise configure your AWS credentials).
+      If you set `aws_profile_name` in `settings.tfvars`, authenticate that same
+      profile — `aws sso login --profile <aws_profile_name>` — since Terraform
+      uses it regardless of your default profile.
     - For Azure: `az login`
     - Azure note: Terraform's Kubernetes authentication uses `kubelogin` with your Azure CLI session.
 
