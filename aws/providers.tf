@@ -54,6 +54,10 @@ locals {
   # Shared Kubernetes auth settings (aws eks get-token)
   kube_host = module.eks.cluster_endpoint
   kube_ca   = base64decode(module.eks.cluster_certificate_authority_data)
+
+  # OIDC condition key for IRSA trust policies (irsa.tf), e.g.
+  # "oidc.eks.<region>.amazonaws.com/id/<id>:sub"
+  eks_oidc_condition_key = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
   eks_exec = {
     api_version = "client.authentication.k8s.io/v1"
     command     = "aws"

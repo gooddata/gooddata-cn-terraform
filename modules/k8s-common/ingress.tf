@@ -3,6 +3,10 @@
 ###
 
 locals {
+  # Shared between brotli-types and gzip-types below so the two encodings
+  # never silently drift out of sync.
+  ingress_compressible_mime_types = "application/vnd.gooddata.api+json application/xml+rss application/atom+xml application/javascript application/x-javascript application/json application/rss+xml application/vnd.ms-fontobject application/x-font-ttf application/x-web-app-manifest+json application/xhtml+xml application/xml font/opentype image/svg+xml image/x-icon text/css text/javascript text/plain text/x-component"
+
   ingress_values = {
     controller = merge(
       {
@@ -49,35 +53,32 @@ locals {
             large-client-header-buffers = "4 32k"
             client-header-buffer-size   = "32k"
             proxy-buffer-size           = "16k"
-            brotli-types                = "application/vnd.gooddata.api+json application/xml+rss application/atom+xml application/javascript application/x-javascript application/json application/rss+xml application/vnd.ms-fontobject application/x-font-ttf application/x-web-app-manifest+json application/xhtml+xml application/xml font/opentype image/svg+xml image/x-icon text/css text/javascript text/plain text/x-component"
+            brotli-types                = local.ingress_compressible_mime_types
             enable-brotli               = "true"
             use-gzip                    = "true"
-            gzip-types                  = "application/vnd.gooddata.api+json application/xml+rss application/atom+xml application/javascript application/x-javascript application/json application/rss+xml application/vnd.ms-fontobject application/x-font-ttf application/x-web-app-manifest+json application/xhtml+xml application/xml font/opentype image/svg+xml image/x-icon text/css text/javascript text/plain text/x-component"
+            gzip-types                  = local.ingress_compressible_mime_types
           },
           var.ingress_nginx_behind_l7 ? {
             use-forwarded-headers = "true"
           } : {}
         )
         addHeaders = {
-          Permission-Policy         = "geolocation=(), midi=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), fullscreen=(), payment=()"
+          Permissions-Policy        = "geolocation=(), midi=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), fullscreen=(), payment=()"
           Strict-Transport-Security = "max-age=31536000; includeSubDomains"
         }
       },
       var.cloud == "aws" ? {
         service = {
           annotations = merge(
+            local.aws_nlb_common_annotations,
             {
-              "service.beta.kubernetes.io/aws-load-balancer-backend-protocol"                  = "tcp"
-              "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled" = "true"
-              "service.beta.kubernetes.io/aws-load-balancer-type"                              = "external"
-              "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"                   = "ip"
-              "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes"           = "deregistration_delay.connection_termination.enabled=true,preserve_client_ip.enabled=true"
-              "service.beta.kubernetes.io/aws-load-balancer-scheme"                            = "internet-facing"
-              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-port"                  = "10254"
-              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-path"                  = "/healthz"
-              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol"              = "HTTP"
-              "service.beta.kubernetes.io/aws-load-balancer-name"                              = "${var.deployment_name}-ingress"
-              "service.beta.kubernetes.io/aws-load-balancer-alpn-policy"                       = "HTTP2Preferred"
+              "service.beta.kubernetes.io/aws-load-balancer-backend-protocol"        = "tcp"
+              "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes" = "deregistration_delay.connection_termination.enabled=true,preserve_client_ip.enabled=true"
+              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-port"        = "10254"
+              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-path"        = "/healthz"
+              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol"    = "HTTP"
+              "service.beta.kubernetes.io/aws-load-balancer-name"                    = "${var.deployment_name}-ingress"
+              "service.beta.kubernetes.io/aws-load-balancer-alpn-policy"             = "HTTP2Preferred"
             }
           )
         }
