@@ -49,8 +49,11 @@ resource "azurerm_postgresql_flexible_server" "main" {
   # Disable public network access when using VNet integration
   public_network_access_enabled = false
 
-  backup_retention_days = 7
-  auto_grow_enabled     = true
+  backup_retention_days = local.postgresql_backup_retention_days
+  # Backups in the paired region. Opt-in, not profile-derived: Azure only accepts
+  # this at create time, so changing it recreates the server (destroying the DB).
+  geo_redundant_backup_enabled = var.postgresql_geo_redundant_backup
+  auto_grow_enabled            = true
 
   maintenance_window {
     day_of_week  = 0
