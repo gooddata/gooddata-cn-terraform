@@ -149,6 +149,15 @@ resource "kubectl_manifest" "gdcn_organization" {
     }, each.value.tls)
   })
 
+  # Block destroy until the controller clears its kopf finalizer, which it can only
+  # do while the gooddata-cn release is still running.
+  #
+  # Unbounded on purpose, because it cannot be bounded: kubectl_manifest's
+  # timeouts block only accepts `create`. If a wedged finalizer ever hangs a
+  # destroy, interrupt it and clear the finalizer by hand:
+  #   kubectl patch organization <id> --type=merge -p '{"metadata":{"finalizers":null}}'
+  wait = true
+
   lifecycle {
     precondition {
       condition     = each.value.name != ""
