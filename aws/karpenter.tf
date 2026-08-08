@@ -19,6 +19,10 @@ module "karpenter" {
   # association binding the kube-system/karpenter service account to the role.
   create_pod_identity_association = true
 
+  # The generated controller policy exceeds the 6144-char managed-policy quota.
+  # Inline role policies allow 10240, which fits.
+  enable_inline_policy = true
+
   # Lets Karpenter-launched nodes pull images (incl. via the optional
   # pull-through cache). Same policy set as the system node group.
   node_iam_role_additional_policies = local.node_iam_role_additional_policies
@@ -42,6 +46,9 @@ resource "helm_release" "karpenter" {
     serviceAccount = {
       name = "karpenter"
     }
+    # The chart's default 2 replicas require hostname anti-affinity to be
+    # satisfiable, so one system node means one replica.
+    replicas = min(local.system_node_count, 2)
     settings = {
       clusterName       = module.eks.cluster_name
       clusterEndpoint   = module.eks.cluster_endpoint
@@ -82,6 +89,22 @@ resource "kubectl_manifest" "karpenter_node_class" {
       tags = merge(local.common_tags, {
         "karpenter.sh/discovery" = var.deployment_name
       })
+      # Bottlerocket's default 20 GiB /dev/xvdb is below the ephemeral-storage
+      # some pods request, leaving them unschedulable on every instance type.
+      blockDeviceMappings = [{
+        deviceName = "/dev/xvdb"
+        ebs = {
+          volumeSize          = "${var.eks_node_disk_size}Gi"
+          volumeType          = "gp3"
+          encrypted           = true
+          deleteOnTermination = true
+        }
+      }]
+      # Karpenter sizes maxPods from secondary-IP limits, leaving prefix
+      # delegation (eks.tf) inert. 110 fits every node these pools build.
+      kubelet = {
+        maxPods = var.eks_node_max_pods
+      }
     }
   })
 
@@ -121,13 +144,16 @@ resource "kubectl_manifest" "karpenter_node_pool" {
           expireAfter = "720h"
         }
       }
-      # Total vCPU ceiling for this NodePool (size-profiles.tf).
+      # Total vCPU ceiling for this NodePool (size-profiles.tf). StarRocks pool
+      # below is uncapped (bounded by fixed replicas).
       limits = {
         cpu = local.eks_node_cpu_limit
       }
+      # 15m of underutilization before reclaiming a node, so bursty workloads
+      # do not churn capacity.
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
-        consolidateAfter    = "1m"
+        consolidateAfter    = "15m"
       }
     }
   })
@@ -163,7 +189,7 @@ resource "kubectl_manifest" "karpenter_node_pool_starrocks" {
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-            { key = "node.kubernetes.io/instance-type", operator = "In", values = local.eks_starrocks_node_types },
+            { key = "node.kubernetes.io/instance-type", operator = "In", values = local.eks_ai_lake_node_types },
           ]
           nodeClassRef = {
             group = "karpenter.k8s.aws"
