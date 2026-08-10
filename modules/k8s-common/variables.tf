@@ -142,7 +142,7 @@ variable "gdcn_orgs" {
 variable "enable_gdcn_autoscaling" {
   description = "Enable KEDA-based horizontal autoscaling for the GoodData.CN UI and core services. Requires helm_gdcn_version >= 4.12.0."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "helm_cert_manager_version" { type = string }

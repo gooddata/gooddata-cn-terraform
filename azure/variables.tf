@@ -139,7 +139,7 @@ variable "enable_ai_features" {
 variable "enable_gdcn_autoscaling" {
   description = "Enable KEDA-based horizontal autoscaling for the GoodData.CN UI and core services."
   type        = bool
-  default     = false
+  default     = true
 
   validation {
     condition = (
@@ -156,7 +156,7 @@ variable "enable_gdcn_autoscaling" {
         )
       )
     )
-    error_message = "enable_gdcn_autoscaling = true requires helm_gdcn_version >= 4.12.0."
+    error_message = "Autoscaling is enabled by default and requires helm_gdcn_version >= 4.12.0. Upgrade the chart, or set enable_gdcn_autoscaling = false."
   }
 }
 
