@@ -137,9 +137,48 @@ To import the dashboard into a standalone Grafana instance, upload `modules/k8s-
 
 ## Autoscaling
 
-Set `enable_gdcn_autoscaling = true` in your `settings.tfvars` (requires `helm_gdcn_version >= 4.12.0`) to horizontally autoscale the GoodData.CN UI and core services (api-gw, metadata-api, afm-exec-api, calcique, result-cache, auth-service) on CPU utilization.
+GoodData.CN services scale horizontally on CPU utilization. This is **enabled by default** and requires `helm_gdcn_version >= 4.12.0`; set `enable_gdcn_autoscaling = false` in your `settings.tfvars` to turn it off (required if you pin an older chart).
 
-This deploys [KEDA](https://keda.sh/) into the cluster (plus the Kubernetes Metrics Server on AWS, where EKS does not ship it) and enables the per-component `kedaAutoscaling` opt-ins in the gooddata-cn chart. CPU targets and scale-up/scale-down behavior use the chart defaults; replica bounds follow the size profile (`dev`: 1–3 replicas, production profiles: 2–5). Individual components can be tuned further via `gdcn_helm_extra_values`.
+### What gets deployed
+
+- **[KEDA](https://keda.sh/)** in the `keda` namespace — it creates a `ScaledObject` per component, which in turn manages a Kubernetes HPA.
+- **Kubernetes Metrics Server** on AWS only — the CPU trigger reads from it, and EKS does not ship it (AKS and k3d already include it).
+
+### Which components autoscale
+
+Nine components, each scaling independently. Replica bounds come from the size profile; CPU targets and scale-up/scale-down behavior come from the chart defaults.
+
+| Component | Role | CPU target | Replicas (`dev`) | Replicas (production) |
+|---|---|---|---|---|
+| `metadata-api` | metadata read/write, most-called service | 75% | 1–3 | 2–5 |
+| `api-gw` | primary HTTP gateway | 75% | 1–3 | 2–5 |
+| `auth-service` | authentication | 75% | 1–3 | 2–5 |
+| `afm-exec-api` | execution orchestration | 60% | 1–3 | 2–5 |
+| `calcique` | MAQL → SQL compilation | 60% | 1–3 | 2–5 |
+| `result-cache` | result caching and paging | 60% | 1–3 | 2–5 |
+| `analytical-designer` | UI (static assets) | 80% | 1–3 | 2–5 |
+| `dashboards` | UI (static assets) | 80% | 1–3 | 2–5 |
+| `home-ui` | UI (static assets) | 80% | 1–3 | 2–5 |
+
+CPU utilization is measured against each container's **CPU request**, not its limit. Scale-up is quick (60s stabilization; `metadata-api` uses 300s to absorb JVM warmup after a deploy) and scale-down is deliberately slow (30 minutes, 25% at a time) to avoid flapping. No component scales to zero — JVM cold start is 30–40s.
+
+Stateful and quorum-based components are intentionally **not** autoscaled: PostgreSQL, Redis, etcd, Pulsar, and Qdrant. Adding replicas there is either unsupported or requires a data-rebalancing step.
+
+On AWS, pod scaling is backed by node scaling: Karpenter provisions nodes as pods are added, up to the vCPU ceiling of your `size_profile`.
+
+### Tuning and disabling
+
+Override any per-component setting through `gdcn_helm_extra_values`, for example to raise a ceiling:
+
+```hcl
+gdcn_helm_extra_values = <<-EOT
+  metadataApi:
+    kedaAutoscaling:
+      maxReplicaCount: 8
+EOT
+```
+
+Setting `enable_gdcn_autoscaling = false` removes KEDA and the `ScaledObject`s. Deployments keep whatever replica count they had at that moment, so scale in manually afterwards if you want to reclaim the capacity.
 
 ## Need help?
 

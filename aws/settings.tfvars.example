@@ -53,9 +53,10 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # can't shrink, and growing them is a manual, storage-class-dependent step.
 size_profile = "prod-small"
 
-# Horizontal autoscaling of GoodData.CN services. Requires version 4.12.0+.
-# Deploys KEDA automatically.
-enable_gdcn_autoscaling = true
+# Horizontal autoscaling of GoodData.CN services is enabled by default and
+# deploys KEDA automatically. Requires GoodData.CN 4.12.0+.
+# Uncomment to disable.
+# enable_gdcn_autoscaling = false
 
 ###
 # DNS
