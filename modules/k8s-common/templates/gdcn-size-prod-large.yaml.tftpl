@@ -30,7 +30,7 @@ enableAfmLongPoll: true
 afmExecApi:
   # Netty/WebFlux: blocking calls use Dispatchers.IO (64-thread default caps
   # ~50 req/pod). io.parallelism + ActiveProcessorCount raise per-pod concurrency.
-  jvmOptions: -Xmx1700M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=128
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=128 -XX:MaxRAMPercentage=47
   # Scaled to 12; fewer replicas regress execute latency sharply under high load.
   replicaCount: 12
   resources:
@@ -67,7 +67,7 @@ apiGateway:
       cpu: 100m
       memory: 1Gi
 authService:
-  jvmOptions: -Xmx256M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
+  jvmOptions: -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M -XX:MaxRAMPercentage=31
   replicaCount: 2
   resources:
     limits:
@@ -82,7 +82,7 @@ automation:
     - name: MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED
       value: "false"
 calcique:
-  jvmOptions: -Xmx1024M -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M
+  jvmOptions: -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M -XX:MaxRAMPercentage=36
   replicaCount: 2
   resources:
     limits:
@@ -193,7 +193,7 @@ metadataApi:
     # throttles span export, dropping downstream spans from Tempo under load.
     - name: MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED
       value: "false"
-  jvmOptions: -Xmx6000M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -Dkotlinx.coroutines.io.parallelism=48
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -Dkotlinx.coroutines.io.parallelism=48 -XX:MaxRAMPercentage=82
   pulsar:
     metadataSync:
       messageTTL: 3600
@@ -388,7 +388,7 @@ resultCache:
   # Runs the execution plan for every AFM. Kotlin sizes dispatchers from the CPU
   # count; without ActiveProcessorCount ~200 executions/pod contend for ~6 threads
   # (~4.7s vs ~0.3s), holding api-gw's forward pool open. Widen and scale out.
-  jvmOptions: -Xmx2100M -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=256
+  jvmOptions: -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=256 -XX:MaxRAMPercentage=58
   # Scaled to 16 at 4000m; fewer/smaller replicas regress execute latency sharply under load.
   replicaCount: 16
   resources:
@@ -527,4 +527,4 @@ apiGw:
       memory: 3000Mi
   # io.parallelism has no effect here: the forward path is async CIO, not
   # Dispatchers.IO; the CIO pool above is the limit. Keep aligned with limits.memory.
-  jvmOptions: "-Xms1500m -Xmx1500m -XX:MaxDirectMemorySize=512m"
+  jvmOptions: "-XX:MaxDirectMemorySize=512m -XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=50"
