@@ -527,4 +527,4 @@ apiGw:
       memory: 3000Mi
   # io.parallelism has no effect here: the forward path is async CIO, not
   # Dispatchers.IO; the CIO pool above is the limit. Keep aligned with limits.memory.
-  jvmOptions: "-XX:MaxDirectMemorySize=512m -XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=50"
+  jvmOptions: "-XX:MaxDirectMemorySize=512m -XX:MaxRAMPercentage=50"
