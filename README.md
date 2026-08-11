@@ -141,7 +141,7 @@ GoodData.CN services scale horizontally on CPU utilization. This is **enabled by
 
 ### What gets deployed
 
-- **[KEDA](https://keda.sh/)** in the `keda` namespace — it creates a `ScaledObject` per component, which in turn manages a Kubernetes HPA.
+- **[KEDA](https://keda.sh/)** in the `keda` namespace — the chart renders a `ScaledObject` per component, and the KEDA operator reconciles each into a Kubernetes HPA.
 - **Kubernetes Metrics Server** on AWS only — the CPU trigger reads from it, and EKS does not ship it (AKS and k3d already include it).
 
 ### Which components autoscale
