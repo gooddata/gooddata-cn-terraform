@@ -28,3 +28,12 @@ calcique:
 resultCache:
   kedaAutoscaling:
     enabled: true
+%{ if prometheus_address != "" ~}
+# export-builder scales on a Prometheus query (browser-pool saturation), not CPU,
+# so it is only enabled when the observability stack provides Prometheus.
+kedaAutoscaling:
+  prometheusAddress: "${prometheus_address}"
+exportBuilder:
+  kedaAutoscaling:
+    enabled: true
+%{ endif ~}
