@@ -7,6 +7,12 @@ kedaAutoscaling:
   minReplicaCount: 1
   maxReplicaCount: 3
 
+# export-builder reads only its own bounds, not the profile-level ones above.
+exportBuilder:
+  kedaAutoscaling:
+    minReplicaCount: 1
+    maxReplicaCount: 3
+
 mcpServer:
   replicaCount: 1
 

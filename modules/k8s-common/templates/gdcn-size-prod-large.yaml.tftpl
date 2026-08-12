@@ -498,6 +498,11 @@ webComponents:
       memory: 15Mi
 exportBuilder:
   replicaCount: 4
+  # Adjust maxReplicaCount to the expected export load: each replica carries a
+  # Chromium container, so the ceiling drives both cost and node capacity.
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 12
   # Chromium runs in a standalone container in the pod; export-builder connects
   # to it over the Chrome DevTools Protocol (CDP).
   playwright:
