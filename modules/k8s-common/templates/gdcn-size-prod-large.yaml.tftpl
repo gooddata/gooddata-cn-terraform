@@ -34,7 +34,7 @@ afmExecApi:
   # Scaled to 12; fewer replicas regress execute latency sharply under high load.
   replicaCount: 12
   kedaAutoscaling:
-    minReplicaCount: 6
+    minReplicaCount: 2
     maxReplicaCount: 12
   resources:
     limits:
@@ -89,7 +89,7 @@ calcique:
   replicaCount: 2
   kedaAutoscaling:
     minReplicaCount: 2
-    maxReplicaCount: 4
+    maxReplicaCount: 8
   resources:
     limits:
       cpu: 3000m
@@ -206,7 +206,7 @@ metadataApi:
   replicaCount: 4
   kedaAutoscaling:
     minReplicaCount: 2
-    maxReplicaCount: 4
+    maxReplicaCount: 5
   resources:
     limits:
       # metadataApi is the busiest service (every AFM execute calls it via the
@@ -401,7 +401,7 @@ resultCache:
   # Scaled to 16 at 4000m; fewer/smaller replicas regress execute latency sharply under load.
   replicaCount: 16
   kedaAutoscaling:
-    minReplicaCount: 8
+    minReplicaCount: 2
     maxReplicaCount: 16
   resources:
     limits:
@@ -520,7 +520,7 @@ apiGw:
   # backends are slow. 6 pods (~600 slots); raise toward 16 if it backs up.
   replicaCount: 6
   kedaAutoscaling:
-    minReplicaCount: 3
+    minReplicaCount: 2
     maxReplicaCount: 6
   # Enable Quiver's modern etcd keyspace (removes the single-threaded flight-
   # catalog view-apply stall under load). Platform feature-value flag.

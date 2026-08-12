@@ -18,6 +18,9 @@ platform_limits:
   # take as much as a little over 6 minutes to complete (XLSX most often).
   export_result_timeout_seconds: 420
 afmExecApi:
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 8
   jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:MaxRAMPercentage=34
   resources:
     limits:
@@ -61,6 +64,9 @@ authService:
       cpu: 100m
       memory: 716Mi
 calcique:
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 8
   jvmOptions: -XX:MaxMetaspaceSize=224M -XX:MaxDirectMemorySize=650M -XX:MaxRAMPercentage=42
   resources:
     limits:
@@ -240,6 +246,9 @@ redis-ha:
         memory: 64Mi
         cpu: 150m
 resultCache:
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 8
   jvmOptions: -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M -XX:MaxRAMPercentage=74
   resources:
     limits:
