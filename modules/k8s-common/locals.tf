@@ -35,9 +35,5 @@ locals {
   cert_manager_issuer_annotation = local.use_cert_manager ? {
     "cert-manager.io/cluster-issuer" = local.cert_manager_cluster_issuer_name
   } : {}
-
-  # Autoscaling bounds: dev runs single replicas, production keeps an HA floor.
-  gdcn_autoscaling_min_replicas = var.gdcn_size == "dev" ? 1 : 2
-  gdcn_autoscaling_max_replicas = var.gdcn_size == "dev" ? 3 : 5
 }
 

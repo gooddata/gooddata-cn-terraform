@@ -1,9 +1,6 @@
-# KEDA autoscaling. Available from GoodData.CN 4.12.0.
-# Components are enabled individually; the chart-wide master switch stays off.
-# CPU targets and scaling behavior come from the chart defaults.
-kedaAutoscaling:
-  minReplicaCount: ${min_replicas}
-  maxReplicaCount: ${max_replicas}
+# KEDA autoscaling opt-in per component. Available from GoodData.CN 4.12.0.
+# Replica bounds and CPU targets come from the chart defaults, overridden per
+# component in the size profiles where the profile's replicaCount differs.
 analyticalDesigner:
   kedaAutoscaling:
     enabled: true

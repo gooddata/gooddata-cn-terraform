@@ -33,6 +33,9 @@ afmExecApi:
   jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=128 -XX:MaxRAMPercentage=47
   # Scaled to 12; fewer replicas regress execute latency sharply under high load.
   replicaCount: 12
+  kedaAutoscaling:
+    minReplicaCount: 6
+    maxReplicaCount: 12
   resources:
     limits:
       cpu: 3000m
@@ -84,6 +87,9 @@ automation:
 calcique:
   jvmOptions: -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M -XX:MaxRAMPercentage=36
   replicaCount: 2
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 4
   resources:
     limits:
       cpu: 3000m
@@ -198,6 +204,9 @@ metadataApi:
     metadataSync:
       messageTTL: 3600
   replicaCount: 4
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 4
   resources:
     limits:
       # metadataApi is the busiest service (every AFM execute calls it via the
@@ -391,6 +400,9 @@ resultCache:
   jvmOptions: -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=256 -XX:MaxRAMPercentage=58
   # Scaled to 16 at 4000m; fewer/smaller replicas regress execute latency sharply under load.
   replicaCount: 16
+  kedaAutoscaling:
+    minReplicaCount: 8
+    maxReplicaCount: 16
   resources:
     limits:
       cpu: 4000m
@@ -507,6 +519,9 @@ apiGw:
   # backend call, so forward concurrency = ~100 x replicas — the ceiling when
   # backends are slow. 6 pods (~600 slots); raise toward 16 if it backs up.
   replicaCount: 6
+  kedaAutoscaling:
+    minReplicaCount: 3
+    maxReplicaCount: 6
   # Enable Quiver's modern etcd keyspace (removes the single-threaded flight-
   # catalog view-apply stall under load). Platform feature-value flag.
   extraEnvVars:
