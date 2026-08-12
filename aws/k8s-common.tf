@@ -52,9 +52,9 @@ module "k8s_common" {
   ingress_replicas       = local.profile.ingress_replicas
   gdcn_size              = local.profile.gdcn_size
   gdcn_storage_class     = local.storage_class
+  fast_storage_class     = local.fast_storage_class
   pulsar_size            = local.profile.pulsar_size
   observability_size     = local.profile.observability_size
-  fast_storage_class     = local.fast_storage_class
   ai_lake_size_profile   = var.ai_lake_size_profile
   cloud                  = "aws"
   ingress_controller     = var.ingress_controller
@@ -162,5 +162,11 @@ module "k8s_common" {
     aws_iam_role_policy.ai_lake_pod_identity,
     aws_eks_pod_identity_association.ai_lake,
     terraform_data.s3tables_lakeformation_permissions,
+    # Node capacity must outlive the helm releases: deleting the NodePools taints
+    # every Karpenter node, and draining the NodeClaims removes it outright,
+    # either of which leaves pre-delete hooks unschedulable.
+    null_resource.karpenter_nodeclaim_drain,
+    kubectl_manifest.karpenter_node_pool,
+    kubectl_manifest.karpenter_node_pool_starrocks,
   ]
 }
