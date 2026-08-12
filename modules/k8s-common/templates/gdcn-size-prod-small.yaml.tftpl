@@ -77,6 +77,16 @@ customEtcd:
     limits:
       cpu: 600m
       memory: 1024Mi
+  # Above the chart's 8Gi default: etcd holds Quiver's flight catalog, and a full
+  # volume wedges writes.
+  #
+  # This grows the volume, so no data has to move: gp3 and premium-ssd-v2 both
+  # allow expansion. The StatefulSet still blocks the upgrade, because
+  # volumeClaimTemplates is immutable — delete it with --cascade=orphan, patch
+  # each etcd PVC to the new size, then re-apply. Keep the PVCs; unlike the
+  # prod-large shrink, nothing here needs a restore.
+  persistence:
+    size: 20Gi
 dashboards:
   resources:
     limits:

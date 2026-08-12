@@ -37,9 +37,8 @@ resource "kubectl_manifest" "karpenter_node_class" {
 # All listed series are premium-storage capable, which in Azure costs the same
 # per hour as the (now v4-only) non-premium variants, so there is no reason to
 # admit non-premium SKUs and force premium-PVC pods onto per-pod nodeAffinity.
-# Spanning v5-v7 keeps a wide capacity pool; Karpenter prefers the cheapest
-# (v6/v7) and falls back to v5 only on shortage. sku-cpu + the CPU limit bound
-# node size and total cost.
+# v6/v7 only, so nodes are always current-generation. sku-cpu + the CPU limit
+# bound node size and total cost.
 resource "kubectl_manifest" "karpenter_node_pool" {
   yaml_body = yamlencode({
     apiVersion = "karpenter.sh/v1"
@@ -56,7 +55,9 @@ resource "kubectl_manifest" "karpenter_node_pool" {
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
             # AMD general-purpose, 4 GiB/vCPU, premium-capable D-series only.
             # Excludes Intel (Ds/Dls), low-memory (Dals/Dls), and ARM (Dpls).
-            { key = "karpenter.azure.com/sku-series", operator = "In", values = ["Das_v5", "Das_v6", "Das_v7"] },
+            # Smallest member (D2as) gives an implicit 2 vCPU floor, so no Gt
+            # requirement is needed here.
+            { key = "karpenter.azure.com/sku-series", operator = "In", values = ["Das_v6", "Das_v7"] },
             { key = "karpenter.azure.com/sku-cpu", operator = "Lt", values = [tostring(local.aks_node_cpu_max + 1)] },
             # Belt-and-suspenders: the series above are all premium-capable, but
             # keep this so a stray non-premium series can never admit a node that
