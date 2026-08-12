@@ -11,36 +11,22 @@ CURL_TLS_ARGS=()
 CURL_CONNECT_ARGS=()
 
 curl_json() {
-  local response status body
-  response=$(curl --silent --show-error --write-out "\n%{http_code}" "${CURL_TLS_ARGS[@]}" "${CURL_CONNECT_ARGS[@]}" "$@")
-  status=${response##*$'\n'}
-  body=${response%$'\n'*}
-
-  printf '%s\n%s\n' "${body}" "${status}"
-
-  [[ "${status}" =~ ^2 ]]
+  curl_with_status "${CURL_TLS_ARGS[@]}" "${CURL_CONNECT_ARGS[@]}" "$@"
 }
 
 try_load_admin_credentials_from_secret() {
   local namespace="${1}"
   local org_id="${2}"
   local secret_name="gdcn-org-admin-${org_id}"
-  local admin_user_b64 admin_password_b64 admin_user admin_password
+  local admin_user admin_password
 
   command_exists kubectl || return 1
   command_exists base64 || return 1
 
   kubectl get secret -n "${namespace}" "${secret_name}" >/dev/null 2>&1 || return 1
 
-  admin_user_b64=$(kubectl get secret -n "${namespace}" "${secret_name}" -o jsonpath='{.data.adminUser}' 2>/dev/null || true)
-  admin_password_b64=$(kubectl get secret -n "${namespace}" "${secret_name}" -o jsonpath='{.data.adminPassword}' 2>/dev/null || true)
-
-  if [[ -z "${admin_user_b64}" || -z "${admin_password_b64}" ]]; then
-    return 1
-  fi
-
-  admin_user=$(printf '%s' "${admin_user_b64}" | base64 -d 2>/dev/null || true)
-  admin_password=$(printf '%s' "${admin_password_b64}" | base64 -d 2>/dev/null || true)
+  admin_user=$(load_k8s_secret_field "${namespace}" "${secret_name}" "adminUser") || return 1
+  admin_password=$(load_k8s_secret_field "${namespace}" "${secret_name}" "adminPassword") || return 1
 
   if [[ -z "${admin_user}" || -z "${admin_password}" ]]; then
     return 1
@@ -512,17 +498,9 @@ if [[ -z "${GDCN_ORG_HOSTNAME}" ]]; then
   GDCN_ORG_HOSTNAME=$(prompt_required ">> Organization domain (e.g. example.com): " "Organization domain is required")
 fi
 
-# If we're running inside a devcontainer, "localhost" refers to the container.
-# For local k3d (Docker-outside-of-Docker), the ingress port is on the Docker host.
-# Important: keep the URL hostname as-is so Ingress host routing works, but
-# connect to host.docker.internal underneath.
-if is_inside_container && [[ "${GDCN_ORG_HOSTNAME}" == "localhost" || "${GDCN_ORG_HOSTNAME}" == *.localhost ]]; then
-  if command_exists getent && getent hosts host.docker.internal >/dev/null 2>&1; then
-    echo "Container detected, routing via host.docker.internal."
-    CURL_CONNECT_ARGS=(--connect-to "${GDCN_ORG_HOSTNAME}:443:host.docker.internal:443")
-  fi
-fi
+docker_internal_connect_to_args "${GDCN_ORG_HOSTNAME}"
 
+CURL_CONNECT_ARGS=(${DOCKER_CONNECT_TO_ARGS[@]+"${DOCKER_CONNECT_TO_ARGS[@]}"})
 # Admin credentials
 # - Prefer environment overrides if set (useful for CI)
 # - Otherwise, try to read from a Terraform-managed Secret

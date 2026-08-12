@@ -30,8 +30,9 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 #       replicaCount: 3
 # EOT
 
-# Uncomment to deploy and enable GoodData generative AI services
-# enable_ai_features = true
+# Uncomment to disable AI features: the GenAI service, semantic search, chat,
+# metadata sync and Qdrant.
+# enable_ai_features = false
 
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
@@ -76,8 +77,8 @@ dns_provider = "self-managed"
 
 # Option 1 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (letsencrypt)
 ingress_controller = "ingress-nginx"
-tls_mode          = "letsencrypt"
-letsencrypt_email = "me@example.com"
+tls_mode           = "letsencrypt"
+letsencrypt_email  = "me@example.com"
 
 # Uncomment when ingress-nginx sits behind another L7 proxy/load balancer.
 # ingress_nginx_behind_l7 = true

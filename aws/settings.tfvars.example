@@ -33,8 +33,9 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 #       replicaCount: 3
 # EOT
 
-# Uncomment to deploy and enable GoodData generative AI services
-# enable_ai_features = true
+# Uncomment to disable AI features: the GenAI service, semantic search, chat,
+# metadata sync and Qdrant.
+# enable_ai_features = false
 
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
