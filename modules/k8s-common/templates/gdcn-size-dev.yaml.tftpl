@@ -7,8 +7,17 @@ kedaAutoscaling:
   minReplicaCount: 1
   maxReplicaCount: 3
 
-# export-builder reads only its own bounds, not the profile-level ones above.
+# export-builder and gen-ai-metadata-sync read only their own bounds, not the
+# profile-level ones above. Both scale on a Prometheus metric that their own pods
+# emit, so minReplicaCount must stay >= 1: at zero replicas the metric disappears,
+# the query returns null (ignoreNullValues=true -> 0) and nothing can scale them
+# back up.
 exportBuilder:
+  replicaCount: 1
+  kedaAutoscaling:
+    minReplicaCount: 1
+    maxReplicaCount: 3
+genAiMetadataSync:
   kedaAutoscaling:
     minReplicaCount: 1
     maxReplicaCount: 3
