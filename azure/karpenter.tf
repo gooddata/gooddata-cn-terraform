@@ -22,7 +22,10 @@ resource "kubectl_manifest" "karpenter_node_class" {
     }
   })
 
-  depends_on = [azurerm_kubernetes_cluster.main]
+  depends_on = [
+    azurerm_kubernetes_cluster.main,
+    azurerm_role_assignment.aks_creator_cluster_admin,
+  ]
 }
 
 # General-purpose NodePool: on-demand AMD general-purpose D-series with a

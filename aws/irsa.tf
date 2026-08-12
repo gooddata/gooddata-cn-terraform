@@ -14,7 +14,7 @@ data "aws_iam_policy_document" "gdcn_irsa_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      variable = local.eks_oidc_condition_key
       values = [
         "system:serviceaccount:${var.gdcn_namespace}:${local.gdcn_service_account_name}"
       ]
@@ -32,6 +32,44 @@ resource "aws_iam_role" "gdcn_irsa" {
 resource "aws_iam_role_policy_attachment" "gdcn_irsa_s3_access" {
   role       = aws_iam_role.gdcn_irsa.name
   policy_arn = aws_iam_policy.gdcn_s3_access.arn
+}
+
+###
+# IAM role for the EBS CSI driver (IRSA)
+###
+
+# Without this the driver falls back to IMDS, which pods cannot reach at the
+# default hop limit of 1.
+data "aws_iam_policy_document" "ebs_csi_irsa_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = local.eks_oidc_condition_key
+      values = [
+        "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi_irsa" {
+  name               = "${var.deployment_name}-ebs-csi-irsa"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_irsa_assume_role.json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi_irsa" {
+  role       = aws_iam_role.ebs_csi_irsa.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
 
 ###
@@ -53,7 +91,7 @@ data "aws_iam_policy_document" "observability_irsa_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      variable = local.eks_oidc_condition_key
       values = [
         "system:serviceaccount:observability:loki",
         "system:serviceaccount:observability:tempo",
@@ -98,7 +136,7 @@ data "aws_iam_policy_document" "starrocks_irsa_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      variable = local.eks_oidc_condition_key
       values = [
         "system:serviceaccount:starrocks:starrocks"
       ]
