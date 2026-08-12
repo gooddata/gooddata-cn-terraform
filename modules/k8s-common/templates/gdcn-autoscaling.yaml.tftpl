@@ -29,11 +29,18 @@ resultCache:
   kedaAutoscaling:
     enabled: true
 %{ if prometheus_address != "" ~}
-# export-builder scales on a Prometheus query (browser-pool saturation), not CPU,
-# so it is only enabled when the observability stack provides Prometheus.
+# export-builder and gen-ai-metadata-sync scale on Prometheus queries (browser-pool
+# saturation, projection outbox queue), not CPU, so they need the observability stack.
 kedaAutoscaling:
   prometheusAddress: "${prometheus_address}"
 exportBuilder:
   kedaAutoscaling:
     enabled: true
+genAiMetadataSync:
+  kedaAutoscaling:
+    enabled: true
+%{ else ~}
+# No Prometheus: export-builder cannot autoscale, so run a static pair.
+exportBuilder:
+  replicaCount: 2
 %{ endif ~}
