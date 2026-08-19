@@ -10,6 +10,14 @@ dashboards:
 homeUi:
   kedaAutoscaling:
     enabled: true
+# 4.12.0 and 4.12.1 ship no ScaledObject for these two, so the keys stay inert
+# until the chart release that adds one.
+hostApplication:
+  kedaAutoscaling:
+    enabled: true
+webComponents:
+  kedaAutoscaling:
+    enabled: true
 apiGw:
   kedaAutoscaling:
     enabled: true
