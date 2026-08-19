@@ -1,4 +1,4 @@
-# KEDA autoscaling opt-in per component. Available from GoodData.CN 4.12.0.
+# KEDA autoscaling opt-in per component.
 # Replica bounds and CPU targets come from the chart defaults, overridden per
 # component in the size profiles where the profile's replicaCount differs.
 analyticalDesigner:
@@ -8,6 +8,12 @@ dashboards:
   kedaAutoscaling:
     enabled: true
 homeUi:
+  kedaAutoscaling:
+    enabled: true
+hostApplication:
+  kedaAutoscaling:
+    enabled: true
+webComponents:
   kedaAutoscaling:
     enabled: true
 apiGw:
@@ -28,19 +34,23 @@ calcique:
 resultCache:
   kedaAutoscaling:
     enabled: true
-%{ if prometheus_address != "" ~}
-# export-builder and gen-ai-metadata-sync scale on Prometheus queries (browser-pool
-# saturation, projection outbox queue), not CPU, so they need the observability stack.
+%{ if prometheus_enabled ~}
 kedaAutoscaling:
   prometheusAddress: "${prometheus_address}"
-exportBuilder:
-  kedaAutoscaling:
-    enabled: true
+
+# gen-ai-metadata-sync
+# scaling based on: projection outbox queue
 genAiMetadataSync:
   kedaAutoscaling:
     enabled: true
-%{ else ~}
-# No Prometheus: export-builder cannot autoscale, so run a static pair.
+
+# export-builder
+# scaling based on: browser-pool saturation
 exportBuilder:
-  replicaCount: 2
+  kedaAutoscaling:
+    enabled: true
+%{ else ~}
+# Prometheus is not enabled: these two components scale on Prometheus queries,
+# so they cannot use autoscaling. They keep the replicaCount from the size
+# profile, which owns replica counts.
 %{ endif ~}

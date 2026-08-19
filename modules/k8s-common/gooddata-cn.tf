@@ -185,7 +185,7 @@ resource "helm_release" "gooddata_cn" {
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
     var.enable_gdcn_autoscaling ? templatefile("${path.module}/templates/gdcn-autoscaling.yaml.tftpl", {
-      # export-builder's trigger is a Prometheus query, so it needs the observability stack.
+      prometheus_enabled = var.enable_observability
       prometheus_address = var.enable_observability ? "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090" : ""
     }) : null,
     var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,

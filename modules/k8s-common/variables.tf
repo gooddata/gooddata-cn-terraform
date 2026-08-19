@@ -140,7 +140,7 @@ variable "gdcn_orgs" {
 }
 
 variable "enable_gdcn_autoscaling" {
-  description = "Enable KEDA autoscaling for GoodData.CN services. Requires helm_gdcn_version >= 4.12.0."
+  description = "Enable KEDA autoscaling for GoodData.CN services."
   type        = bool
   default     = true
 }

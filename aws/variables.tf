@@ -156,21 +156,11 @@ variable "enable_gdcn_autoscaling" {
   default     = true
 
   validation {
-    condition = (
-      !var.enable_gdcn_autoscaling ? true : (
-        length(split(".", var.helm_gdcn_version)) >= 2 &&
-        can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
-        can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
-        (
-          tonumber(split(".", var.helm_gdcn_version)[0]) > 4 ||
-          (
-            tonumber(split(".", var.helm_gdcn_version)[0]) == 4 &&
-            tonumber(split(".", var.helm_gdcn_version)[1]) >= 12
-          )
-        )
-      )
-    )
-    error_message = "Autoscaling is enabled by default and requires helm_gdcn_version >= 4.12.0. Upgrade the chart, or set enable_gdcn_autoscaling = false."
+    condition = !var.enable_gdcn_autoscaling || try(
+      tonumber(split(".", var.helm_gdcn_version)[0]) > 4 ||
+      (tonumber(split(".", var.helm_gdcn_version)[0]) == 4 && tonumber(split(".", var.helm_gdcn_version)[1]) >= 12),
+    false)
+    error_message = "Autoscaling requires helm_gdcn_version >= 4.12.0. Upgrade the chart, or set enable_gdcn_autoscaling = false."
   }
 }
 
