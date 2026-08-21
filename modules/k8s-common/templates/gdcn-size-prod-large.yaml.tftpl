@@ -30,9 +30,12 @@ enableAfmLongPoll: true
 afmExecApi:
   # Netty/WebFlux: blocking calls use Dispatchers.IO (64-thread default caps
   # ~50 req/pod). io.parallelism + ActiveProcessorCount raise per-pod concurrency.
-  jvmOptions: -Xmx1700M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=128
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=128 -XX:MaxRAMPercentage=47
   # Scaled to 12; fewer replicas regress execute latency sharply under high load.
   replicaCount: 12
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 12
   resources:
     limits:
       cpu: 3000m
@@ -46,7 +49,7 @@ analyticalDesigner:
       cpu: 200m
       memory: 45Mi
     requests:
-      cpu: 20m
+      cpu: 50m
       memory: 15Mi
 apiDocs:
   resources:
@@ -67,7 +70,7 @@ apiGateway:
       cpu: 100m
       memory: 1Gi
 authService:
-  jvmOptions: -Xmx256M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
+  jvmOptions: -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M -XX:MaxRAMPercentage=31
   replicaCount: 2
   resources:
     limits:
@@ -82,8 +85,11 @@ automation:
     - name: MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED
       value: "false"
 calcique:
-  jvmOptions: -Xmx1024M -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M
+  jvmOptions: -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M -XX:MaxRAMPercentage=36
   replicaCount: 2
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 8
   resources:
     limits:
       cpu: 3000m
@@ -114,7 +120,7 @@ dashboards:
       cpu: 200m
       memory: 45Mi
     requests:
-      cpu: 20m
+      cpu: 50m
       memory: 15Mi
 exportController:
   jvmOptions: -Xmx1024M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M
@@ -193,11 +199,14 @@ metadataApi:
     # throttles span export, dropping downstream spans from Tempo under load.
     - name: MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED
       value: "false"
-  jvmOptions: -Xmx6000M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -Dkotlinx.coroutines.io.parallelism=48
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -Dkotlinx.coroutines.io.parallelism=48 -XX:MaxRAMPercentage=82
   pulsar:
     metadataSync:
       messageTTL: 3600
   replicaCount: 4
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 5
   resources:
     limits:
       # metadataApi is the busiest service (every AFM execute calls it via the
@@ -388,9 +397,12 @@ resultCache:
   # Runs the execution plan for every AFM. Kotlin sizes dispatchers from the CPU
   # count; without ActiveProcessorCount ~200 executions/pod contend for ~6 threads
   # (~4.7s vs ~0.3s), holding api-gw's forward pool open. Widen and scale out.
-  jvmOptions: -Xmx2100M -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=256
+  jvmOptions: -XX:MaxMetaspaceSize=384M -XX:MaxDirectMemorySize=384M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=256 -XX:MaxRAMPercentage=58
   # Scaled to 16 at 4000m; fewer/smaller replicas regress execute latency sharply under load.
   replicaCount: 16
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 16
   resources:
     limits:
       cpu: 4000m
@@ -482,10 +494,15 @@ webComponents:
       cpu: 200m
       memory: 45Mi
     requests:
-      cpu: 20m
+      cpu: 50m
       memory: 15Mi
 exportBuilder:
   replicaCount: 4
+  # Adjust maxReplicaCount to the expected export load: each replica carries a
+  # Chromium container, so the ceiling drives both cost and node capacity.
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 12
   # Chromium runs in a standalone container in the pod; export-builder connects
   # to it over the Chrome DevTools Protocol (CDP).
   playwright:
@@ -507,6 +524,9 @@ apiGw:
   # backend call, so forward concurrency = ~100 x replicas — the ceiling when
   # backends are slow. 6 pods (~600 slots); raise toward 16 if it backs up.
   replicaCount: 6
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 6
   # Enable Quiver's modern etcd keyspace (removes the single-threaded flight-
   # catalog view-apply stall under load). Platform feature-value flag.
   extraEnvVars:
@@ -527,4 +547,4 @@ apiGw:
       memory: 3000Mi
   # io.parallelism has no effect here: the forward path is async CIO, not
   # Dispatchers.IO; the CIO pool above is the limit. Keep aligned with limits.memory.
-  jvmOptions: "-Xms1500m -Xmx1500m -XX:MaxDirectMemorySize=512m"
+  jvmOptions: "-XX:MaxDirectMemorySize=512m -XX:MaxRAMPercentage=50"

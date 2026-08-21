@@ -41,6 +41,9 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # non-HA footprint).
 size_profile = "dev"
 
+# Autoscaling (KEDA) is enabled by default; requires GoodData.CN 4.12.0+.
+# enable_gdcn_autoscaling = false
+
 ###
 # Ingress + TLS
 ###

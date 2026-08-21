@@ -136,6 +136,30 @@ variable "enable_ai_features" {
   default     = true
 }
 
+variable "enable_gdcn_autoscaling" {
+  description = "Enable KEDA-based horizontal autoscaling for the GoodData.CN UI and core services."
+  type        = bool
+  default     = true
+
+  validation {
+    condition = (
+      !var.enable_gdcn_autoscaling ? true : (
+        length(split(".", var.helm_gdcn_version)) >= 2 &&
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
+        can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
+        (
+          tonumber(split(".", var.helm_gdcn_version)[0]) > 4 ||
+          (
+            tonumber(split(".", var.helm_gdcn_version)[0]) == 4 &&
+            tonumber(split(".", var.helm_gdcn_version)[1]) >= 12
+          )
+        )
+      )
+    )
+    error_message = "Autoscaling is enabled by default and requires helm_gdcn_version >= 4.12.0. Upgrade the chart, or set enable_gdcn_autoscaling = false."
+  }
+}
+
 variable "enable_experimental_features" {
   description = "Enable experimental AI features in the gooddata-cn chart. These are subject to change and the set of features may evolve over time."
   type        = bool
