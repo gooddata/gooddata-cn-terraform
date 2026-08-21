@@ -1,14 +1,14 @@
 ###
-# Karpenter provisioning policy for Node Auto Provisioning (NAP)
+# Karpenter provisioning policy for Node Auto Provisioning (NAP).
 #
-# NAP (enabled on the cluster in aks.tf) installs and manages the Karpenter
-# controller and its CRDs in the AKS control plane. We only supply the
-# provisioning policy: an AKSNodeClass (how nodes are built) and a NodePool
-# (what may be provisioned). Because the cluster sets default_node_pools=None,
-# these are the only NodePools.
+# AKS runs the Karpenter controller and CRDs; we supply only the policy. The
+# AKSNodeClass says how nodes are built, the NodePool what may be provisioned.
+# The cluster sets default_node_pools=None, so these are the only NodePools.
 ###
 
-# How NAP builds nodes: Ubuntu 22.04 image, 100 GB OS disk.
+# Node OS disk holds every emptyDir, including Quiver's flight catalog, which is
+# I/O heavy. Premium SSD v1 IOPS scale only with capacity, so 1TiB buys P30's
+# 5000 IOPS / 200 MBps; 100GB would cap the whole node at P10's 500 IOPS.
 resource "kubectl_manifest" "karpenter_node_class" {
   yaml_body = yamlencode({
     apiVersion = "karpenter.azure.com/v1beta1"
@@ -18,7 +18,7 @@ resource "kubectl_manifest" "karpenter_node_class" {
     }
     spec = {
       imageFamily  = "Ubuntu2204"
-      osDiskSizeGB = 100
+      osDiskSizeGB = 1024
     }
   })
 
@@ -28,17 +28,10 @@ resource "kubectl_manifest" "karpenter_node_class" {
   ]
 }
 
-# General-purpose NodePool: on-demand AMD general-purpose D-series with a
-# per-node vCPU cap (size-profiles.tf). We pin sku-series (not the broad "D"
-# family) to keep the fleet homogeneous: AMD only, 4 GiB/vCPU only. The bare "D"
-# family conflates three things we do not want — Intel parts (Ds/Dls), and the
-# low-memory 2 GiB/vCPU "l" series (Dals/Dls) — none of which carry a vendor or
-# memory-ratio label to filter on, so the series allow-list is the only handle.
-# All listed series are premium-storage capable, which in Azure costs the same
-# per hour as the (now v4-only) non-premium variants, so there is no reason to
-# admit non-premium SKUs and force premium-PVC pods onto per-pod nodeAffinity.
-# v6/v7 only, so nodes are always current-generation. sku-cpu + the CPU limit
-# bound node size and total cost.
+# General-purpose NodePool: on-demand AMD D-series, 4 GiB/vCPU, v6/v7 only.
+# The series allow-list is the only way to exclude Intel (Ds/Dls) and the
+# low-memory "l" series (Dals/Dls); neither carries a label to filter on.
+# sku-cpu and the NodePool CPU limit bound per-node size and total fleet cost.
 resource "kubectl_manifest" "karpenter_node_pool" {
   yaml_body = yamlencode({
     apiVersion = "karpenter.sh/v1"
