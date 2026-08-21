@@ -115,3 +115,19 @@ output "starrocks_catalog_user_password" {
   value       = module.k8s_common.starrocks_catalog_user_password
   sensitive   = true
 }
+
+output "bedrock_llm_model_id" {
+  description = "Bedrock inference profile ID to register as the default GenAI model."
+  value       = var.enable_bedrock_llm ? var.bedrock_llm_model_id : ""
+}
+
+output "bedrock_llm_access_key_id" {
+  description = "Access key ID of the Bedrock LLM IAM user."
+  value       = var.enable_bedrock_llm ? aws_iam_access_key.bedrock_llm[0].id : ""
+}
+
+output "bedrock_llm_secret_access_key" {
+  description = "Secret access key of the Bedrock LLM IAM user."
+  value       = var.enable_bedrock_llm ? aws_iam_access_key.bedrock_llm[0].secret : ""
+  sensitive   = true
+}

@@ -40,6 +40,14 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
 
+# Uncomment to provision an IAM user with Amazon Bedrock invoke permissions and
+# use Bedrock as the LLM behind the AI features (requires enable_ai_features).
+# Pick a Bedrock *inference profile* ID; Anthropic Claude models are the
+# recommended family for GoodData.CN AI chat. After `terraform apply`, register
+# the provider with ../scripts/create-bedrock-provider.sh.
+# enable_bedrock_llm   = true
+# bedrock_llm_model_id = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
 # Size profile:
 # - dev: lowest footprint, not HA
 # - prod-small: HA (>= 2 replicas per service), increased resources
