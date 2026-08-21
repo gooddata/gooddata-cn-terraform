@@ -1,13 +1,11 @@
 ###
-# Kubernetes storage classes for AKS
+# AKS StorageClasses for PVCs. Node OS disks are sized in aks.tf and karpenter.tf.
 ###
 
-# Premium SSD v2 (PremiumV2_LRS), referenced explicitly by the prod size
-# profiles (see size-profiles.tf). NOT the cluster default — every PVC sets its
-# class by name per profile. v2 lets IOPS/throughput scale independently of disk
-# size; 3000 IOPS / 125 MBps is the free baseline. Requires zonal nodes (see
-# aks.tf zones) and isn't available in every region. WaitForFirstConsumer aligns
-# the disk to the pod's zone.
+# Premium SSD v2: IOPS and throughput are provisioned independently of capacity.
+# 3000 IOPS / 125 MBps is the free floor; the paid ceiling is 500 IOPS per GiB.
+# Named explicitly by the prod size profiles, so it is not the cluster default.
+# Needs zonal nodes and is unavailable in some regions.
 resource "kubernetes_storage_class_v1" "premium_ssd_v2" {
   metadata {
     name = "premium-ssd-v2"
@@ -34,8 +32,8 @@ resource "kubernetes_storage_class_v1" "premium_ssd_v2" {
   ]
 }
 
-# Premium SSD v1 (Premium_LRS) kept as a non-default class so workloads can pin
-# to it explicitly (e.g. where v2 is unavailable or snapshots are needed).
+# Premium SSD v1: IOPS follow capacity alone (128GiB=500, 512GiB=2300, 1TiB=5000).
+# Non-default, for workloads needing snapshots or a region without v2.
 resource "kubernetes_storage_class_v1" "premium_ssd" {
   metadata {
     name = "premium-ssd"
@@ -60,12 +58,8 @@ resource "kubernetes_storage_class_v1" "premium_ssd" {
   ]
 }
 
-# Cluster default = the built-in StandardSSD class "managed-csi" (standard tier).
-# GoodData.CN / Pulsar / observability PVCs all set their class explicitly per
-# size_profile, so this default only catches anything otherwise unset. The other
-# built-in "default" class (also StandardSSD) is demoted so exactly one default
-# remains. These classes are owned by AKS; only the is-default-class annotation
-# is patched via server-side apply.
+# Make managed-csi the one cluster default and demote the built-in "default"
+# class. Only catches PVCs that set no class, since our charts all set one.
 resource "kubernetes_annotations" "default_storage_class" {
   for_each = {
     "default"     = "false"
@@ -83,8 +77,8 @@ resource "kubernetes_annotations" "default_storage_class" {
     "storageclass.kubernetes.io/is-default-class" = each.value
   }
 
-  # The built-in classes carry this annotation from a different field manager;
-  # take ownership of it rather than erroring on the conflict.
+  # AKS owns these classes and sets this annotation from another field manager;
+  # take ownership rather than failing on the conflict.
   force = true
 
   depends_on = [
