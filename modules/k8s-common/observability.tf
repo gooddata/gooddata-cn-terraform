@@ -217,6 +217,15 @@ resource "helm_release" "promtail" {
           url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push"
         }]
       }
+      # Log collection must never lose a node: outrank workloads so promtail
+      # preempts them on a full node instead of staying Pending.
+      priorityClassName = "system-node-critical"
+      # Tolerate every taint so tainted/dedicated node pools still ship logs.
+      tolerations = [
+        { key = "node-role.kubernetes.io/master", operator = "Exists", effect = "NoSchedule" },
+        { key = "node-role.kubernetes.io/control-plane", operator = "Exists", effect = "NoSchedule" },
+        { operator = "Exists" },
+      ]
       resources = {
         requests = {
           cpu    = "50m"
