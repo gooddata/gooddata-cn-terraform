@@ -8,7 +8,12 @@
 # these are the only NodePools.
 ###
 
-# How NAP builds nodes: Ubuntu 22.04 image, 100 GB OS disk.
+# Node OS disk holds every emptyDir, including Quiver's flight catalog, which is
+# I/O heavy. On the Dads series the OS disk is placed on the node's local NVMe
+# (EphemeralOSDiskSupported, placement NvmeDisk), giving 15k-240k write IOPS for
+# free instead of a remote Premium SSD capped by its tier. Keep this at or below
+# the smallest allowed member's NVMe size (D2ads_v6 = 110 GiB) or the OS disk
+# falls back to a remote managed disk.
 resource "kubectl_manifest" "karpenter_node_class" {
   yaml_body = yamlencode({
     apiVersion = "karpenter.azure.com/v1beta1"
@@ -53,11 +58,12 @@ resource "kubectl_manifest" "karpenter_node_pool" {
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-            # AMD general-purpose, 4 GiB/vCPU, premium-capable D-series only.
+            # AMD general-purpose, 4 GiB/vCPU, local-NVMe D-series only. The "d"
+            # in Dads is the local disk: the Das series has none, so its OS disk
+            # is always a remote Premium SSD whose IOPS scale only with capacity.
             # Excludes Intel (Ds/Dls), low-memory (Dals/Dls), and ARM (Dpls).
-            # Smallest member (D2as) gives an implicit 2 vCPU floor, so no Gt
-            # requirement is needed here.
-            { key = "karpenter.azure.com/sku-series", operator = "In", values = ["Das_v6", "Das_v7"] },
+            # Smallest member (D2ads) gives an implicit 2 vCPU floor.
+            { key = "karpenter.azure.com/sku-series", operator = "In", values = ["Dads_v6", "Dads_v7"] },
             { key = "karpenter.azure.com/sku-cpu", operator = "Lt", values = [tostring(local.aks_node_cpu_max + 1)] },
             # Belt-and-suspenders: the series above are all premium-capable, but
             # keep this so a stray non-premium series can never admit a node that
