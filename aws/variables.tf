@@ -150,6 +150,22 @@ variable "enable_ai_features" {
   default     = true
 }
 
+variable "enable_bedrock_llm" {
+  description = "Provision a dedicated IAM user with invoke-only Amazon Bedrock permissions, for use as the GoodData.CN GenAI LLM provider. Only useful together with enable_ai_features. Register the provider after deployment with scripts/create-bedrock-provider.sh."
+  type        = bool
+  default     = false
+}
+
+variable "bedrock_llm_model_id" {
+  description = "Bedrock inference profile ID to register as the default GenAI model (e.g. \"eu.anthropic.claude-sonnet-4-5-20250929-v1:0\"). Use an inference profile ID (eu./us./global. prefix), not a bare model ID. Anthropic Claude models are the recommended family for GoodData.CN AI chat."
+  type        = string
+  default     = ""
+  validation {
+    condition     = !var.enable_bedrock_llm || length(trimspace(var.bedrock_llm_model_id)) > 0
+    error_message = "Set bedrock_llm_model_id when enable_bedrock_llm = true."
+  }
+}
+
 variable "enable_experimental_features" {
   description = "Enable experimental AI features in the gooddata-cn chart. These are subject to change and the set of features may evolve over time."
   type        = bool

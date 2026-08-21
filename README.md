@@ -103,6 +103,11 @@ Requirements:
     - To use an external OIDC provider (recommended for anything beyond local testing), follow the [Set Up Authentication guide](https://www.gooddata.com/docs/cloud-native/latest/manage-organization/set-up-authentication/).
     - For quick testing with the default IdP (Dex), create one or more users by staying in the provider directory (`aws`, `azure`, or `local`) and running `../scripts/create-user.sh`. If Terraform created the organization, the script will automatically read the admin credentials from the Secret `gooddata-cn/gdcn-org-admin-<org_id>`.
 
+1. **(Optional, AWS only)** To use Amazon Bedrock as the LLM behind the AI features, set `enable_bedrock_llm = true` and `bedrock_llm_model_id` in `aws/settings.tfvars` (a Bedrock *inference profile* ID, e.g. `eu.anthropic.claude-sonnet-4-5-20250929-v1:0` — Anthropic Claude models are the recommended family for GoodData.CN AI chat). After `terraform apply`, register the provider by running `../scripts/create-bedrock-provider.sh` from the `aws` directory. Notes:
+    - Anthropic models require a one-time "use case details" form in the AWS Bedrock console (Model access) before they can be invoked.
+    - Some marketplace-listed models (e.g. OpenAI) additionally require an AWS Marketplace subscription.
+    - The access key is stored in the Terraform state; treat the state file accordingly.
+
 1. **(Optional)** If you enabled the observability stack (`enable_observability = true`), create Grafana users by running `../scripts/create-grafana-user.sh` from your provider directory. The script creates a Grafana user and optionally promotes them to admin. It automatically reads the Grafana admin credentials from the Kubernetes secret.
 
 1. Finally, open your GoodData.CN URL and log in.
