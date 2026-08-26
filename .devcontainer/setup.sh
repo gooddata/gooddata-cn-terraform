@@ -67,9 +67,22 @@ sudo chmod +x /usr/local/bin/k3d
 
 # Shared Terraform provider cache: providers are downloaded once and symlinked
 # into every working directory and worktree instead of copied per-directory.
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Anchor on the main checkout so linked worktrees resolve to the same cache.
+GIT_COMMON_DIR="$(git -C "${SCRIPT_DIR}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+if [ -n "${GIT_COMMON_DIR}" ]; then
+  REPO_ROOT="$(dirname "${GIT_COMMON_DIR}")"
+else
+  REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+fi
 TF_CACHE="${REPO_ROOT}/.terraform-plugin-cache"
 mkdir -p "${TF_CACHE}"
-if ! grep -q "plugin_cache_dir" "${HOME}/.terraformrc" 2>/dev/null; then
-  printf 'plugin_cache_dir = "%s"\n' "${TF_CACHE}" >>"${HOME}/.terraformrc"
+
+TFRC="${HOME}/.terraformrc"
+if ! grep -Eq '^[[:space:]]*plugin_cache_dir[[:space:]]*=' "${TFRC}" 2>/dev/null; then
+  # Start on a fresh line if the file does not already end with a newline.
+  if [ -s "${TFRC}" ] && [ -n "$(tail -c 1 "${TFRC}")" ]; then
+    printf '\n' >>"${TFRC}"
+  fi
+  printf 'plugin_cache_dir = "%s"\n' "${TF_CACHE}" >>"${TFRC}"
 fi
