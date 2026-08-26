@@ -84,6 +84,11 @@ TFRC="${HOME}/.terraformrc"
 tfrc_sets_plugin_cache_dir() {
   [ -s "$1" ] || return 1
   awk '
+    hd != "" {
+      t = $0; sub(/^[ \t]+/, "", t); sub(/[ \t]+$/, "", t)
+      if (t == hd) { hd = "" }
+      next
+    }
     {
       line = $0; out = ""; inq = 0; i = 1; n = length(line)
       while (i <= n) {
@@ -102,6 +107,10 @@ tfrc_sets_plugin_cache_dir() {
         }
       }
       if (out ~ /^[ \t]*plugin_cache_dir[ \t]*=/) { found = 1 }
+      # A heredoc body is opaque; skip it so its lines cannot match.
+      if (out ~ /<<-?[A-Za-z_][A-Za-z0-9_]*[ \t]*$/) {
+        hd = out; sub(/^.*<<-?/, "", hd); sub(/[ \t]*$/, "", hd)
+      }
     }
     END { if (inblk) { exit 2 } exit(found ? 0 : 1) }
   ' "$1"
