@@ -64,3 +64,12 @@ OS=$(uname | tr '[:upper:]' '[:lower:]')
 sudo curl -fsSL -o /usr/local/bin/k3d \
   "https://github.com/k3d-io/k3d/releases/download/${K3D_VERSION}/k3d-${OS}-${ARCH}"
 sudo chmod +x /usr/local/bin/k3d
+
+# Shared Terraform provider cache: providers are downloaded once and symlinked
+# into every working directory and worktree instead of copied per-directory.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TF_CACHE="${REPO_ROOT}/.terraform-plugin-cache"
+mkdir -p "${TF_CACHE}"
+if ! grep -q "plugin_cache_dir" "${HOME}/.terraformrc" 2>/dev/null; then
+  printf 'plugin_cache_dir = "%s"\n' "${TF_CACHE}" >>"${HOME}/.terraformrc"
+fi
