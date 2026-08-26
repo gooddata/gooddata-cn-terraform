@@ -79,32 +79,39 @@ TF_CACHE="${REPO_ROOT}/.terraform-plugin-cache"
 mkdir -p "${TF_CACHE}"
 
 TFRC="${HOME}/.terraformrc"
-# True when the file already assigns plugin_cache_dir outside an HCL comment.
-# Leading "#" or "//" defeat the anchored match, so only /* */ needs stripping.
+# Exit 0 when the file already assigns plugin_cache_dir outside a comment or
+# string, 1 when it does not, 2 when a /* block comment is left unterminated.
 tfrc_sets_plugin_cache_dir() {
   [ -s "$1" ] || return 1
   awk '
     {
-      line = $0; out = ""
-      while (length(line)) {
+      line = $0; out = ""; inq = 0; i = 1; n = length(line)
+      while (i <= n) {
+        c = substr(line, i, 1); c2 = substr(line, i, 2)
         if (inblk) {
-          i = index(line, "*/")
-          if (!i) { line = ""; break }
-          line = substr(line, i + 2); inblk = 0
+          if (c2 == "*/") { inblk = 0; i += 2 } else { i++ }
+        } else if (inq) {
+          if (c == "\\") { out = out c2; i += 2; continue }
+          if (c == "\"") { inq = 0 }
+          out = out c; i++
         } else {
-          i = index(line, "/*")
-          if (!i) { out = out line; break }
-          out = out substr(line, 1, i - 1)
-          line = substr(line, i + 2); inblk = 1
+          if (c2 == "/*") { inblk = 1; i += 2; continue }
+          if (c == "#" || c2 == "//") { break }
+          if (c == "\"") { inq = 1 }
+          out = out c; i++
         }
       }
       if (out ~ /^[ \t]*plugin_cache_dir[ \t]*=/) { found = 1 }
     }
-    END { exit(found ? 0 : 1) }
+    END { if (inblk) { exit 2 } exit(found ? 0 : 1) }
   ' "$1"
 }
 
-if ! tfrc_sets_plugin_cache_dir "${TFRC}"; then
+tfrc_state=0
+tfrc_sets_plugin_cache_dir "${TFRC}" || tfrc_state=$?
+if [ "${tfrc_state}" -eq 2 ]; then
+  echo "warning: ${TFRC} has an unterminated /* comment; not adding plugin_cache_dir" >&2
+elif [ "${tfrc_state}" -eq 1 ]; then
   # Start on a fresh line if the file does not already end with a newline.
   if [ -s "${TFRC}" ] && [ -n "$(tail -c 1 "${TFRC}")" ]; then
     printf '\n' >>"${TFRC}"
