@@ -79,7 +79,32 @@ TF_CACHE="${REPO_ROOT}/.terraform-plugin-cache"
 mkdir -p "${TF_CACHE}"
 
 TFRC="${HOME}/.terraformrc"
-if ! grep -Eq '^[[:space:]]*plugin_cache_dir[[:space:]]*=' "${TFRC}" 2>/dev/null; then
+# True when the file already assigns plugin_cache_dir outside an HCL comment.
+# Leading "#" or "//" defeat the anchored match, so only /* */ needs stripping.
+tfrc_sets_plugin_cache_dir() {
+  [ -s "$1" ] || return 1
+  awk '
+    {
+      line = $0; out = ""
+      while (length(line)) {
+        if (inblk) {
+          i = index(line, "*/")
+          if (!i) { line = ""; break }
+          line = substr(line, i + 2); inblk = 0
+        } else {
+          i = index(line, "/*")
+          if (!i) { out = out line; break }
+          out = out substr(line, 1, i - 1)
+          line = substr(line, i + 2); inblk = 1
+        }
+      }
+      if (out ~ /^[ \t]*plugin_cache_dir[ \t]*=/) { found = 1 }
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$1"
+}
+
+if ! tfrc_sets_plugin_cache_dir "${TFRC}"; then
   # Start on a fresh line if the file does not already end with a newline.
   if [ -s "${TFRC}" ] && [ -n "$(tail -c 1 "${TFRC}")" ]; then
     printf '\n' >>"${TFRC}"
