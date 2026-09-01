@@ -1,0 +1,74 @@
+#!/bin/sh
+# Register the LLM provider and activate it for every managed organization.
+# Talks to the metadata-api service directly with a Host header, so it works
+# in all ingress modes without external DNS or TLS.
+set -eu
+
+ctype="Content-Type: application/vnd.gooddata.api+json"
+
+req_get() {
+  curl -sS -o /tmp/resp.json -w '%%{http_code}' -X GET "$METADATA_API_URL$3" \
+    -H "Host: $1" -H "Authorization: Bearer $2" || echo 000
+}
+
+req_send() {
+  curl -sS -o /tmp/resp.json -w '%%{http_code}' -X "$3" "$METADATA_API_URL$4" \
+    -H "Host: $1" -H "Authorization: Bearer $2" -H "$ctype" \
+    --data-binary "@$5" || echo 000
+}
+
+wait_for_org() {
+  tries=90
+  while [ "$tries" -gt 0 ]; do
+    code=$(req_get "$1" "$2" "/api/v1/entities/organizationSettings")
+    [ "$code" = "200" ] && return 0
+    tries=$((tries - 1))
+    sleep 10
+  done
+  return 1
+}
+
+upsert() {
+  attempts=5
+  while [ "$attempts" -gt 0 ]; do
+    code=$(req_get "$1" "$2" "$3")
+    if [ "$code" = "200" ]; then
+      code=$(req_send "$1" "$2" PUT "$3" "$5")
+    elif [ "$code" = "404" ]; then
+      code=$(req_send "$1" "$2" POST "$4" "$5")
+    fi
+    case "$code" in
+      2??) return 0 ;;
+    esac
+    echo "WARN: $3 for $1 returned $code: $(cat /tmp/resp.json 2>/dev/null)" >&2
+    attempts=$((attempts - 1))
+    sleep 10
+  done
+  return 1
+}
+
+rc=0
+while read -r host token; do
+  [ -n "$host" ] || continue
+  echo "Configuring LLM provider '${provider_id}' for organization host $host"
+  if ! wait_for_org "$host" "$token"; then
+    echo "ERROR: organization API for $host did not become ready" >&2
+    rc=1
+    continue
+  fi
+  if upsert "$host" "$token" \
+    "/api/v1/entities/llmProviders/${provider_id}" \
+    "/api/v1/entities/llmProviders" \
+    /config/provider.json &&
+    upsert "$host" "$token" \
+      "/api/v1/entities/organizationSettings/active_llm_provider" \
+      "/api/v1/entities/organizationSettings" \
+      /config/setting.json; then
+    echo "LLM provider '${provider_id}' active for $host"
+  else
+    echo "ERROR: failed to configure LLM provider for $host" >&2
+    rc=1
+  fi
+done </config/orgs
+
+exit $rc

@@ -38,6 +38,21 @@ variable "aws_region" {
   default     = "us-east-2"
 }
 
+variable "bedrock_default_model_id" {
+  description = "Bedrock model or inference profile ID used as the GoodData.CN default. Empty selects Claude Sonnet 4.5 under the region's inference profile prefix (e.g. eu.anthropic.claude-sonnet-4-5-20250929-v1:0). Anthropic models require the one-time use-case form in the Bedrock console for the AWS account."
+  type        = string
+  default     = ""
+}
+
+variable "bedrock_models" {
+  description = "Bedrock models advertised to GoodData.CN. Empty defaults to the resolved bedrock_default_model_id. family is one of OPENAI, ANTHROPIC, META, MISTRAL, AMAZON, GOOGLE, COHERE, UNKNOWN."
+  type = list(object({
+    family = string
+    id     = string
+  }))
+  default = []
+}
+
 variable "deployment_name" {
   description = "Name prefix for all AWS resources."
   type        = string
@@ -148,6 +163,16 @@ variable "enable_ai_features" {
   description = "Enable AI features in the gooddata-cn chart (GenAI service, semantic search, chat, metadata sync, and Qdrant)."
   type        = bool
   default     = true
+}
+
+variable "enable_bedrock_llm" {
+  description = "Create an IAM user with Bedrock invoke permissions and register AWS Bedrock as the active LLM provider for every managed organization. Requires enable_ai_features."
+  type        = bool
+  default     = false
+  validation {
+    condition     = var.enable_bedrock_llm ? var.enable_ai_features : true
+    error_message = "enable_bedrock_llm requires enable_ai_features = true."
+  }
 }
 
 variable "enable_experimental_features" {

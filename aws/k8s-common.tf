@@ -67,10 +67,20 @@ module "k8s_common" {
 
   enable_ai_features           = var.enable_ai_features
   enable_experimental_features = var.enable_experimental_features
-  enable_image_cache           = var.enable_image_cache
-  registry_dockerio            = local.registry_dockerio
-  registry_quayio              = local.registry_quayio
-  registry_k8sio               = local.registry_k8sio
+
+  gdcn_bedrock_llm = var.enable_bedrock_llm ? {
+    region           = var.aws_region
+    default_model_id = module.bedrock[0].default_model_id
+    models           = module.bedrock[0].models
+  } : null
+  gdcn_bedrock_llm_credentials = var.enable_bedrock_llm ? {
+    access_key_id     = module.bedrock[0].access_key_id
+    secret_access_key = module.bedrock[0].secret_access_key
+  } : null
+  enable_image_cache = var.enable_image_cache
+  registry_dockerio  = local.registry_dockerio
+  registry_quayio    = local.registry_quayio
+  registry_k8sio     = local.registry_k8sio
 
   helm_cert_manager_version          = var.helm_cert_manager_version
   helm_gdcn_version                  = var.helm_gdcn_version

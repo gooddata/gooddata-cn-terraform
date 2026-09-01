@@ -142,6 +142,21 @@ gdcn_orgs = [
 # dockerhub_access_token = "myaccesstoken"
 
 ###
+# AWS Bedrock LLM provider (optional)
+###
+# Uncomment to create an IAM user with Bedrock invoke permissions and register
+# AWS Bedrock as the active LLM provider for every managed organization
+# (requires enable_ai_features = true and at least one entry in gdcn_orgs).
+# The default model is Claude Sonnet 4.5 under the region's inference profile
+# prefix; Anthropic models require the one-time use-case form in the Bedrock
+# console for the AWS account.
+# enable_bedrock_llm = true
+# bedrock_default_model_id = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0"
+# bedrock_models = [
+#   { family = "ANTHROPIC", id = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0" },
+# ]
+
+###
 # GoodData AI Lake (optional)
 ###
 # Uncomment to deploy AI Lake (additional license required). Both lines are

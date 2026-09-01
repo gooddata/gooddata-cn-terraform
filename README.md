@@ -135,6 +135,15 @@ After `terraform apply`, Grafana is available at `https://<observability_hostnam
 
 To import the dashboard into a standalone Grafana instance, upload `modules/k8s-common/dashboards/gooddata-cn-overall-health.json` via **Dashboards → Import** and replace the datasource UIDs (`prometheus` → your Prometheus UID, `loki` → your Loki UID).
 
+## AWS Bedrock LLM provider (AWS only)
+
+`enable_ai_features = true` deploys the GenAI services, but GoodData.CN still needs an LLM provider configured per organization before the AI assistant works. On AWS, set `enable_bedrock_llm = true` in your `settings.tfvars` to wire this up end to end:
+
+  - Terraform creates a dedicated IAM user (`modules/bedrock`) whose only permissions are invoking and enumerating Bedrock models.
+  - After GoodData.CN is up, a one-shot Kubernetes job registers AWS Bedrock as an `llmProvider` and activates it (`ACTIVE_LLM_PROVIDER`) for every organization defined in `gdcn_orgs`. The job is idempotent and re-runs whenever the provider config changes.
+
+The default model is Claude Sonnet 4.5 through the region's Bedrock inference profile; override it with `bedrock_default_model_id` and `bedrock_models`. Note that Anthropic models on Bedrock require a one-time use-case form submission in the Bedrock console for the AWS account, and some non-Anthropic models do not support the structured output GoodData.CN requests.
+
 ## Need help?
 
 Reach out to your GoodData contact and they'll point you in the right direction!

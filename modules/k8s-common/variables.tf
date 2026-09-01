@@ -114,6 +114,31 @@ variable "starrocks_admin_password_secret_key" {
   default     = "STARROCKS_ADMIN_PASSWORD"
 }
 
+variable "gdcn_bedrock_llm" {
+  description = "AWS Bedrock LLM provider registered and activated for every organization in gdcn_orgs when enable_ai_features is true. Null skips the LLM provider bootstrap."
+  type = object({
+    provider_id      = optional(string, "bedrock")
+    region           = string
+    default_model_id = string
+    models = list(object({
+      family = string
+      id     = string
+    }))
+  })
+  default = null
+}
+
+variable "gdcn_bedrock_llm_credentials" {
+  description = "Static AWS credentials used by GoodData.CN to call Bedrock. Required when gdcn_bedrock_llm is set."
+  type = object({
+    access_key_id     = string
+    secret_access_key = string
+    session_token     = optional(string, "")
+  })
+  default   = null
+  sensitive = true
+}
+
 variable "gdcn_irsa_role_arn" {
   type    = string
   default = ""
