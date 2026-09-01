@@ -56,6 +56,28 @@ output "acm_validation_records" {
 output "auth_hostname" { value = module.k8s_common.auth_hostname }
 output "aws_profile_name" { value = var.aws_profile_name }
 output "aws_region" { value = var.aws_region }
+
+output "bedrock_access_key_id" {
+  description = "Access key ID for the Bedrock IAM user."
+  value       = var.enable_bedrock_llm ? module.bedrock[0].access_key_id : null
+}
+
+output "bedrock_default_model_id" {
+  description = "Resolved default Bedrock model or inference profile ID used by GoodData.CN."
+  value       = var.enable_bedrock_llm ? module.bedrock[0].default_model_id : null
+}
+
+output "bedrock_iam_user_arn" {
+  description = "ARN of the Bedrock IAM user."
+  value       = var.enable_bedrock_llm ? module.bedrock[0].iam_user_arn : null
+}
+
+output "bedrock_secret_access_key" {
+  description = "Secret access key for the Bedrock IAM user."
+  value       = var.enable_bedrock_llm ? module.bedrock[0].secret_access_key : null
+  sensitive   = true
+}
+
 output "gdcn_namespace" { value = var.gdcn_namespace }
 output "ingress_class_name" { value = module.k8s_common.ingress_class_name }
 output "ingress_controller" { value = var.ingress_controller }
