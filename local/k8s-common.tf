@@ -100,6 +100,7 @@ module "k8s_common" {
 
   enable_ai_features           = var.enable_ai_features
   enable_experimental_features = var.enable_experimental_features
+  enable_matomo_telemetry      = var.enable_matomo_telemetry
   enable_image_cache           = false
   registry_dockerio            = var.registry_dockerio
   registry_quayio              = var.registry_quayio

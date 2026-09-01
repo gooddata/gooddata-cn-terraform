@@ -117,6 +117,7 @@ resource "helm_release" "gooddata_cn" {
     templatefile("${path.module}/templates/gdcn-base.yaml.tftpl", {
       encryption_secret_name  = kubernetes_secret_v1.gdcn_encryption.metadata[0].name
       license_secret_name     = kubernetes_secret_v1.gdcn_license.metadata[0].name
+      enable_matomo_telemetry = var.enable_matomo_telemetry
       org_domains             = local.org_domains
       auth_hostname           = local.auth_hostname
       db_hostname             = var.db_hostname

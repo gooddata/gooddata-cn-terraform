@@ -78,9 +78,14 @@ quiver:
 tools:
   replicaCount: 0
 
-# Disable telemetry
+# Usage telemetry (Matomo)
 telemetry:
-  enabled: false
+  enabled: ${enable_matomo_telemetry}
+  providers:
+    matomo:
+      enabled: ${enable_matomo_telemetry}
+    amplitude:
+      enabled: false
 %{ if fast_storage_class != "" }
 
 # etcd takes the fast class, since Quiver blocks on its fsync latency. Rendered

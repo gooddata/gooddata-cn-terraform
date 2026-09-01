@@ -36,6 +36,9 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
 
+# Uncomment to enable Matomo usage telemetry
+# enable_matomo_telemetry = true
+
 # Size profile controls replicas/resources across services plus the in-cluster
 # metadata postgres sizing. Local installs only support "dev" (the smallest,
 # non-HA footprint).

@@ -44,6 +44,12 @@ variable "enable_experimental_features" {
   default     = false
 }
 
+variable "enable_matomo_telemetry" {
+  description = "Enable Matomo usage telemetry in the gooddata-cn chart."
+  type        = bool
+  default     = false
+}
+
 variable "enable_observability" {
   description = "Enable observability stack (Prometheus, Loki, Tempo, Grafana)"
   type        = bool

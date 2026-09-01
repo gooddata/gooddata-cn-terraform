@@ -156,6 +156,12 @@ variable "enable_experimental_features" {
   default     = false
 }
 
+variable "enable_matomo_telemetry" {
+  description = "Enable Matomo usage telemetry in the gooddata-cn chart."
+  type        = bool
+  default     = false
+}
+
 variable "enable_image_cache" {
   description = "Enable image caching (ECR pull-through cache). If false, images are pulled from upstream registries directly."
   type        = bool
