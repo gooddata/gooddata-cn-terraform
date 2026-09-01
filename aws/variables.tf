@@ -44,6 +44,12 @@ variable "bedrock_default_model_id" {
   default     = ""
 }
 
+variable "bedrock_iam_user_name" {
+  description = "Existing IAM user to reuse for Bedrock access (e.g. one provisioned outside Terraform); must exist. Empty auto-discovers a user tagged Purpose=gdcn-genai-bedrock while this deployment has no user of its own, and creates <deployment_name>-bedrock only when none is found. Reused users must already carry Bedrock invoke permissions and are never destroyed by this stack."
+  type        = string
+  default     = ""
+}
+
 variable "bedrock_models" {
   description = "Bedrock models advertised to GoodData.CN. Empty defaults to the resolved bedrock_default_model_id. family is one of OPENAI, ANTHROPIC, META, MISTRAL, AMAZON, GOOGLE, COHERE, UNKNOWN."
   type = list(object({

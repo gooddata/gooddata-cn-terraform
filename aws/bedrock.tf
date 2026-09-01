@@ -7,11 +7,14 @@ module "bedrock" {
   source = "../modules/bedrock"
 
   providers = {
-    aws = aws
+    aws      = aws
+    external = external
   }
 
   deployment_name  = var.deployment_name
+  aws_profile_name = var.aws_profile_name
   aws_region       = var.aws_region
+  iam_user_name    = var.bedrock_iam_user_name
   default_model_id = var.bedrock_default_model_id
   models           = var.bedrock_models
 }

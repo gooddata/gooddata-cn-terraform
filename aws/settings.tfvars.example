@@ -150,7 +150,10 @@ gdcn_orgs = [
 # The default model is Claude Sonnet 4.5 under the region's inference profile
 # prefix; Anthropic models require the one-time use-case form in the Bedrock
 # console for the AWS account.
+# An existing IAM user tagged Purpose=gdcn-genai-bedrock is reused
+# automatically; set bedrock_iam_user_name to force a specific one.
 # enable_bedrock_llm = true
+# bedrock_iam_user_name = "gdcn-bedrock-agora"
 # bedrock_default_model_id = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0"
 # bedrock_models = [
 #   { family = "ANTHROPIC", id = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0" },
