@@ -58,9 +58,12 @@ case "$ARCH" in
   arm64) PKG_ARCH="arm64" ;;
   *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
-curl -fsSL -o /tmp/stackit.deb "https://github.com/stackitcloud/stackit-cli/releases/download/v${STACKIT_CLI_VERSION}/stackit_${STACKIT_CLI_VERSION}_linux_${PKG_ARCH}.deb"
-sudo dpkg -i /tmp/stackit.deb || sudo apt-get -y -f install
-sudo rm /tmp/stackit.deb
+# mktemp, not a fixed /tmp path: dpkg runs under sudo, so a pre-created file or
+# symlink there would hand a local process control of what gets installed.
+STACKIT_DEB="$(mktemp --suffix=.deb)"
+trap 'rm -f -- "${STACKIT_DEB}"' EXIT
+curl -fsSL -o "${STACKIT_DEB}" "https://github.com/stackitcloud/stackit-cli/releases/download/v${STACKIT_CLI_VERSION}/stackit_${STACKIT_CLI_VERSION}_linux_${PKG_ARCH}.deb"
+sudo dpkg -i "${STACKIT_DEB}" || sudo apt-get -y -f install
 command -v stackit >/dev/null || { echo "ERROR: stackit CLI install failed" >&2; exit 1; }
 
 # Install k3d (for local deployments)

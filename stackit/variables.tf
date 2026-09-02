@@ -300,9 +300,13 @@ variable "size_profile" {
 }
 
 variable "ske_api_server_authorized_ip_ranges" {
-  description = "List of CIDR ranges allowed to reach the SKE API server, applied as the cluster ACL extension. Leave empty to allow any source."
+  description = "CIDR ranges allowed to reach the SKE API server, applied as the cluster ACL extension. Empty applies no ACL, which is only allowed when stackit_private_networking keeps the control plane off the internet. Use [\"0.0.0.0/0\"] to deliberately allow any source."
   type        = list(string)
   default     = []
+  validation {
+    condition     = var.stackit_private_networking || length(var.ske_api_server_authorized_ip_ranges) > 0
+    error_message = "ske_api_server_authorized_ip_ranges must list at least one CIDR when stackit_private_networking is false, because the control plane is then reachable from the internet. Use [\"0.0.0.0/0\"] if you really do want to allow any source."
+  }
 }
 
 variable "ske_system_machine_type" {
