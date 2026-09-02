@@ -18,4 +18,10 @@ resource "helm_release" "keda" {
   chart      = "keda"
   version    = var.helm_keda_version
   namespace  = kubernetes_namespace_v1.keda[0].metadata[0].name
+
+  values = [
+    templatefile("${path.module}/templates/keda-uninstall-cleanup.yaml.tftpl", {
+      namespace = kubernetes_namespace_v1.keda[0].metadata[0].name
+    }),
+  ]
 }
