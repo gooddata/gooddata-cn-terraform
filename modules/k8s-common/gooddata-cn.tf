@@ -17,6 +17,28 @@ locals {
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
   fast_storage_class      = var.fast_storage_class != "" ? var.fast_storage_class : var.gdcn_storage_class
+
+  # Generic S3: endpoint override plus static keys. Covers local SeaweedFS and
+  # STACKIT Object Storage; null on clouds with native object storage.
+  generic_s3 = var.cloud == "local" ? {
+    scheme                  = "http"
+    s3_endpoint_override    = var.local_s3_endpoint_override
+    s3_region               = var.local_s3_region
+    s3_access_key           = var.local_s3_access_key
+    s3_secret_key           = var.local_s3_secret_key
+    s3_exports_bucket       = var.local_s3_exports_bucket
+    s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
+    s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
+    } : var.cloud == "stackit" ? {
+    scheme                  = "https"
+    s3_endpoint_override    = var.stackit_s3_endpoint_override
+    s3_region               = var.stackit_s3_region
+    s3_access_key           = var.stackit_s3_access_key
+    s3_secret_key           = var.stackit_s3_secret_key
+    s3_exports_bucket       = var.stackit_s3_exports_bucket
+    s3_datasource_fs_bucket = var.stackit_s3_datasource_fs_bucket
+    s3_quiver_cache_bucket  = var.stackit_s3_quiver_cache_bucket
+  } : null
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
@@ -174,15 +196,8 @@ resource "helm_release" "gooddata_cn" {
     var.enable_observability ? templatefile("${path.module}/templates/gdcn-observability.yaml.tftpl", {
       observability_namespace = kubernetes_namespace_v1.observability[0].metadata[0].name
     }) : null,
-    var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local.yaml.tftpl", {
-      s3_endpoint_override    = var.local_s3_endpoint_override
-      s3_region               = var.local_s3_region
-      s3_access_key           = var.local_s3_access_key
-      s3_secret_key           = var.local_s3_secret_key
-      s3_exports_bucket       = var.local_s3_exports_bucket
-      s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
-      s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
-    }) : null,
+    local.generic_s3 != null ? templatefile("${path.module}/templates/gdcn-s3-generic.yaml.tftpl", local.generic_s3) : null,
+    var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local-insecure.yaml.tftpl", {}) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
     var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,
   ])
