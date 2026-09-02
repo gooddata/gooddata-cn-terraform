@@ -67,11 +67,11 @@ stackit_private_networking = true
 # Option 2 — Public endpoints, database restricted by ACL
 # SKE manages its own networking, and PostgreSQL Flex is reachable only from the
 # cluster's egress ranges (which Terraform reads from SKE). No network area needed.
-# NOTE: this restricts the database, not the Kubernetes API server — that stays
-# reachable from anywhere unless you also set ske_api_server_authorized_ip_ranges
-# below.
+# The control plane becomes internet-facing, so an API server ACL is required
+# here — use ["0.0.0.0/0"] only if you really do want to allow any source.
 #
-# stackit_private_networking = false
+# stackit_private_networking          = false
+# ske_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
 
 ###
 # DNS
