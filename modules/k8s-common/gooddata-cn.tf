@@ -16,6 +16,32 @@ locals {
   # One flag gates the api-gw basemap plugin and the geo collections storage.
   geo_enabled        = var.geo_basemap_provider != "none"
   geo_mapbox_enabled = var.geo_basemap_provider == "mapbox"
+
+  # Generic S3: endpoint override plus static keys. Covers local SeaweedFS and
+  # STACKIT Object Storage; null on clouds with native object storage.
+  generic_s3 = var.cloud == "local" ? {
+    scheme                    = "http"
+    s3_endpoint_override      = var.local_s3_endpoint_override
+    s3_region                 = var.local_s3_region
+    s3_access_key             = var.local_s3_access_key
+    s3_secret_key             = var.local_s3_secret_key
+    s3_exports_bucket         = var.local_s3_exports_bucket
+    s3_datasource_fs_bucket   = var.local_s3_datasource_fs_bucket
+    s3_quiver_cache_bucket    = var.local_s3_quiver_cache_bucket
+    geo_enabled               = local.geo_enabled
+    s3_geo_collections_bucket = var.local_s3_geo_collections_bucket
+    } : var.cloud == "stackit" ? {
+    scheme                    = "https"
+    s3_endpoint_override      = var.stackit_s3_endpoint_override
+    s3_region                 = var.stackit_s3_region
+    s3_access_key             = var.stackit_s3_access_key
+    s3_secret_key             = var.stackit_s3_secret_key
+    s3_exports_bucket         = var.stackit_s3_exports_bucket
+    s3_datasource_fs_bucket   = var.stackit_s3_datasource_fs_bucket
+    s3_quiver_cache_bucket    = var.stackit_s3_quiver_cache_bucket
+    geo_enabled               = local.geo_enabled
+    s3_geo_collections_bucket = var.stackit_s3_geo_collections_bucket
+  } : null
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
@@ -205,18 +231,8 @@ resource "helm_release" "gooddata_cn" {
     var.enable_observability ? templatefile("${path.module}/templates/gdcn-observability.yaml.tftpl", {
       observability_namespace = kubernetes_namespace_v1.observability[0].metadata[0].name
     }) : null,
-    var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local.yaml.tftpl", {
-      s3_endpoint_override    = var.local_s3_endpoint_override
-      s3_region               = var.local_s3_region
-      s3_access_key           = var.local_s3_access_key
-      s3_secret_key           = var.local_s3_secret_key
-      s3_exports_bucket       = var.local_s3_exports_bucket
-      s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
-      s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
-
-      geo_enabled               = local.geo_enabled
-      s3_geo_collections_bucket = var.local_s3_geo_collections_bucket
-    }) : null,
+    local.generic_s3 != null ? templatefile("${path.module}/templates/gdcn-s3-generic.yaml.tftpl", local.generic_s3) : null,
+    var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local-insecure.yaml.tftpl", {}) : null,
     local.geo_enabled ? templatefile("${path.module}/templates/gdcn-geo.yaml.tftpl", {
       provider            = var.geo_basemap_provider
       aws_location_region = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region
