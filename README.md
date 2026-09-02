@@ -25,6 +25,7 @@ Terraform provisions:
 1. Install the following CLI utilities:
     - [Terraform](https://developer.hashicorp.com/terraform/install)
     - Cloud provider CLI ([AWS](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), [Azure](https://learn.microsoft.com/cli/azure/install-azure-cli))
+    - For STACKIT deployments: the [STACKIT CLI](https://github.com/stackitcloud/stackit-cli) is optional — Terraform authenticates from a service account key. It is useful for listing machine types and PostgreSQL Flex flavors.
     - For Azure deployments: [kubelogin](https://azure.github.io/kubelogin/install.html)
     - [kubectl](https://kubernetes.io/docs/tasks/tools/)
     - [helm](https://helm.sh/docs/intro/install/)
@@ -65,13 +66,15 @@ Requirements:
     cp aws/settings.tfvars.example aws/settings.tfvars
     # or (for azure)
     cp azure/settings.tfvars.example azure/settings.tfvars
+    # or (for stackit)
+    cp stackit/settings.tfvars.example stackit/settings.tfvars
     # or (for local)
     cp local/settings.tfvars.example local/settings.tfvars
     ```
 
     The example file has good defaults but you may want to modify it based on your needs.
 
-1. Choose your provider and `cd` into its directory: `cd aws`, `cd azure`, or `cd local`
+1. Choose your provider and `cd` into its directory: `cd aws`, `cd azure`, `cd stackit`, or `cd local`
 
 1. Authenticate to your cloud provider's CLI:
     - For AWS: authenticate the profile named by `aws_profile_name` in
@@ -81,6 +84,9 @@ Requirements:
       `aws configure --profile <aws_profile_name>`.
     - For Azure: `az login`
     - Azure note: Terraform's Kubernetes authentication uses `kubelogin` with your Azure CLI session.
+    - For STACKIT: create a service account key and export `STACKIT_SERVICE_ACCOUNT_KEY_PATH` (or save it to `~/.stackit/credentials.json`). See the [provider authentication docs](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs#authentication).
+    - STACKIT note: SKE issues a short-lived kubeconfig, so rerun `../scripts/configure-kubectl.sh` when it expires.
+    - STACKIT note: STACKIT Object Storage refuses to delete a bucket that still holds objects, so empty the buckets before `terraform destroy`.
 
 1. Initialize Terraform: `terraform init`
 
@@ -101,7 +107,7 @@ Requirements:
 
 1. Configure authentication according to your needs:
     - To use an external OIDC provider (recommended for anything beyond local testing), follow the [Set Up Authentication guide](https://www.gooddata.com/docs/cloud-native/latest/manage-organization/set-up-authentication/).
-    - For quick testing with the default IdP (Dex), create one or more users by staying in the provider directory (`aws`, `azure`, or `local`) and running `../scripts/create-user.sh`. If Terraform created the organization, the script will automatically read the admin credentials from the Secret `gooddata-cn/gdcn-org-admin-<org_id>`.
+    - For quick testing with the default IdP (Dex), create one or more users by staying in the provider directory (`aws`, `azure`, `stackit`, or `local`) and running `../scripts/create-user.sh`. If Terraform created the organization, the script will automatically read the admin credentials from the Secret `gooddata-cn/gdcn-org-admin-<org_id>`.
 
 1. **(Optional)** If you enabled the observability stack (`enable_observability = true`), create Grafana users by running `../scripts/create-grafana-user.sh` from your provider directory. The script creates a Grafana user and optionally promotes them to admin. It automatically reads the Grafana admin credentials from the Kubernetes secret.
 
