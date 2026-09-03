@@ -99,6 +99,25 @@ variable "gdcn_orgs" {
   }
 }
 
+variable "gdcn_registry_password" {
+  description = "Password for gdcn_registry_server. For ECR, the output of `aws ecr get-login-password` (expires after 12 hours)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gdcn_registry_server" {
+  description = "Private registry hosting the gooddata-cn chart and images. Empty uses the public chart and images."
+  type        = string
+  default     = ""
+}
+
+variable "gdcn_registry_username" {
+  description = "Username for gdcn_registry_server. For ECR this is always AWS."
+  type        = string
+  default     = ""
+}
+
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy."
   type        = string
@@ -113,13 +132,21 @@ variable "helm_cnpg_version" {
   default = "0.29.0"
 }
 
+variable "helm_gdcn_repository" {
+  description = "Chart repository for gooddata-cn. Accepts an HTTP repo or an oci:// registry path for dev builds."
+  type        = string
+  default     = "https://charts.gooddata.com/"
+}
+
 variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy."
   type        = string
 
   validation {
+    # A version carrying build metadata is a dev chart built off master, so it is
+    # newer than any release and the numeric floors below do not apply.
     condition = (
-      var.ingress_controller != "istio_gateway" ? true : (
+      var.ingress_controller != "istio_gateway" || strcontains(var.helm_gdcn_version, "+") ? true : (
         length(split(".", var.helm_gdcn_version)) >= 2 &&
         can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
         can(tonumber(split(".", var.helm_gdcn_version)[1])) &&

@@ -17,6 +17,35 @@ locals {
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
   fast_storage_class      = var.fast_storage_class != "" ? var.fast_storage_class : var.gdcn_storage_class
+  use_gdcn_registry_auth  = trimspace(var.gdcn_registry_server) != ""
+}
+
+# Pull secret for a private registry hosting the gooddata-cn images.
+resource "kubernetes_secret_v1" "gdcn_registry" {
+  count = local.use_gdcn_registry_auth ? 1 : 0
+
+  metadata {
+    name      = "gdcn-registry"
+    namespace = var.gdcn_namespace
+  }
+
+  type = "kubernetes.io/dockerconfigjson"
+
+  data = {
+    ".dockerconfigjson" = jsonencode({
+      auths = {
+        (var.gdcn_registry_server) = {
+          username = var.gdcn_registry_username
+          password = var.gdcn_registry_password
+          auth     = base64encode("${var.gdcn_registry_username}:${var.gdcn_registry_password}")
+        }
+      }
+    })
+  }
+
+  depends_on = [
+    kubernetes_namespace_v1.gdcn,
+  ]
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
@@ -107,11 +136,15 @@ resource "kubernetes_secret_v1" "gdcn_license" {
 
 # Install GoodData.CN
 resource "helm_release" "gooddata_cn" {
-  name       = "gooddata-cn"
-  repository = "https://charts.gooddata.com/"
-  chart      = "gooddata-cn"
-  version    = var.helm_gdcn_version
-  namespace  = var.gdcn_namespace
+  name      = "gooddata-cn"
+  chart     = "gooddata-cn"
+  version   = var.helm_gdcn_version
+  namespace = var.gdcn_namespace
+
+  repository = var.helm_gdcn_repository
+  # Only send credentials when the chart repo lives on the private registry.
+  repository_username = local.use_gdcn_registry_auth && strcontains(var.helm_gdcn_repository, var.gdcn_registry_server) ? var.gdcn_registry_username : null
+  repository_password = local.use_gdcn_registry_auth && strcontains(var.helm_gdcn_repository, var.gdcn_registry_server) ? var.gdcn_registry_password : null
 
   values = compact([
     templatefile("${path.module}/templates/gdcn-base.yaml.tftpl", {
@@ -184,6 +217,9 @@ resource "helm_release" "gooddata_cn" {
       s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
+    local.use_gdcn_registry_auth ? yamlencode({
+      imagePullSecrets = [{ name = kubernetes_secret_v1.gdcn_registry[0].metadata[0].name }]
+    }) : null,
     var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,
   ])
 

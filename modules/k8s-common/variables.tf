@@ -139,7 +139,31 @@ variable "gdcn_orgs" {
   }))
 }
 
+# Credentials for a private registry serving the gooddata-cn chart and/or its images.
+# Empty gdcn_registry_server disables both the pull secret and the chart repo login.
+variable "gdcn_registry_password" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "gdcn_registry_server" {
+  type    = string
+  default = ""
+}
+
+variable "gdcn_registry_username" {
+  type    = string
+  default = ""
+}
+
 variable "helm_cert_manager_version" { type = string }
+
+# Chart repo for gooddata-cn. Accepts an HTTP repo or an oci:// registry path.
+variable "helm_gdcn_repository" {
+  type    = string
+  default = "https://charts.gooddata.com/"
+}
 
 variable "helm_gdcn_version" { type = string }
 
