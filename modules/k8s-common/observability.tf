@@ -47,9 +47,14 @@ resource "helm_release" "kube_prometheus_stack" {
       kubeStateMetrics = { enabled = true }
       nodeExporter     = { enabled = true }
 
-      # Subchart image overrides
+      # Subchart overrides
       "kube-state-metrics" = {
         image = { registry = var.registry_k8sio }
+        # Opt node labels into kube_node_labels (VM size, zone/region, Karpenter
+        # nodepool). Scoped rather than nodes=[*] to keep cardinality bounded.
+        metricLabelsAllowlist = [
+          "nodes=[node.kubernetes.io/instance-type,topology.kubernetes.io/zone,topology.kubernetes.io/region,karpenter.sh/nodepool]"
+        ]
       }
       "prometheus-node-exporter" = {
         image = { registry = var.registry_quayio }
