@@ -272,11 +272,44 @@ variable "helm_external_dns_version" {
   default = "1.21.1"
 }
 
+variable "gdcn_registry_aws_profile" {
+  description = "AWS CLI profile used to mint an ECR token when gdcn_registry_server is an ECR host. Falls back to aws_profile_name."
+  type        = string
+  default     = ""
+}
+
+variable "gdcn_registry_password" {
+  description = "Password for gdcn_registry_server. Ignored for an ECR host, which mints its own token."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gdcn_registry_server" {
+  description = "Private registry hosting the gooddata-cn chart and images. Empty uses the public chart and images."
+  type        = string
+  default     = ""
+}
+
+variable "gdcn_registry_username" {
+  description = "Username for gdcn_registry_server. Ignored for an ECR host, which mints its own token."
+  type        = string
+  default     = ""
+}
+
+variable "helm_gdcn_repository" {
+  description = "Chart repository for gooddata-cn. Accepts an HTTP repo or an oci:// registry path, e.g. your own mirror."
+  type        = string
+  default     = "https://charts.gooddata.com/"
+}
+
 variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy. https://artifacthub.io/packages/helm/gooddata-cn/gooddata-cn"
   type        = string
   validation {
-    condition = (
+    # A version carrying semver build metadata (1.2.3+abc) is a pre-release chart
+    # that the release-number floors below cannot be checked against.
+    condition = strcontains(var.helm_gdcn_version, "+") ? true : (
       # ALB support requires GoodData chart features introduced in 3.51+
       (var.ingress_controller != "alb" ? true : (
         length(split(".", var.helm_gdcn_version)) >= 2 &&

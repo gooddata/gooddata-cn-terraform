@@ -29,20 +29,6 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 #       replicaCount: 3
 # EOT
 
-# Uncomment to install the chart from your own OCI registry — a mirror of the
-# public chart for an air-gapped or pull-through setup. gdcn_registry_server also
-# creates the image pull secret, so point it at the registry holding the images.
-# helm_gdcn_repository = "oci://<account>.dkr.ecr.<region>.amazonaws.com/helm/gooddata"
-# gdcn_registry_server = "<account>.dkr.ecr.<region>.amazonaws.com"
-#
-# An ECR host mints its own short-lived token on every apply; set the profile to
-# use, or leave it empty for the default AWS credential chain.
-# aws_profile_name = "my-aws-profile"
-#
-# Any other registry takes a username and password directly.
-# gdcn_registry_username = "my-user"
-# gdcn_registry_password = "my-password"
-
 # Uncomment to disable AI features: the GenAI service, semantic search, chat,
 # metadata sync and Qdrant.
 # enable_ai_features = false

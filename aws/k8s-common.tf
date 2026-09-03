@@ -72,7 +72,13 @@ module "k8s_common" {
   registry_quayio              = local.registry_quayio
   registry_k8sio               = local.registry_k8sio
 
+  gdcn_registry_password    = var.gdcn_registry_password
+  gdcn_registry_server      = var.gdcn_registry_server
+  gdcn_registry_aws_profile = var.gdcn_registry_aws_profile != "" ? var.gdcn_registry_aws_profile : var.aws_profile_name
+  gdcn_registry_username    = var.gdcn_registry_username
+
   helm_cert_manager_version          = var.helm_cert_manager_version
+  helm_gdcn_repository               = var.helm_gdcn_repository
   helm_gdcn_version                  = var.helm_gdcn_version
   helm_istio_version                 = var.helm_istio_version
   helm_pulsar_version                = var.helm_pulsar_version

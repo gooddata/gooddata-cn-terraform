@@ -135,6 +135,52 @@ After `terraform apply`, Grafana is available at `https://<observability_hostnam
 
 To import the dashboard into a standalone Grafana instance, upload `modules/k8s-common/dashboards/gooddata-cn-overall-health.json` via **Dashboards → Import** and replace the datasource UIDs (`prometheus` → your Prometheus UID, `loki` → your Loki UID).
 
+## For GoodData employees: installing an internal build
+
+> Internal only. These builds are not published and the registry is not reachable
+> outside GoodData. Customers should leave the settings below unset, which is the
+> default and installs the released chart from `https://charts.gooddata.com/`.
+
+To test a branch of `gdc-nas` before it merges, run the **adhoc: Build** workflow
+(`.github/workflows/adhoc_build.yml`) on that branch with `deploy_to_adhoc=false`.
+It publishes a chart to the `adhoc` OCI channel and the component images to the
+`nas-testing/` prefix of the internal ECR registry. The run's *Generate version
+used by chart/images* step prints the chart version — `0.1.<timestamp>+<sha>` —
+and `<sha>` is also the image tag. See the internal deployment docs for the
+registry account and region.
+
+Add to `settings.tfvars` in the environment you are deploying (`local`, `aws` or
+`azure`):
+
+```hcl
+helm_gdcn_repository = "oci://<registry>/helm/gooddata/adhoc"
+helm_gdcn_version    = "0.1.<timestamp>+<sha>"
+gdcn_registry_server = "<registry>"
+
+# ECR mints a fresh token on every plan/apply; needs the AWS CLI on PATH.
+gdcn_registry_aws_profile = "<your-aws-profile>"
+```
+
+The chart pins the component image tags but not their registry, and it leaves the
+UI image tags empty because the adhoc environment installs the UI from a separate
+chart. Redirect the components and pin the UI to a released tag:
+
+```hcl
+gdcn_helm_extra_values = <<-EOT
+  image:
+    repositoryPrefix: <registry>/nas-testing
+  analyticalDesigner: { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+  dashboards:         { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+  homeUi:             { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+  hostApplication:    { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+  webComponents:      { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+EOT
+```
+
+Omit either block and the pods fail to pull: the components resolve to Docker Hub,
+where branch builds do not exist, and the UI images resolve to an empty tag. Remove
+all of it to go back to a released chart.
+
 ## Need help?
 
 Reach out to your GoodData contact and they'll point you in the right direction!

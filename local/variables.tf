@@ -8,12 +8,6 @@ variable "auth_hostname" {
   }
 }
 
-variable "aws_profile_name" {
-  description = "AWS CLI profile used to mint an ECR token when gdcn_registry_server is an ECR host. Empty uses the default credential chain."
-  type        = string
-  default     = ""
-}
-
 variable "deployment_name" {
   description = "Name prefix for local resources (and Helm releases)."
   type        = string
@@ -103,6 +97,12 @@ variable "gdcn_orgs" {
     ])
     error_message = "gdcn_orgs must have unique non-empty ids (lowercase DNS labels) and hostnames, and each org must set non-empty name, admin_user, admin_group, and hostname."
   }
+}
+
+variable "gdcn_registry_aws_profile" {
+  description = "AWS CLI profile used to mint an ECR token when gdcn_registry_server is an ECR host. Empty uses the default credential chain."
+  type        = string
+  default     = ""
 }
 
 variable "gdcn_registry_password" {
