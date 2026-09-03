@@ -139,7 +139,7 @@ variable "helm_cnpg_version" {
 }
 
 variable "helm_gdcn_repository" {
-  description = "Chart repository for gooddata-cn. Accepts an HTTP repo or an oci:// registry path for dev builds."
+  description = "Chart repository for gooddata-cn. Accepts an HTTP repo or an oci:// registry path, e.g. your own mirror."
   type        = string
   default     = "https://charts.gooddata.com/"
 }
@@ -149,8 +149,8 @@ variable "helm_gdcn_version" {
   type        = string
 
   validation {
-    # A version carrying build metadata is a dev chart built off master, so it is
-    # newer than any release and the numeric floors below do not apply.
+    # A version carrying semver build metadata (1.2.3+abc) is a pre-release chart
+    # that the release-number floors below cannot be checked against.
     condition = (
       var.ingress_controller != "istio_gateway" || strcontains(var.helm_gdcn_version, "+") ? true : (
         length(split(".", var.helm_gdcn_version)) >= 2 &&

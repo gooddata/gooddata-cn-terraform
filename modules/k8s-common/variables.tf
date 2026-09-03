@@ -160,6 +160,7 @@ variable "gdcn_registry_username" {
 variable "helm_cert_manager_version" { type = string }
 
 # Chart repo for gooddata-cn. Accepts an HTTP repo or an oci:// registry path.
+# Point it at a mirror to install from your own registry.
 variable "helm_gdcn_repository" {
   type    = string
   default = "https://charts.gooddata.com/"
