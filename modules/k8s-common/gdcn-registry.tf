@@ -8,15 +8,15 @@ locals {
 
   # <account>.dkr.ecr[-fips].<region>.amazonaws.com[.cn] — ECR mints its own
   # short-lived token, so no username/password is configured for such a host.
-  gdcn_registry_ecr_parts  = regexall("^[0-9]+\\.dkr\\.ecr(-fips)?\\.([a-z0-9-]+)\\.amazonaws\\.com(\\.cn)?$", local.gdcn_registry_server)
-  gdcn_registry_is_ecr     = length(local.gdcn_registry_ecr_parts) > 0
-  gdcn_registry_ecr_region = local.gdcn_registry_is_ecr ? local.gdcn_registry_ecr_parts[0][1] : ""
+  gdcn_registry_ecr_region = try(regex("^[0-9]+\\.dkr\\.ecr(?:-fips)?\\.([a-z0-9-]+)\\.amazonaws\\.com(?:\\.cn)?$", local.gdcn_registry_server)[0], "")
+  gdcn_registry_is_ecr     = local.gdcn_registry_ecr_region != ""
 
   gdcn_registry_username = local.gdcn_registry_is_ecr ? "AWS" : var.gdcn_registry_username
   gdcn_registry_password = local.gdcn_registry_is_ecr ? data.external.gdcn_ecr_token[0].result.password : var.gdcn_registry_password
 
-  # Send chart credentials only when the chart repo sits on that same registry.
-  gdcn_chart_repo_is_private = local.use_gdcn_registry_auth && strcontains(var.helm_gdcn_repository, local.gdcn_registry_server)
+  # Send chart credentials only when the chart repo is hosted on that registry.
+  gdcn_chart_repo_host       = try(regex("^(?:[a-z0-9+.-]+://)?([^/]*)", var.helm_gdcn_repository)[0], "")
+  gdcn_chart_repo_is_private = local.use_gdcn_registry_auth && local.gdcn_chart_repo_host == local.gdcn_registry_server
 }
 
 # Re-read on every plan/apply, so the 12-hour ECR token is always current.
