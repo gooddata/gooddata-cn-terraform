@@ -99,31 +99,6 @@ variable "gdcn_orgs" {
   }
 }
 
-variable "gdcn_registry_aws_profile" {
-  description = "AWS CLI profile used to mint an ECR token when gdcn_registry_server is an ECR host. Empty uses the default credential chain."
-  type        = string
-  default     = ""
-}
-
-variable "gdcn_registry_password" {
-  description = "Password for gdcn_registry_server. Ignored for an ECR host, which mints its own token."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "gdcn_registry_server" {
-  description = "Private registry hosting the gooddata-cn chart and images. Empty uses the public chart and images."
-  type        = string
-  default     = ""
-}
-
-variable "gdcn_registry_username" {
-  description = "Username for gdcn_registry_server. Ignored for an ECR host, which mints its own token."
-  type        = string
-  default     = ""
-}
-
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy."
   type        = string
@@ -136,12 +111,6 @@ variable "helm_cnpg_version" {
   type        = string
   # renovate: depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
   default = "0.29.0"
-}
-
-variable "helm_gdcn_repository" {
-  description = "Chart repository for gooddata-cn. Accepts an HTTP repo or an oci:// registry path, e.g. your own mirror."
-  type        = string
-  default     = "https://charts.gooddata.com/"
 }
 
 variable "helm_gdcn_version" {
@@ -246,6 +215,39 @@ variable "ingress_nginx_behind_l7" {
   description = "Whether ingress-nginx is running behind an L7 proxy/load balancer (enables use-forwarded-headers)."
   type        = bool
   default     = false
+}
+
+# GoodData internal use only: install an unreleased build instead of the public
+# chart. See "Installing an internal build" in the README.
+variable "internal_chart_repository" {
+  description = "Chart repository for gooddata-cn. Leave at the default unless installing an internal build."
+  type        = string
+  default     = "https://charts.gooddata.com/"
+}
+
+variable "internal_registry_aws_profile" {
+  description = "AWS CLI profile used to mint an ECR token when internal_registry_server is an ECR host. Empty uses the default credential chain."
+  type        = string
+  default     = ""
+}
+
+variable "internal_registry_password" {
+  description = "Password for internal_registry_server. Required for a non-ECR host; an ECR host mints its own token."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "internal_registry_server" {
+  description = "Registry holding an internal build's chart and images. Also authenticates internal_chart_repository when the chart lives on the same host. Empty uses the public chart and images."
+  type        = string
+  default     = ""
+}
+
+variable "internal_registry_username" {
+  description = "Username for internal_registry_server. Required for a non-ECR host; an ECR host mints its own token."
+  type        = string
+  default     = ""
 }
 
 variable "k3d_cluster_name" {

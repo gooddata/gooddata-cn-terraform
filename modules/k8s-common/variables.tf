@@ -139,39 +139,7 @@ variable "gdcn_orgs" {
   }))
 }
 
-# Credentials for a private registry serving the gooddata-cn chart and/or its images.
-# Empty gdcn_registry_server disables both the pull secret and the chart repo login,
-# so a private helm_gdcn_repository needs it set even when the images are public.
-# An ECR gdcn_registry_server mints its own token and ignores username/password.
-variable "gdcn_registry_aws_profile" {
-  type    = string
-  default = ""
-}
-
-variable "gdcn_registry_password" {
-  type      = string
-  sensitive = true
-  default   = ""
-}
-
-variable "gdcn_registry_server" {
-  type    = string
-  default = ""
-}
-
-variable "gdcn_registry_username" {
-  type    = string
-  default = ""
-}
-
 variable "helm_cert_manager_version" { type = string }
-
-# Chart repo for gooddata-cn. Accepts an HTTP repo or an oci:// registry path.
-# Point it at a mirror to install from your own registry.
-variable "helm_gdcn_repository" {
-  type    = string
-  default = "https://charts.gooddata.com/"
-}
 
 variable "helm_gdcn_version" { type = string }
 
@@ -204,6 +172,36 @@ variable "ingress_annotations_override" {
 variable "ingress_controller" { type = string }
 
 variable "ingress_nginx_behind_l7" { type = bool }
+
+# GoodData internal use only: install an unreleased build instead of the public chart.
+# Empty internal_registry_server disables both the pull secret and the chart repo
+# login, so a private internal_chart_repository needs it set even for public images.
+# An ECR internal_registry_server mints its own token and ignores username/password.
+variable "internal_chart_repository" {
+  type    = string
+  default = "https://charts.gooddata.com/"
+}
+
+variable "internal_registry_aws_profile" {
+  type    = string
+  default = ""
+}
+
+variable "internal_registry_password" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "internal_registry_server" {
+  type    = string
+  default = ""
+}
+
+variable "internal_registry_username" {
+  type    = string
+  default = ""
+}
 
 variable "letsencrypt_email" { type = string }
 

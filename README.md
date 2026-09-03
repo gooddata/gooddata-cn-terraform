@@ -147,10 +147,10 @@ To import the dashboard into a standalone Grafana instance, upload `modules/k8s-
 1. Add to `settings.tfvars` in any environment, then `terraform apply`:
 
 ```hcl
-helm_gdcn_repository      = "oci://<registry>/helm/gooddata/adhoc"
-helm_gdcn_version         = "0.1.<timestamp>+<sha>"
-gdcn_registry_server      = "<registry>"
-gdcn_registry_aws_profile = "<profile>" # token minted each apply; needs the AWS CLI
+internal_chart_repository     = "oci://<registry>/helm/gooddata/adhoc"
+internal_registry_server      = "<registry>"
+internal_registry_aws_profile = "<profile>" # token minted each apply; needs the AWS CLI
+helm_gdcn_version             = "0.1.<timestamp>+<sha>"
 
 # The chart pins image tags but not the registry, and ships no UI tags at all.
 # Without both of these, components resolve to Docker Hub (no branch builds are

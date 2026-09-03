@@ -112,9 +112,9 @@ resource "helm_release" "gooddata_cn" {
   version   = var.helm_gdcn_version
   namespace = var.gdcn_namespace
 
-  repository          = var.helm_gdcn_repository
-  repository_username = local.gdcn_chart_repo_is_private ? local.gdcn_registry_username : null
-  repository_password = local.gdcn_chart_repo_is_private ? local.gdcn_registry_password : null
+  repository          = var.internal_chart_repository
+  repository_username = local.internal_chart_repo_is_private ? local.internal_registry_username : null
+  repository_password = local.internal_chart_repo_is_private ? local.internal_registry_password : null
 
   values = compact([
     templatefile("${path.module}/templates/gdcn-base.yaml.tftpl", {
@@ -187,8 +187,8 @@ resource "helm_release" "gooddata_cn" {
       s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
-    local.use_gdcn_registry_auth ? yamlencode({
-      imagePullSecrets = [{ name = kubernetes_secret_v1.gdcn_registry[0].metadata[0].name }]
+    local.use_internal_registry_auth ? yamlencode({
+      imagePullSecrets = [{ name = kubernetes_secret_v1.internal_registry[0].metadata[0].name }]
     }) : null,
     var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,
   ])
