@@ -8,6 +8,12 @@ variable "auth_hostname" {
   }
 }
 
+variable "aws_profile_name" {
+  description = "AWS CLI profile used to mint an ECR token when gdcn_registry_server is an ECR host. Empty uses the default credential chain."
+  type        = string
+  default     = ""
+}
+
 variable "deployment_name" {
   description = "Name prefix for local resources (and Helm releases)."
   type        = string
@@ -100,7 +106,7 @@ variable "gdcn_orgs" {
 }
 
 variable "gdcn_registry_password" {
-  description = "Password for gdcn_registry_server. For ECR, the output of `aws ecr get-login-password` (expires after 12 hours)."
+  description = "Password for gdcn_registry_server. Ignored for an ECR host, which mints its own token."
   type        = string
   sensitive   = true
   default     = ""
@@ -113,7 +119,7 @@ variable "gdcn_registry_server" {
 }
 
 variable "gdcn_registry_username" {
-  description = "Username for gdcn_registry_server. For ECR this is always AWS."
+  description = "Username for gdcn_registry_server. Ignored for an ECR host, which mints its own token."
   type        = string
   default     = ""
 }
