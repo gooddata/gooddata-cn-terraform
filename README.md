@@ -140,39 +140,32 @@ To import the dashboard into a standalone Grafana instance, upload `modules/k8s-
 > Internal only — the registry is unreachable outside GoodData. Leave these unset
 > to install the released chart. `<registry>` is in the internal deployment docs.
 
-1. Run **adhoc: Build** (`.github/workflows/adhoc_build.yml`) on your `gdc-nas`
-   branch with `deploy_to_adhoc=false`.
+1. Run the **adhoc: Build** pipeline. You can set `deploy_to_adhoc=false` since we'll deploy here instead.
 1. Copy the chart version from its *Generate version used by chart/images* step.
    The `<sha>` in it is also the image tag.
-1. Add to `settings.tfvars` in any environment, then `terraform apply`:
+1. Add to `settings.tfvars` in any environment:
 
-```hcl
-internal_chart_repository     = "oci://<registry>/helm/gooddata/adhoc"
-internal_registry_server      = "<registry>"
-internal_registry_aws_profile = "<profile>" # token minted each apply; needs the AWS CLI
-helm_gdcn_version             = "0.1.<timestamp>+<sha>"
+    ```hcl
+    internal_chart_repository     = "oci://<registry>/helm/gooddata/adhoc"
+    helm_gdcn_version             = "0.1.<timestamp>+<sha>"
+    internal_registry_server      = "<registry>"
+    internal_registry_aws_profile = "<profile>"
 
-# The chart pins image tags but not the registry, and ships no UI tags at all.
-# Without both of these, components resolve to Docker Hub (no branch builds are
-# published there) and the UI to an empty tag.
-gdcn_helm_extra_values = <<-EOT
-  image:
-    repositoryPrefix: <registry>/nas-testing
-  analyticalDesigner: { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
-  dashboards:         { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
-  homeUi:             { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
-  hostApplication:    { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
-  webComponents:      { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
-EOT
-```
+    # The chart pins image tags but not the registry, and ships no UI tags at all.
+    # Without both of these, components resolve to Docker Hub (no branch builds are
+    # published there) and the UI to an empty tag.
+    gdcn_helm_extra_values = <<-EOT
+      image:
+        repositoryPrefix: <registry>/nas-testing
+      analyticalDesigner: { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+      dashboards:         { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+      homeUi:             { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+      hostApplication:    { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+      webComponents:      { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+    EOT
+    ```
 
-Delete the block to go back to a released chart.
-
-Two things to expect while this is configured. The ECR token lasts 12 hours and is
-only refreshed by an apply, so a pod first scheduled after that — a new node, a
-scale-out, a restart that re-pulls — hits `ImagePullBackOff`; re-apply to fix it.
-And because a fresh token is minted every plan, the pull secret and the release
-always show a diff, so each apply runs a full `helm upgrade`.
+1. Run `terraform apply -var-file=settings.tfvars`
 
 ## Need help?
 
