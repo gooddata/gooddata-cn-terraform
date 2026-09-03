@@ -65,65 +65,8 @@ sudo curl -fsSL -o /usr/local/bin/k3d \
   "https://github.com/k3d-io/k3d/releases/download/${K3D_VERSION}/k3d-${OS}-${ARCH}"
 sudo chmod +x /usr/local/bin/k3d
 
-# Shared Terraform provider cache: providers are downloaded once and symlinked
-# into every working directory and worktree instead of copied per-directory.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Anchor on the main checkout so linked worktrees resolve to the same cache.
-GIT_COMMON_DIR="$(git -C "${SCRIPT_DIR}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
-if [ -n "${GIT_COMMON_DIR}" ]; then
-  REPO_ROOT="$(dirname "${GIT_COMMON_DIR}")"
-else
-  REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-fi
-TF_CACHE="${REPO_ROOT}/.terraform-plugin-cache"
-mkdir -p "${TF_CACHE}"
-
-TFRC="${HOME}/.terraformrc"
-# Exit 0 when the file already assigns plugin_cache_dir outside a comment or
-# string, 1 when it does not, 2 when a /* block comment is left unterminated.
-tfrc_sets_plugin_cache_dir() {
-  [ -s "$1" ] || return 1
-  awk '
-    hd != "" {
-      t = $0; sub(/^[ \t]+/, "", t); sub(/[ \t]+$/, "", t)
-      if (t == hd) { hd = "" }
-      next
-    }
-    {
-      line = $0; out = ""; inq = 0; i = 1; n = length(line)
-      while (i <= n) {
-        c = substr(line, i, 1); c2 = substr(line, i, 2)
-        if (inblk) {
-          if (c2 == "*/") { inblk = 0; i += 2 } else { i++ }
-        } else if (inq) {
-          if (c == "\\") { out = out c2; i += 2; continue }
-          if (c == "\"") { inq = 0 }
-          out = out c; i++
-        } else {
-          if (c2 == "/*") { inblk = 1; i += 2; continue }
-          if (c == "#" || c2 == "//") { break }
-          if (c == "\"") { inq = 1 }
-          out = out c; i++
-        }
-      }
-      if (out ~ /^[ \t]*plugin_cache_dir[ \t]*=/) { found = 1 }
-      # A heredoc body is opaque; skip it so its lines cannot match.
-      if (out ~ /<<-?[A-Za-z_][A-Za-z0-9_]*[ \t]*$/) {
-        hd = out; sub(/^.*<<-?/, "", hd); sub(/[ \t]*$/, "", hd)
-      }
-    }
-    END { if (inblk) { exit 2 } exit(found ? 0 : 1) }
-  ' "$1"
-}
-
-tfrc_state=0
-tfrc_sets_plugin_cache_dir "${TFRC}" || tfrc_state=$?
-if [ "${tfrc_state}" -eq 2 ]; then
-  echo "warning: ${TFRC} has an unterminated /* comment; not adding plugin_cache_dir" >&2
-elif [ "${tfrc_state}" -eq 1 ]; then
-  # Start on a fresh line if the file does not already end with a newline.
-  if [ -s "${TFRC}" ] && [ -n "$(tail -c 1 "${TFRC}")" ]; then
-    printf '\n' >>"${TFRC}"
-  fi
-  printf 'plugin_cache_dir = "%s"\n' "${TF_CACHE}" >>"${TFRC}"
+# Shared provider cache: TF_PLUGIN_CACHE_DIR (devcontainer.json) makes providers
+# download once and symlink into each working dir; prune it manually as it grows.
+if [ -n "${TF_PLUGIN_CACHE_DIR:-}" ]; then
+  mkdir -p "${TF_PLUGIN_CACHE_DIR}"
 fi

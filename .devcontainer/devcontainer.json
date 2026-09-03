@@ -30,6 +30,13 @@
     }
   },
 
+  // Share one provider cache across every working directory and git worktree.
+  // The lock files are gitignored, so allow cache hits without a lock entry.
+  "containerEnv": {
+    "TF_PLUGIN_CACHE_DIR": "${containerWorkspaceFolder}/.terraform-plugin-cache",
+    "TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "1"
+  },
+
   "postCreateCommand": ".devcontainer/setup.sh",
 
   // Ensure host.docker.internal resolves to the host gateway so Terraform can reach k3d
