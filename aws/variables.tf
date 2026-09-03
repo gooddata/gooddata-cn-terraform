@@ -251,6 +251,31 @@ variable "gdcn_orgs" {
   }
 }
 
+variable "gdcn_registry_aws_profile" {
+  description = "AWS CLI profile used to mint an ECR token when gdcn_registry_server is an ECR host. Falls back to aws_profile_name."
+  type        = string
+  default     = ""
+}
+
+variable "gdcn_registry_password" {
+  description = "Password for gdcn_registry_server. Required for a non-ECR host; an ECR host mints its own token."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gdcn_registry_server" {
+  description = "Private registry hosting the gooddata-cn chart and images. Also authenticates helm_gdcn_repository when the chart lives on the same host. Empty uses the public chart and images."
+  type        = string
+  default     = ""
+}
+
+variable "gdcn_registry_username" {
+  description = "Username for gdcn_registry_server. Required for a non-ECR host; an ECR host mints its own token."
+  type        = string
+  default     = ""
+}
+
 variable "helm_aws_lb_controller_version" {
   description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string
@@ -270,31 +295,6 @@ variable "helm_external_dns_version" {
   type        = string
   # renovate: depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
   default = "1.21.1"
-}
-
-variable "gdcn_registry_aws_profile" {
-  description = "AWS CLI profile used to mint an ECR token when gdcn_registry_server is an ECR host. Falls back to aws_profile_name."
-  type        = string
-  default     = ""
-}
-
-variable "gdcn_registry_password" {
-  description = "Password for gdcn_registry_server. Ignored for an ECR host, which mints its own token."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "gdcn_registry_server" {
-  description = "Private registry hosting the gooddata-cn chart and images. Empty uses the public chart and images."
-  type        = string
-  default     = ""
-}
-
-variable "gdcn_registry_username" {
-  description = "Username for gdcn_registry_server. Ignored for an ECR host, which mints its own token."
-  type        = string
-  default     = ""
 }
 
 variable "helm_gdcn_repository" {

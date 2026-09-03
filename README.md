@@ -168,6 +168,12 @@ EOT
 
 Delete the block to go back to a released chart.
 
+Two things to expect while this is configured. The ECR token lasts 12 hours and is
+only refreshed by an apply, so a pod first scheduled after that — a new node, a
+scale-out, a restart that re-pulls — hits `ImagePullBackOff`; re-apply to fix it.
+And because a fresh token is minted every plan, the pull secret and the release
+always show a diff, so each apply runs a full `helm upgrade`.
+
 ## Need help?
 
 Reach out to your GoodData contact and they'll point you in the right direction!

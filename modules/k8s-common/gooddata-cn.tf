@@ -17,7 +17,6 @@ locals {
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
   fast_storage_class      = var.fast_storage_class != "" ? var.fast_storage_class : var.gdcn_storage_class
-  use_gdcn_registry_auth  = trimspace(var.gdcn_registry_server) != ""
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.

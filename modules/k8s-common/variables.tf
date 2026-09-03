@@ -140,7 +140,8 @@ variable "gdcn_orgs" {
 }
 
 # Credentials for a private registry serving the gooddata-cn chart and/or its images.
-# Empty gdcn_registry_server disables both the pull secret and the chart repo login.
+# Empty gdcn_registry_server disables both the pull secret and the chart repo login,
+# so a private helm_gdcn_repository needs it set even when the images are public.
 # An ECR gdcn_registry_server mints its own token and ignores username/password.
 variable "gdcn_registry_aws_profile" {
   type    = string
