@@ -16,7 +16,8 @@ locals {
   istio_gateway_hosts = distinct(compact(concat(
     [trimspace(var.auth_hostname)],
     [for org in var.gdcn_orgs : trimspace(org.hostname)],
-    var.enable_observability ? [trimspace(var.observability_hostname)] : []
+    var.enable_observability ? [trimspace(var.observability_hostname)] : [],
+    var.enable_llm_observability ? [trimspace(var.llm_observability_hostname)] : []
   )))
 
   # Deterministic AWS NLB name for the public Istio gateway Service.

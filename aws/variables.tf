@@ -162,6 +162,17 @@ variable "enable_image_cache" {
   default     = false
 }
 
+variable "enable_llm_observability" {
+  description = "Enable self-hosted Langfuse LLM observability and wire the GoodData.CN gen-ai services to it"
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = var.enable_llm_observability ? var.enable_ai_features : true
+    error_message = "enable_llm_observability requires enable_ai_features = true; the gen-ai services are what emit the traces."
+  }
+}
+
 variable "enable_observability" {
   description = "Enable observability stack (Prometheus, Loki, Tempo, Grafana)"
   type        = bool
@@ -265,6 +276,13 @@ variable "helm_cert_manager_version" {
   default = "v1.21.1"
 }
 
+variable "helm_clickhouse_operator_version" {
+  description = "Version of the clickhouse-operator-helm Helm chart to deploy. https://github.com/ClickHouse/clickhouse-operator"
+  type        = string
+  # renovate: depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm datasource=docker
+  default = "0.0.7"
+}
+
 variable "helm_external_dns_version" {
   description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
   type        = string
@@ -336,6 +354,13 @@ variable "helm_karpenter_version" {
   type        = string
   # renovate: depName=karpenter packageName=public.ecr.aws/karpenter/karpenter datasource=docker
   default = "1.6.3"
+}
+
+variable "helm_langfuse_version" {
+  description = "Version of the langfuse Helm chart to deploy. https://artifacthub.io/packages/helm/langfuse/langfuse"
+  type        = string
+  # renovate: depName=langfuse registryUrl=https://langfuse.github.io/langfuse-k8s
+  default = "1.5.31"
 }
 
 variable "helm_loki_version" {
@@ -438,6 +463,23 @@ variable "internal_registry_username" {
   default     = ""
 }
 
+variable "langfuse_admin_email" {
+  description = "Email of the bootstrap Langfuse admin."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_llm_observability ? length(trimspace(var.langfuse_admin_email)) > 0 : true
+    error_message = "langfuse_admin_email must be provided when enable_llm_observability is true."
+  }
+}
+
+variable "langfuse_tracing_environment" {
+  description = "Langfuse tracing environment reported by the GoodData.CN gen-ai services. Empty keeps the chart default."
+  type        = string
+  default     = "dev"
+}
+
 variable "letsencrypt_email" {
   description = "Email address used for Let's Encrypt ACME registration (only required when tls_mode = \"letsencrypt\")"
   type        = string
@@ -445,6 +487,17 @@ variable "letsencrypt_email" {
   validation {
     condition     = var.tls_mode != "letsencrypt" ? true : length(trimspace(var.letsencrypt_email)) > 0
     error_message = "letsencrypt_email must be provided when tls_mode is \"letsencrypt\"."
+  }
+}
+
+variable "llm_observability_hostname" {
+  description = "Hostname for the Langfuse UI"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_llm_observability ? length(trimspace(var.llm_observability_hostname)) > 0 : true
+    error_message = "llm_observability_hostname must be provided when enable_llm_observability is true."
   }
 }
 

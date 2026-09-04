@@ -1,16 +1,6 @@
 ###
-# Cloud-agnostic observability sizing for the shared module. These values are
-# the same across AWS/Azure/local at a given tier, so they live here once and
-# the environment selects a tier by name via var.observability_size. Only the
-# observability stack (no per-tier Helm chart) is sized here; GoodData.CN,
-# Pulsar, and AI Lake sizing is selected by var.gdcn_size / var.pulsar_size /
-# var.ai_lake_size_profile against templates/*-size-<tier>.yaml.tftpl and
-# starrocks.tf, not this file.
-#
-# Observability CPU is intentionally left flat per-service (these components are
-# memory-bound, not CPU-bound, at our scale). The disk values are StatefulSet
-# volumeClaimTemplates — immutable, so they apply only at PVC creation; a live
-# resize is a manual operation and shrinking is never supported.
+# Cloud-agnostic sizing for the observability and Langfuse stacks, by tier. Disk
+# values are volumeClaimTemplates: applied at PVC creation only, never shrink.
 ###
 
 locals {
@@ -36,6 +26,28 @@ locals {
           burst_size_bytes = 20000000 # 20 MB
         }
       }
+      langfuse = {
+        # web/worker are the only stateless deployments; ClickHouse, Keeper and
+        # Valkey stay single-node at every tier.
+        replicas = {
+          web    = 1
+          worker = 1
+        }
+        memory = {
+          web        = { request = "512Mi", limit = "1Gi" }
+          worker     = { request = "512Mi", limit = "2Gi" }
+          clickhouse = { request = "1Gi", limit = "4Gi" }
+          # Keeper only holds replication/DDL metadata for one shard.
+          clickhouse_keeper = { request = "256Mi", limit = "512Mi" }
+          valkey            = { request = "128Mi", limit = "512Mi" }
+        }
+        disk = {
+          clickhouse        = "20Gi"
+          clickhouse_keeper = "5Gi"
+          # Valkey is a BullMQ queue, so the PVC only holds in-flight events.
+          valkey = "2Gi"
+        }
+      }
     }
     prod-small = {
       observability = {
@@ -55,6 +67,26 @@ locals {
         tempo_ingestion = {
           rate_limit_bytes = 30000000 # 30 MB/s
           burst_size_bytes = 45000000 # 45 MB
+        }
+      }
+      langfuse = {
+        # Two of each so a node drain or rolling update does not drop the UI or
+        # in-flight trace ingestion.
+        replicas = {
+          web    = 2
+          worker = 2
+        }
+        memory = {
+          web               = { request = "512Mi", limit = "2Gi" }
+          worker            = { request = "1Gi", limit = "3Gi" }
+          clickhouse        = { request = "2Gi", limit = "8Gi" }
+          clickhouse_keeper = { request = "512Mi", limit = "1Gi" }
+          valkey            = { request = "256Mi", limit = "1Gi" }
+        }
+        disk = {
+          clickhouse        = "100Gi"
+          clickhouse_keeper = "10Gi"
+          valkey            = "5Gi"
         }
       }
     }
@@ -84,12 +116,18 @@ locals {
     }
   }
 
-  # Valid workload size tiers = the keys of the size_profiles map above; used by
-  # the gdcn_size / observability_size / pulsar_size variable validations.
+  # Valid workload size tiers = the keys of the size_profiles map above, used by
+  # the *_size variable validations.
   workload_size_tiers = keys(local.size_profiles)
 
   obs_profile         = local.size_profiles[var.observability_size]
   obs_mem             = local.obs_profile.observability.memory
   obs_disk            = local.obs_profile.observability.disk
   obs_tempo_ingestion = local.obs_profile.observability.tempo_ingestion
+
+  # Langfuse has no prod-large spec, so the larger tiers use prod-small.
+  langfuse_profile  = local.size_profiles[var.observability_size == "dev" ? "dev" : "prod-small"]
+  langfuse_replicas = local.langfuse_profile.langfuse.replicas
+  langfuse_mem      = local.langfuse_profile.langfuse.memory
+  langfuse_disk     = local.langfuse_profile.langfuse.disk
 }

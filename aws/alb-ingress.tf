@@ -3,13 +3,15 @@
 ###
 
 locals {
-  auth_hostname          = trimspace(var.auth_hostname)
-  org_hostnames          = distinct(compact([for org in var.gdcn_orgs : trimspace(org.hostname)]))
-  observability_hostname = var.enable_observability ? trimspace(var.observability_hostname) : ""
+  auth_hostname              = trimspace(var.auth_hostname)
+  org_hostnames              = distinct(compact([for org in var.gdcn_orgs : trimspace(org.hostname)]))
+  observability_hostname     = var.enable_observability ? trimspace(var.observability_hostname) : ""
+  llm_observability_hostname = var.enable_llm_observability ? trimspace(var.llm_observability_hostname) : ""
   alb_cert_domains = local.use_alb && var.tls_mode == "acm" ? distinct(compact(concat(
     [local.auth_hostname],
     local.org_hostnames,
-    [local.observability_hostname]
+    [local.observability_hostname],
+    [local.llm_observability_hostname]
   ))) : []
   alb_certificate_domain = length(local.alb_cert_domains) > 0 ? local.alb_cert_domains[0] : ""
   alb_certificate_sans   = length(local.alb_cert_domains) > 1 ? slice(local.alb_cert_domains, 1, length(local.alb_cert_domains)) : []
@@ -57,7 +59,7 @@ resource "null_resource" "validate_route53_hostnames" {
   lifecycle {
     precondition {
       condition     = length(local.invalid_route53_hosts) == 0
-      error_message = "auth_hostname, gdcn_orgs[*].hostname, and observability_hostname (when enable_observability=true) must be within Route53 zone '${local.route53_zone_name}'. Invalid: ${join(", ", local.invalid_route53_hosts)}"
+      error_message = "auth_hostname, gdcn_orgs[*].hostname, observability_hostname (when enable_observability=true) and llm_observability_hostname (when enable_llm_observability=true) must be within Route53 zone '${local.route53_zone_name}'. Invalid: ${join(", ", local.invalid_route53_hosts)}"
     }
   }
 }

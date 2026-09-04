@@ -91,10 +91,8 @@ locals {
     "${local.glue_arn_prefix}:table/s3tablescatalog/${aws_s3tables_table_bucket.starrocks_tables[0].name}/*/*",
   ] : []
 
-  # Shared two-statement (list+location, then object read/write/multipart) IAM
-  # policy JSON shape used by the gdcn, observability and starrocks S3 access
-  # policies below; only the per-consumer Resource lists differ. The starrocks
-  # ARNs are guarded by enable_ai_lake since the bucket is count-gated.
+  # Shared IAM policy shape for every S3 consumer below; only the Resource lists
+  # differ, and the flag-gated buckets contribute ARNs only when enabled.
   s3_rw_policy_json = {
     for name, cfg in {
       gdcn = {
@@ -108,6 +106,10 @@ locals {
       starrocks = {
         bucket_arns = var.enable_ai_lake ? [aws_s3_bucket.starrocks[0].arn] : []
         object_arns = var.enable_ai_lake ? ["${aws_s3_bucket.starrocks[0].arn}/*"] : []
+      }
+      langfuse = {
+        bucket_arns = var.enable_llm_observability ? [aws_s3_bucket.langfuse[0].arn] : []
+        object_arns = var.enable_llm_observability ? ["${aws_s3_bucket.langfuse[0].arn}/*"] : []
       }
       } : name => jsonencode({
         Version = "2012-10-17",
@@ -375,4 +377,58 @@ resource "aws_iam_policy" "observability_s3_access" {
   description = "Allow Loki and Tempo to use S3 buckets for object storage."
 
   policy = local.s3_rw_policy_json["observability"]
+}
+
+###
+# Langfuse S3 bucket (LLM trace events, media, batch exports)
+###
+
+# Kept separate from the GoodData.CN and observability buckets so the Langfuse
+# IRSA role grants access only to this one.
+resource "aws_s3_bucket" "langfuse" {
+  count = var.enable_llm_observability ? 1 : 0
+
+  bucket        = substr("${local.bucket_prefix}-langfuse", 0, 63)
+  force_destroy = true
+
+  tags = local.common_tags
+}
+
+resource "aws_s3_bucket_public_access_block" "langfuse" {
+  count  = var.enable_llm_observability ? 1 : 0
+  bucket = aws_s3_bucket.langfuse[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "langfuse" {
+  count  = var.enable_llm_observability ? 1 : 0
+  bucket = aws_s3_bucket.langfuse[0].id
+
+  versioning_configuration {
+    status = "Suspended"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "langfuse" {
+  count  = var.enable_llm_observability ? 1 : 0
+  bucket = aws_s3_bucket.langfuse[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_iam_policy" "langfuse_s3_access" {
+  count = var.enable_llm_observability ? 1 : 0
+
+  name        = "${var.deployment_name}-LangfuseS3Access"
+  description = "Allow Langfuse to use its S3 bucket for trace events, media and batch exports."
+
+  policy = local.s3_rw_policy_json["langfuse"]
 }

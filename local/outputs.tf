@@ -13,13 +13,19 @@ output "enable_observability" {
   value       = var.enable_observability
 }
 
+output "enable_llm_observability" {
+  description = "Whether the Langfuse LLM observability stack is enabled."
+  value       = var.enable_llm_observability
+}
+
 output "hosts_file_entries" {
   description = "Hostnames to map to 127.0.0.1 for local access (e.g., /etc/hosts)."
   value = [
     for hostname in distinct(compact(concat(
       [module.k8s_common.auth_hostname],
       module.k8s_common.org_domains,
-      var.enable_observability ? [trimspace(var.observability_hostname)] : []
+      var.enable_observability ? [trimspace(var.observability_hostname)] : [],
+      var.enable_llm_observability ? [trimspace(var.llm_observability_hostname)] : []
       ))) : {
       hostname = hostname
       ip       = "127.0.0.1"
@@ -40,6 +46,22 @@ output "kubeconfig_context" {
 output "kubeconfig_path" {
   description = "Path to kubeconfig file used for provisioning (expanded)."
   value       = local.kubeconfig_path
+}
+
+output "langfuse_admin_email" {
+  description = "Email of the Langfuse admin user created during headless initialization."
+  value       = var.enable_llm_observability ? trimspace(var.langfuse_admin_email) : null
+}
+
+output "langfuse_admin_password" {
+  description = "Password of the Langfuse admin user created during headless initialization."
+  value       = module.k8s_common.langfuse_admin_password
+  sensitive   = true
+}
+
+output "llm_observability_hostname" {
+  description = "Hostname used for the Langfuse ingress."
+  value       = var.enable_llm_observability ? var.llm_observability_hostname : null
 }
 
 output "observability_hostname" {

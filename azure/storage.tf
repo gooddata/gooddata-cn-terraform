@@ -31,7 +31,7 @@ locals {
     "quiver-cache",
     "quiver-datasource-fs",
     "exports",
-  ], local.observability_storage_containers)
+  ], local.observability_storage_containers, var.enable_llm_observability ? ["langfuse"] : [])
 }
 
 resource "azurerm_storage_account" "main" {

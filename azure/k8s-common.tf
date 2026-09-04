@@ -54,12 +54,27 @@ module "k8s_common" {
   helm_promtail_version              = var.helm_promtail_version
   helm_tempo_version                 = var.helm_tempo_version
   helm_grafana_version               = var.helm_grafana_version
+  helm_clickhouse_operator_version   = var.helm_clickhouse_operator_version
+  helm_langfuse_version              = var.helm_langfuse_version
 
   enable_observability        = var.enable_observability
   observability_hostname      = var.observability_hostname
   loki_retention_period       = var.loki_retention_period
   prometheus_retention_period = var.prometheus_retention_period
   tempo_retention_period      = var.tempo_retention_period
+
+  enable_llm_observability     = var.enable_llm_observability
+  langfuse_admin_email         = var.langfuse_admin_email
+  llm_observability_hostname   = var.llm_observability_hostname
+  langfuse_tracing_environment = var.langfuse_tracing_environment
+
+  # Langfuse uses its own Blob container in native Azure mode; its Blob client
+  # only supports shared-key auth, so account name/key replace the S3 credentials.
+  langfuse_s3_storage_provider  = "azure"
+  langfuse_s3_bucket            = var.enable_llm_observability ? azurerm_storage_container.containers["langfuse"].name : ""
+  langfuse_s3_endpoint          = "https://${azurerm_storage_account.main.name}.blob.core.windows.net"
+  langfuse_s3_access_key_id     = azurerm_storage_account.main.name
+  langfuse_s3_secret_access_key = azurerm_storage_account.main.primary_access_key
 
   db_hostname = azurerm_postgresql_flexible_server.main.fqdn
   db_username = local.db_username
@@ -156,6 +171,27 @@ output "observability_hostname" {
   value       = var.observability_hostname
 }
 
+output "enable_llm_observability" {
+  description = "Whether the Langfuse LLM observability stack is enabled."
+  value       = var.enable_llm_observability
+}
+
+output "llm_observability_hostname" {
+  description = "Hostname used for the Langfuse ingress."
+  value       = var.enable_llm_observability ? var.llm_observability_hostname : null
+}
+
+output "langfuse_admin_email" {
+  description = "Email of the Langfuse admin user created during headless initialization."
+  value       = var.enable_llm_observability ? trimspace(var.langfuse_admin_email) : null
+}
+
+output "langfuse_admin_password" {
+  description = "Password of the Langfuse admin user created during headless initialization."
+  value       = module.k8s_common.langfuse_admin_password
+  sensitive   = true
+}
+
 output "org_domains" {
   description = "All GoodData.CN organization hostnames derived from gdcn_orgs"
   value       = module.k8s_common.org_domains
@@ -222,7 +258,8 @@ output "manual_dns_records" {
       for hostname in distinct(compact(concat(
         [module.k8s_common.auth_hostname],
         module.k8s_common.org_domains,
-        var.enable_observability ? [trimspace(var.observability_hostname)] : []
+        var.enable_observability ? [trimspace(var.observability_hostname)] : [],
+        var.enable_llm_observability ? [trimspace(var.llm_observability_hostname)] : []
         ))) : {
         hostname    = hostname
         record_type = "A"
@@ -232,7 +269,8 @@ output "manual_dns_records" {
         for hostname in distinct(compact(concat(
           [module.k8s_common.auth_hostname],
           module.k8s_common.org_domains,
-          var.enable_observability ? [trimspace(var.observability_hostname)] : []
+          var.enable_observability ? [trimspace(var.observability_hostname)] : [],
+          var.enable_llm_observability ? [trimspace(var.llm_observability_hostname)] : []
           ))) : {
           hostname    = hostname
           record_type = "A"

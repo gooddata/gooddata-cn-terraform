@@ -14,13 +14,16 @@ locals {
     # Observability object storage (Loki chunks/index, Tempo trace blocks).
     var.seaweedfs_bucket_loki,
     var.seaweedfs_bucket_tempo,
+    # Langfuse trace events, media and batch exports.
+    var.seaweedfs_bucket_langfuse,
   ]
 
-  # Observability S3 users, each confined to its own bucket. Keeps a compromised
-  # Loki/Tempo pod away from exports, datasource files and the Quiver cache.
+  # Per-workload S3 users, each confined to its own bucket, keeping a compromised
+  # pod away from exports, datasource files and the Quiver cache.
   seaweedfs_scoped_users = {
-    loki  = var.seaweedfs_bucket_loki
-    tempo = var.seaweedfs_bucket_tempo
+    langfuse = var.seaweedfs_bucket_langfuse
+    loki     = var.seaweedfs_bucket_loki
+    tempo    = var.seaweedfs_bucket_tempo
   }
 
   # Identity/permission config handed to the S3 gateway via -s3.config. gdcn

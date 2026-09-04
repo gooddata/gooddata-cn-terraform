@@ -44,6 +44,17 @@ variable "enable_experimental_features" {
   default     = false
 }
 
+variable "enable_llm_observability" {
+  description = "Enable self-hosted Langfuse LLM observability and wire the GoodData.CN gen-ai services to it"
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = var.enable_llm_observability ? var.enable_ai_features : true
+    error_message = "enable_llm_observability requires enable_ai_features = true; the gen-ai services are what emit the traces."
+  }
+}
+
 variable "enable_observability" {
   description = "Enable observability stack (Prometheus, Loki, Tempo, Grafana)"
   type        = bool
@@ -106,6 +117,13 @@ variable "helm_cert_manager_version" {
   default = "v1.21.1"
 }
 
+variable "helm_clickhouse_operator_version" {
+  description = "Version of the clickhouse-operator-helm Helm chart to deploy."
+  type        = string
+  # renovate: depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm datasource=docker
+  default = "0.0.7"
+}
+
 variable "helm_cnpg_version" {
   description = "Version of the CloudNativePG Helm chart to deploy."
   type        = string
@@ -157,6 +175,13 @@ variable "helm_istio_version" {
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
   default = "1.30.4"
+}
+
+variable "helm_langfuse_version" {
+  description = "Version of the langfuse Helm chart to deploy."
+  type        = string
+  # renovate: depName=langfuse registryUrl=https://langfuse.github.io/langfuse-k8s
+  default = "1.5.31"
 }
 
 variable "helm_loki_version" {
@@ -280,6 +305,34 @@ variable "kubeconfig_path" {
   description = "Path to kubeconfig file to use (k3d updates this by default)."
   type        = string
   default     = "~/.kube/config"
+}
+
+variable "langfuse_admin_email" {
+  description = "Email of the bootstrap Langfuse admin."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_llm_observability ? length(trimspace(var.langfuse_admin_email)) > 0 : true
+    error_message = "langfuse_admin_email must be provided when enable_llm_observability is true."
+  }
+}
+
+variable "langfuse_tracing_environment" {
+  description = "Langfuse tracing environment reported by the GoodData.CN gen-ai services. Empty keeps the chart default."
+  type        = string
+  default     = "dev"
+}
+
+variable "llm_observability_hostname" {
+  description = "Hostname for the Langfuse UI"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_llm_observability ? length(trimspace(var.llm_observability_hostname)) > 0 : true
+    error_message = "llm_observability_hostname must be provided when enable_llm_observability is true."
+  }
 }
 
 variable "loki_retention_period" {

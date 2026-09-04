@@ -8,6 +8,11 @@ output "seaweedfs_bucket_exports" {
   value       = var.seaweedfs_bucket_exports
 }
 
+output "seaweedfs_bucket_langfuse" {
+  description = "SeaweedFS bucket for Langfuse object storage (trace events, media, batch exports)."
+  value       = var.seaweedfs_bucket_langfuse
+}
+
 output "seaweedfs_bucket_loki" {
   description = "SeaweedFS bucket for Loki object storage (chunks/index)."
   value       = var.seaweedfs_bucket_loki
@@ -31,6 +36,17 @@ output "seaweedfs_gdcn_access_key" {
 output "seaweedfs_gdcn_secret_key" {
   description = "Secret key for the dedicated GoodData.CN SeaweedFS S3 user."
   value       = kubernetes_secret_v1.seaweedfs_s3_credentials.data["secretKey"]
+  sensitive   = true
+}
+
+output "seaweedfs_langfuse_access_key" {
+  description = "Access key for the Langfuse SeaweedFS S3 user (scoped to the Langfuse bucket)."
+  value       = "langfuse"
+}
+
+output "seaweedfs_langfuse_secret_key" {
+  description = "Secret key for the Langfuse SeaweedFS S3 user."
+  value       = random_password.seaweedfs_scoped_secret_key["langfuse"].result
   sensitive   = true
 }
 

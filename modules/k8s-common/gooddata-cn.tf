@@ -141,6 +141,11 @@ resource "helm_release" "gooddata_cn" {
     var.enable_ai_features ? templatefile("${path.module}/templates/gdcn-ai-features.yaml.tftpl", {
       enable_experimental_features = var.enable_experimental_features
     }) : null,
+    var.enable_ai_features && var.enable_llm_observability ? templatefile("${path.module}/templates/gdcn-langfuse.yaml.tftpl", {
+      langfuse_sections    = local.langfuse_gdcn_sections
+      langfuse_secret_name = local.langfuse_keypair_secret_name
+      tracing_environment  = var.langfuse_tracing_environment
+    }) : null,
     var.enable_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
       registry_dockerio = var.registry_dockerio,
       registry_quayio   = var.registry_quayio
@@ -200,6 +205,7 @@ resource "helm_release" "gooddata_cn" {
 
   depends_on = [
     kubernetes_namespace_v1.gdcn,
+    kubernetes_secret_v1.langfuse_gdcn_keypair,
     helm_release.pulsar,
     helm_release.ingress_nginx,
     kubectl_manifest.letsencrypt_cluster_issuer,

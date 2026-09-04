@@ -1,0 +1,183 @@
+# Langfuse server values. All four bundled subcharts (postgresql, clickhouse,
+# valkey-as-redis, minio-as-s3) are disabled and pointed at external stores.
+
+langfuse:
+  serviceAccount:
+    create: true
+    name: "${service_account_name}"
+%{ if length(service_account_annotations) == 0 ~}
+    annotations: {}
+%{ else ~}
+    annotations:
+%{ for key, value in service_account_annotations ~}
+      ${jsonencode(key)}: ${jsonencode(value)}
+%{ endfor ~}
+%{ endif ~}
+
+  features:
+    # The UI is published, so sign-up stays closed (AUTH_DISABLE_SIGNUP) and no
+    # usage statistics leave the cluster.
+    telemetryEnabled: false
+    signUpDisabled: true
+
+  salt:
+    secretKeyRef:
+      name: "${server_secret_name}"
+      key: "salt"
+
+  encryptionKey:
+    secretKeyRef:
+      name: "${server_secret_name}"
+      key: "encryption_key"
+
+  nextauth:
+    url: "https://${hostname}"
+    secret:
+      secretKeyRef:
+        name: "${server_secret_name}"
+        key: "nextauth_secret"
+
+  # Headless bootstrap of the org, project and admin user. Only honoured on the
+  # first boot against an empty database; later edits rename nothing.
+  additionalEnv:
+    - name: LANGFUSE_INIT_ORG_ID
+      value: "gooddata"
+    - name: LANGFUSE_INIT_ORG_NAME
+      value: "${deployment_name}"
+    - name: LANGFUSE_INIT_PROJECT_ID
+      value: "${deployment_name}"
+    - name: LANGFUSE_INIT_PROJECT_NAME
+      value: "GoodData.CN"
+    - name: LANGFUSE_INIT_USER_EMAIL
+      value: ${jsonencode(admin_email)}
+    - name: LANGFUSE_INIT_USER_NAME
+      value: "${deployment_name} admin"
+    - name: LANGFUSE_INIT_USER_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: "${server_secret_name}"
+          key: "init_user_password"
+    - name: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
+      valueFrom:
+        secretKeyRef:
+          name: "${keypair_secret_name}"
+          key: "langfuse_public_key"
+    - name: LANGFUSE_INIT_PROJECT_SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: "${keypair_secret_name}"
+          key: "langfuse_secret_key"
+
+  image:
+    pullPolicy: IfNotPresent
+
+  web:
+    replicas: ${web_replicas}
+    image:
+      repository: "${registry_dockerio}/langfuse/langfuse"
+    resources:
+      requests:
+        cpu: 100m
+        memory: "${web_memory_request}"
+      limits:
+        cpu: "1"
+        memory: "${web_memory_limit}"
+
+  worker:
+    replicas: ${worker_replicas}
+    image:
+      repository: "${registry_dockerio}/langfuse/langfuse-worker"
+    resources:
+      requests:
+        cpu: 100m
+        memory: "${worker_memory_request}"
+      limits:
+        cpu: "1"
+        memory: "${worker_memory_limit}"
+
+  ingress:
+    enabled: ${ingress_enabled}
+%{ if ingress_enabled ~}
+%{ if ingress_class_name != "" ~}
+    className: "${ingress_class_name}"
+%{ endif ~}
+%{ if length(ingress_annotations) == 0 ~}
+    annotations: {}
+%{ else ~}
+    annotations:
+%{ for key, value in ingress_annotations ~}
+      ${jsonencode(key)}: ${jsonencode(value)}
+%{ endfor ~}
+%{ endif ~}
+    hosts:
+      - host: "${hostname}"
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      enabled: ${ingress_tls_enabled}
+      secretName: "${ingress_tls_secret_name}"
+%{ endif ~}
+
+# Managed Postgres of the environment, in its own database.
+postgresql:
+  deploy: false
+  host: "${postgres_host}"
+  port: 5432
+  args: "sslmode=require"
+  auth:
+    username: "${postgres_username}"
+    database: "${postgres_database}"
+    existingSecret: "${server_secret_name}"
+    # The chart defaults this to "password"; our shared secret uses another key.
+    secretKeys:
+      userPasswordKey: "postgres_password"
+  migration:
+    autoMigrate: true
+
+# Valkey from valkey.tf.
+redis:
+  deploy: false
+  host: "${valkey_host}"
+  port: ${valkey_port}
+  auth:
+    existingSecret: "${server_secret_name}"
+    existingSecretPasswordKey: "${valkey_password_key}"
+
+# ClickHouse from clickhouse.tf. Migrations use the native (TCP) endpoint,
+# credentials ride on CLICKHOUSE_USER/CLICKHOUSE_PASSWORD.
+clickhouse:
+  deploy: false
+  host: "${clickhouse_host}"
+  httpPort: ${clickhouse_http_port}
+  nativePort: ${clickhouse_native_port}
+  database: "${clickhouse_database}"
+  auth:
+    username: "${clickhouse_username}"
+    existingSecret: "${server_secret_name}"
+    existingSecretKey: "${clickhouse_password_key}"
+  migration:
+    url: "clickhouse://${clickhouse_host}:${clickhouse_native_port}"
+    autoMigrate: true
+  # Single node: ON CLUSTER statements would fail.
+  clusterEnabled: false
+
+# Object storage (S3 / SeaweedFS / Azure Blob). Without static keys the pods use
+# the ambient credential chain; in azure mode the keys carry account name + key.
+s3:
+  deploy: false
+  storageProvider: "${s3_storage_provider}"
+  bucket: "${s3_bucket}"
+  region: "${s3_region}"
+  endpoint: "${s3_endpoint}"
+  forcePathStyle: ${s3_force_path_style}
+%{ if s3_static_credentials ~}
+  accessKeyId:
+    secretKeyRef:
+      name: "${server_secret_name}"
+      key: "s3_access_key_id"
+  secretAccessKey:
+    secretKeyRef:
+      name: "${server_secret_name}"
+      key: "s3_secret_access_key"
+%{ endif ~}

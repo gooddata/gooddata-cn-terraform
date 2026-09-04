@@ -121,12 +121,28 @@ module "k8s_common" {
   helm_promtail_version              = var.helm_promtail_version
   helm_tempo_version                 = var.helm_tempo_version
   helm_grafana_version               = var.helm_grafana_version
+  helm_clickhouse_operator_version   = var.helm_clickhouse_operator_version
+  helm_langfuse_version              = var.helm_langfuse_version
 
   enable_observability        = var.enable_observability
   observability_hostname      = var.observability_hostname
   loki_retention_period       = var.loki_retention_period
   prometheus_retention_period = var.prometheus_retention_period
   tempo_retention_period      = var.tempo_retention_period
+
+  enable_llm_observability     = var.enable_llm_observability
+  langfuse_admin_email         = var.langfuse_admin_email
+  llm_observability_hostname   = var.llm_observability_hostname
+  langfuse_tracing_environment = var.langfuse_tracing_environment
+
+  # Langfuse object storage: its own SeaweedFS bucket, reached with the scoped
+  # per-bucket SeaweedFS user (no workload identity on local).
+  langfuse_s3_bucket            = module.k8s_local.seaweedfs_bucket_langfuse
+  langfuse_s3_endpoint          = module.k8s_local.seaweedfs_s3_endpoint
+  langfuse_s3_region            = module.k8s_local.seaweedfs_region
+  langfuse_s3_force_path_style  = true
+  langfuse_s3_access_key_id     = module.k8s_local.seaweedfs_langfuse_access_key
+  langfuse_s3_secret_access_key = module.k8s_local.seaweedfs_langfuse_secret_key
 
   # Observability object storage: Loki + Tempo write to the local SeaweedFS S3
   # buckets instead of large PVCs. SeaweedFS has no workload identity, so static
