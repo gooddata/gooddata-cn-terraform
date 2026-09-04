@@ -60,6 +60,17 @@ variable "enable_experimental_features" { type = bool }
 
 variable "enable_image_cache" { type = bool }
 
+variable "enable_llm_observability" {
+  description = "Enable self-hosted Langfuse LLM observability and wire the GoodData.CN gen-ai services to it"
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = var.enable_llm_observability ? var.enable_ai_features : true
+    error_message = "enable_llm_observability requires enable_ai_features = true; the gen-ai services are what emit the traces."
+  }
+}
+
 variable "enable_observability" {
   description = "Enable observability stack (Prometheus, Loki, Tempo, Grafana)"
   type        = bool
@@ -141,6 +152,8 @@ variable "gdcn_orgs" {
 
 variable "helm_cert_manager_version" { type = string }
 
+variable "helm_clickhouse_operator_version" { type = string }
+
 variable "helm_gdcn_version" { type = string }
 
 variable "helm_grafana_version" { type = string }
@@ -148,6 +161,8 @@ variable "helm_grafana_version" { type = string }
 variable "helm_ingress_nginx_version" { type = string }
 
 variable "helm_istio_version" { type = string }
+
+variable "helm_langfuse_version" { type = string }
 
 variable "helm_loki_version" { type = string }
 
@@ -203,7 +218,95 @@ variable "internal_registry_username" {
   default = ""
 }
 
+variable "langfuse_admin_email" {
+  description = "Email of the bootstrap Langfuse admin"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_llm_observability ? length(trimspace(var.langfuse_admin_email)) > 0 : true
+    error_message = "langfuse_admin_email must be provided when enable_llm_observability is true."
+  }
+}
+
+variable "langfuse_s3_access_key_id" {
+  description = "Access key ID for the Langfuse bucket (Azure: the storage account name). Empty falls back to the pod's ambient credentials."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "langfuse_s3_bucket" {
+  description = "Object-storage bucket (Azure: container) for Langfuse events, media and batch exports"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_llm_observability ? length(trimspace(var.langfuse_s3_bucket)) > 0 : true
+    error_message = "langfuse_s3_bucket must be provided when enable_llm_observability is true."
+  }
+}
+
+variable "langfuse_s3_endpoint" {
+  description = "Endpoint URL for the Langfuse bucket. Empty uses the provider default (AWS S3)."
+  type        = string
+  default     = ""
+}
+
+variable "langfuse_s3_force_path_style" {
+  description = "Force path-style S3 requests, required by SeaweedFS."
+  type        = bool
+  default     = false
+}
+
+variable "langfuse_s3_region" {
+  description = "Region of the Langfuse bucket. Ignored by Azure Blob."
+  type        = string
+  default     = ""
+}
+
+variable "langfuse_s3_secret_access_key" {
+  description = "Secret access key for the Langfuse bucket (Azure: the storage account key). Empty falls back to the pod's ambient credentials."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "langfuse_s3_storage_provider" {
+  description = "Blob-storage backend Langfuse talks to: s3 (any S3-compatible store) or azure (native Blob, shared-key auth only)."
+  type        = string
+  default     = "s3"
+
+  validation {
+    condition     = contains(["s3", "azure"], var.langfuse_s3_storage_provider)
+    error_message = "langfuse_s3_storage_provider must be one of: s3, azure."
+  }
+}
+
+variable "langfuse_service_account_annotations" {
+  description = "Annotations on the Langfuse ServiceAccount for object-storage auth (AWS IRSA role-arn). Empty on stores that use static keys."
+  type        = map(string)
+  default     = {}
+}
+
+variable "langfuse_tracing_environment" {
+  description = "Langfuse tracing environment reported by the GoodData.CN gen-ai services. Empty keeps the chart default."
+  type        = string
+  default     = "dev"
+}
+
 variable "letsencrypt_email" { type = string }
+
+variable "llm_observability_hostname" {
+  description = "Hostname for the Langfuse UI"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_llm_observability ? length(trimspace(var.llm_observability_hostname)) > 0 : true
+    error_message = "llm_observability_hostname must be provided when enable_llm_observability is true."
+  }
+}
 
 variable "local_s3_access_key" {
   description = "S3 access key for local S3-compatible storage."

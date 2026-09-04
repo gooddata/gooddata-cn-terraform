@@ -105,6 +105,18 @@ variable "seaweedfs_bucket_exports" {
   }
 }
 
+variable "seaweedfs_bucket_langfuse" {
+  description = "Bucket used for Langfuse trace events, media and batch exports."
+  type        = string
+  default     = "gooddata-langfuse"
+
+  # Interpolated into the bucket-creation shell script in seaweedfs.tf.
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.seaweedfs_bucket_langfuse))
+    error_message = "seaweedfs_bucket_langfuse must be a valid S3 bucket name: 3-63 chars, lowercase alphanumeric, dots and hyphens, starting and ending alphanumeric."
+  }
+}
+
 variable "seaweedfs_bucket_loki" {
   description = "Bucket used for Loki object storage (chunks/index)."
   type        = string

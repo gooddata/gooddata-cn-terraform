@@ -102,6 +102,18 @@ gdcn_orgs = [
 # seaweedfs_storage_size = "50Gi"
 
 ###
+# LLM observability (Langfuse) configuration (optional)
+###
+# Deploy self-hosted Langfuse for gen-ai traces; also needs enable_ai_features.
+# All three are required, and expect a few GB more cluster memory.
+# enable_llm_observability   = true
+# llm_observability_hostname = "langfuse.localhost"
+# langfuse_admin_email       = "langfuse-admin@example.com"
+
+# Environment name the gen-ai services report with every trace.
+# langfuse_tracing_environment = "dev"
+
+###
 # Container registry authentication (optional)
 ###
 # Uncomment to reduce pull-rate limiting

@@ -89,12 +89,25 @@ module "k8s_common" {
   helm_starrocks_version             = var.helm_starrocks_version
   helm_tempo_version                 = var.helm_tempo_version
   helm_grafana_version               = var.helm_grafana_version
+  helm_clickhouse_operator_version   = var.helm_clickhouse_operator_version
+  helm_langfuse_version              = var.helm_langfuse_version
 
   enable_observability        = var.enable_observability
   observability_hostname      = var.observability_hostname
   loki_retention_period       = var.loki_retention_period
   prometheus_retention_period = var.prometheus_retention_period
   tempo_retention_period      = var.tempo_retention_period
+
+  enable_llm_observability     = var.enable_llm_observability
+  langfuse_admin_email         = var.langfuse_admin_email
+  llm_observability_hostname   = var.llm_observability_hostname
+  langfuse_tracing_environment = var.langfuse_tracing_environment
+
+  # Langfuse object storage: its own S3 bucket, reached through the Langfuse IRSA
+  # role, so no static keys are passed and the default endpoint applies.
+  langfuse_s3_bucket                   = var.enable_llm_observability ? aws_s3_bucket.langfuse[0].id : ""
+  langfuse_s3_region                   = var.aws_region
+  langfuse_service_account_annotations = var.enable_llm_observability ? { "eks.amazonaws.com/role-arn" = aws_iam_role.langfuse_irsa[0].arn } : {}
 
   # Observability object storage: Loki + Tempo write to S3 (no big PVC),
   # authenticating via IRSA (observability IAM role assumed by their SAs).
@@ -165,6 +178,7 @@ module "k8s_common" {
     aws_iam_role_policy_attachment.gdcn_irsa_s3_access,
     aws_iam_role_policy_attachment.observability_irsa_s3_access,
     aws_iam_role_policy_attachment.starrocks_irsa_s3_access,
+    aws_iam_role_policy_attachment.langfuse_irsa_s3_access,
     aws_iam_role_policy.ai_lake_pod_identity,
     aws_eks_pod_identity_association.ai_lake,
     terraform_data.s3tables_lakeformation_permissions,

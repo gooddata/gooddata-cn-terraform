@@ -210,3 +210,52 @@ resource "aws_iam_role_policy" "ai_lake_pod_identity" {
   policy = data.aws_iam_policy_document.ai_lake_pod_identity_access[0].json
 }
 
+###
+# IAM role for the Langfuse service account (IRSA)
+###
+
+# The service-account name is pinned in modules/k8s-common/langfuse.tf, so this
+# subject stays stable across chart upgrades.
+data "aws_iam_policy_document" "langfuse_irsa_assume_role" {
+  count = var.enable_llm_observability ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = local.eks_oidc_condition_key
+      values = [
+        "system:serviceaccount:langfuse:langfuse"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "langfuse_irsa" {
+  count = var.enable_llm_observability ? 1 : 0
+
+  name               = "${var.deployment_name}-langfuse-irsa"
+  assume_role_policy = data.aws_iam_policy_document.langfuse_irsa_assume_role[0].json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "langfuse_irsa_s3_access" {
+  count = var.enable_llm_observability ? 1 : 0
+
+  role       = aws_iam_role.langfuse_irsa[0].name
+  policy_arn = aws_iam_policy.langfuse_s3_access[0].arn
+}

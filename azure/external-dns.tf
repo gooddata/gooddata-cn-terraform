@@ -17,7 +17,8 @@ locals {
   external_dns_managed_hosts = local.external_dns_enabled ? distinct(compact(concat(
     [trimspace(var.auth_hostname)],
     [for org in var.gdcn_orgs : trimspace(org.hostname)],
-    var.enable_observability ? [trimspace(var.observability_hostname)] : []
+    var.enable_observability ? [trimspace(var.observability_hostname)] : [],
+    var.enable_llm_observability ? [trimspace(var.llm_observability_hostname)] : []
   ))) : []
 
   # Hostnames that aren't a subdomain of the configured zone — these would never
@@ -41,7 +42,7 @@ resource "terraform_data" "validate_azure_dns_hostnames" {
   lifecycle {
     precondition {
       condition     = length(local.external_dns_invalid_hosts) == 0
-      error_message = "auth_hostname, gdcn_orgs[*].hostname, and observability_hostname (when enable_observability=true) must be within Azure DNS zone '${local.external_dns_zone_name}'. Invalid: ${join(", ", local.external_dns_invalid_hosts)}"
+      error_message = "auth_hostname, gdcn_orgs[*].hostname, observability_hostname (when enable_observability=true) and llm_observability_hostname (when enable_llm_observability=true) must be within Azure DNS zone '${local.external_dns_zone_name}'. Invalid: ${join(", ", local.external_dns_invalid_hosts)}"
     }
   }
 }

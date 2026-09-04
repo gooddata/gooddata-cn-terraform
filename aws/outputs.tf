@@ -1,5 +1,7 @@
 output "enable_observability" { value = var.enable_observability }
 output "observability_hostname" { value = var.observability_hostname }
+output "enable_llm_observability" { value = var.enable_llm_observability }
+output "llm_observability_hostname" { value = var.enable_llm_observability ? var.llm_observability_hostname : null }
 
 locals {
   use_istio_gateway = var.ingress_controller == "istio_gateway"
@@ -66,7 +68,8 @@ output "manual_dns_records" {
     for hostname in distinct(compact(concat(
       [module.k8s_common.auth_hostname],
       module.k8s_common.org_domains,
-      var.enable_observability ? [trimspace(var.observability_hostname)] : []
+      var.enable_observability ? [trimspace(var.observability_hostname)] : [],
+      var.enable_llm_observability ? [trimspace(var.llm_observability_hostname)] : []
       ))) : {
       hostname    = hostname
       record_type = "CNAME"
@@ -113,5 +116,16 @@ output "starrocks_catalog_username" {
 output "starrocks_catalog_user_password" {
   description = "StarRocks catalog user password."
   value       = module.k8s_common.starrocks_catalog_user_password
+  sensitive   = true
+}
+
+output "langfuse_admin_email" {
+  description = "Email of the Langfuse admin user created during headless initialization."
+  value       = var.enable_llm_observability ? trimspace(var.langfuse_admin_email) : null
+}
+
+output "langfuse_admin_password" {
+  description = "Password of the Langfuse admin user created during headless initialization."
+  value       = module.k8s_common.langfuse_admin_password
   sensitive   = true
 }

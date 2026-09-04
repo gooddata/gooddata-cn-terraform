@@ -1,0 +1,11 @@
+# Emit Langfuse traces from every gen-ai service. An empty tracing_environment
+# leaves the chart default in place.
+%{ for section in langfuse_sections ~}
+${section}:
+  langfuse:
+    enabled: true
+    secret: ${jsonencode(langfuse_secret_name)}
+%{ if tracing_environment != "" ~}
+    tracingEnvironment: ${jsonencode(tracing_environment)}
+%{ endif ~}
+%{ endfor ~}

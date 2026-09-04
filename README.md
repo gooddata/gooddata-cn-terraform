@@ -135,6 +135,21 @@ After `terraform apply`, Grafana is available at `https://<observability_hostnam
 
 To import the dashboard into a standalone Grafana instance, upload `modules/k8s-common/dashboards/gooddata-cn-overall-health.json` via **Dashboards → Import** and replace the datasource UIDs (`prometheus` → your Prometheus UID, `loki` → your Loki UID).
 
+## LLM observability
+
+Set `enable_llm_observability = true`, `llm_observability_hostname` and `langfuse_admin_email` in your `settings.tfvars` to deploy [Langfuse](https://langfuse.com/) and send traces from the gen-ai services to it. This also requires `enable_ai_features = true`, since those services are what produce the traces. Langfuse brings its own ClickHouse, Keeper, and Valkey pods, so expect it to add a few GB of memory to the cluster.
+
+After `terraform apply`, Langfuse is available at `https://<llm_observability_hostname>`. Traces appear within a few seconds of using any AI feature, tagged with `langfuse_tracing_environment` (`dev` unless you change it).
+
+An admin user is created on the first apply, and self-registration is disabled, so this is the only account. Read its credentials from the Terraform output in your provider directory:
+
+```bash
+terraform output langfuse_admin_email
+terraform output -raw langfuse_admin_password
+```
+
+Invitations are not wired up (Langfuse blocks sign-up before it checks them), so treat this output as a shared deployment secret and keep it within the team that already has cluster access.
+
 ## Installing an internal build (GoodData employees)
 
 > Internal only — the registry is unreachable outside GoodData. Leave these unset
