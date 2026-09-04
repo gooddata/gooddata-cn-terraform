@@ -173,6 +173,36 @@ variable "ingress_controller" { type = string }
 
 variable "ingress_nginx_behind_l7" { type = bool }
 
+# GoodData internal use only: install an unreleased build instead of the public chart.
+# Empty internal_registry_server disables both the pull secret and the chart repo
+# login, so a private internal_chart_repository needs it set even for public images.
+# An ECR internal_registry_server mints its own token and ignores username/password.
+variable "internal_chart_repository" {
+  type    = string
+  default = "https://charts.gooddata.com/"
+}
+
+variable "internal_registry_aws_profile" {
+  type    = string
+  default = ""
+}
+
+variable "internal_registry_password" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "internal_registry_server" {
+  type    = string
+  default = ""
+}
+
+variable "internal_registry_username" {
+  type    = string
+  default = ""
+}
+
 variable "letsencrypt_email" { type = string }
 
 variable "local_s3_access_key" {

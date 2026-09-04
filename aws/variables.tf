@@ -276,7 +276,9 @@ variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy. https://artifacthub.io/packages/helm/gooddata-cn/gooddata-cn"
   type        = string
   validation {
-    condition = (
+    # A version carrying semver build metadata (1.2.3+abc) is a pre-release chart
+    # that the release-number floors below cannot be checked against.
+    condition = strcontains(var.helm_gdcn_version, "+") ? true : (
       # ALB support requires GoodData chart features introduced in 3.51+
       (var.ingress_controller != "alb" ? true : (
         length(split(".", var.helm_gdcn_version)) >= 2 &&
@@ -401,6 +403,39 @@ variable "ingress_nginx_behind_l7" {
   description = "Whether ingress-nginx is running behind an L7 proxy/load balancer (enables use-forwarded-headers)."
   type        = bool
   default     = false
+}
+
+# GoodData internal use only: install an unreleased build instead of the public
+# chart. See "Installing an internal build" in the README.
+variable "internal_chart_repository" {
+  description = "Chart repository for gooddata-cn. Leave at the default unless installing an internal build."
+  type        = string
+  default     = "https://charts.gooddata.com/"
+}
+
+variable "internal_registry_aws_profile" {
+  description = "AWS CLI profile used to mint an ECR token when internal_registry_server is an ECR host. Falls back to aws_profile_name."
+  type        = string
+  default     = ""
+}
+
+variable "internal_registry_password" {
+  description = "Password for internal_registry_server. Required for a non-ECR host; an ECR host mints its own token."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "internal_registry_server" {
+  description = "Registry holding an internal build's chart and images. Also authenticates internal_chart_repository when the chart lives on the same host. Empty uses the public chart and images."
+  type        = string
+  default     = ""
+}
+
+variable "internal_registry_username" {
+  description = "Username for internal_registry_server. Required for a non-ECR host; an ECR host mints its own token."
+  type        = string
+  default     = ""
 }
 
 variable "letsencrypt_email" {

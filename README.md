@@ -135,6 +135,38 @@ After `terraform apply`, Grafana is available at `https://<observability_hostnam
 
 To import the dashboard into a standalone Grafana instance, upload `modules/k8s-common/dashboards/gooddata-cn-overall-health.json` via **Dashboards → Import** and replace the datasource UIDs (`prometheus` → your Prometheus UID, `loki` → your Loki UID).
 
+## Installing an internal build (GoodData employees)
+
+> Internal only — the registry is unreachable outside GoodData. Leave these unset
+> to install the released chart. `<registry>` is in the internal deployment docs.
+
+1. Run the **adhoc: Build** pipeline. You can set `deploy_to_adhoc=false` since we'll deploy here instead.
+1. Copy the chart version from its *Generate version used by chart/images* step.
+   The `<sha>` in it is also the image tag.
+1. Add to `settings.tfvars` in any environment:
+
+    ```hcl
+    internal_chart_repository     = "oci://<registry>/helm/gooddata/adhoc"
+    helm_gdcn_version             = "0.1.<timestamp>+<sha>"
+    internal_registry_server      = "<registry>"
+    internal_registry_aws_profile = "<profile>"
+
+    # The chart pins image tags but not the registry, and ships no UI tags at all.
+    # Without both of these, components resolve to Docker Hub (no branch builds are
+    # published there) and the UI to an empty tag.
+    gdcn_helm_extra_values = <<-EOT
+      image:
+        repositoryPrefix: <registry>/nas-testing
+      analyticalDesigner: { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+      dashboards:         { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+      homeUi:             { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+      hostApplication:    { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+      webComponents:      { image: { repositoryPrefix: gooddata, tag: "<released-version>" } }
+    EOT
+    ```
+
+1. Run `terraform apply -var-file=settings.tfvars`
+
 ## Need help?
 
 Reach out to your GoodData contact and they'll point you in the right direction!

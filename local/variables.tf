@@ -118,8 +118,10 @@ variable "helm_gdcn_version" {
   type        = string
 
   validation {
+    # A version carrying semver build metadata (1.2.3+abc) is a pre-release chart
+    # that the release-number floors below cannot be checked against.
     condition = (
-      var.ingress_controller != "istio_gateway" ? true : (
+      var.ingress_controller != "istio_gateway" || strcontains(var.helm_gdcn_version, "+") ? true : (
         length(split(".", var.helm_gdcn_version)) >= 2 &&
         can(tonumber(split(".", var.helm_gdcn_version)[0])) &&
         can(tonumber(split(".", var.helm_gdcn_version)[1])) &&
@@ -213,6 +215,39 @@ variable "ingress_nginx_behind_l7" {
   description = "Whether ingress-nginx is running behind an L7 proxy/load balancer (enables use-forwarded-headers)."
   type        = bool
   default     = false
+}
+
+# GoodData internal use only: install an unreleased build instead of the public
+# chart. See "Installing an internal build" in the README.
+variable "internal_chart_repository" {
+  description = "Chart repository for gooddata-cn. Leave at the default unless installing an internal build."
+  type        = string
+  default     = "https://charts.gooddata.com/"
+}
+
+variable "internal_registry_aws_profile" {
+  description = "AWS CLI profile used to mint an ECR token when internal_registry_server is an ECR host. Empty uses the default credential chain."
+  type        = string
+  default     = ""
+}
+
+variable "internal_registry_password" {
+  description = "Password for internal_registry_server. Required for a non-ECR host; an ECR host mints its own token."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "internal_registry_server" {
+  description = "Registry holding an internal build's chart and images. Also authenticates internal_chart_repository when the chart lives on the same host. Empty uses the public chart and images."
+  type        = string
+  default     = ""
+}
+
+variable "internal_registry_username" {
+  description = "Username for internal_registry_server. Required for a non-ECR host; an ECR host mints its own token."
+  type        = string
+  default     = ""
 }
 
 variable "k3d_cluster_name" {

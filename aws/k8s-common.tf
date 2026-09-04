@@ -72,7 +72,13 @@ module "k8s_common" {
   registry_quayio              = local.registry_quayio
   registry_k8sio               = local.registry_k8sio
 
+  internal_registry_password    = var.internal_registry_password
+  internal_registry_server      = var.internal_registry_server
+  internal_registry_aws_profile = var.internal_registry_aws_profile != "" ? var.internal_registry_aws_profile : var.aws_profile_name
+  internal_registry_username    = var.internal_registry_username
+
   helm_cert_manager_version          = var.helm_cert_manager_version
+  internal_chart_repository          = var.internal_chart_repository
   helm_gdcn_version                  = var.helm_gdcn_version
   helm_istio_version                 = var.helm_istio_version
   helm_pulsar_version                = var.helm_pulsar_version
