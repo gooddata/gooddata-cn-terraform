@@ -5,18 +5,10 @@ exportController:
     s3Region: "${s3_region}"
     s3Bucket: "${s3_exports_bucket}"
     endpointOverride: "${s3_endpoint_override}"
-    scheme: "http"
+    scheme: "${scheme}"
   s3:
     accessKey: "${s3_access_key}"
     secretKey: "${s3_secret_key}"
-
-visualExporterProxy:
-  permittedDestinations: "127.0.0.1/32 ::1/128"
-
-exportBuilder:
-  extraEnvVars:
-    - name: CHROME_FLAGS_EXTRA
-      value: "--ignore-certificate-errors --allow-insecure-localhost"
 
 quiver:
   durableStorageType: "S3"
@@ -24,7 +16,7 @@ quiver:
     s3Region: "${s3_region}"
     s3Bucket: "${s3_quiver_cache_bucket}"
     endpointOverride: "${s3_endpoint_override}"
-    scheme: "http"
+    scheme: "${scheme}"
     authType: "aws_tokens"
     s3AccessKey: "${s3_access_key}"
     s3SecretKey: "${s3_secret_key}"
@@ -36,7 +28,7 @@ quiver:
     s3Region: "${s3_region}"
     s3Bucket: "${s3_datasource_fs_bucket}"
     endpointOverride: "${s3_endpoint_override}"
-    scheme: "http"
+    scheme: "${scheme}"
     authType: "aws_tokens"
     s3AccessKey: "${s3_access_key}"
     s3SecretKey: "${s3_secret_key}"

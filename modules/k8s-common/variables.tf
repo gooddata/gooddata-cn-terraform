@@ -36,7 +36,16 @@ variable "azure_uami_client_id" {
   default = ""
 }
 
-variable "cloud" { type = string }
+# An unlisted value would silently drop the cloud's object-storage values file
+# from the GoodData.CN release, so keep this in sync with the env directories.
+variable "cloud" {
+  type = string
+
+  validation {
+    condition     = contains(["aws", "azure", "local", "stackit"], var.cloud)
+    error_message = "cloud must be one of: aws, azure, local, stackit."
+  }
+}
 
 variable "db_hostname" { type = string }
 
@@ -261,6 +270,50 @@ variable "s3_exports_bucket_id" {
 variable "s3_quiver_cache_bucket_id" {
   type    = string
   default = ""
+}
+
+variable "stackit_s3_access_key" {
+  description = "S3 access key for STACKIT Object Storage."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "stackit_s3_datasource_fs_bucket" {
+  description = "Bucket name used for Quiver datasource FS (CSV uploads) in STACKIT Object Storage."
+  type        = string
+  default     = ""
+}
+
+variable "stackit_s3_endpoint_override" {
+  description = "S3 endpoint override URL (with scheme) for STACKIT Object Storage."
+  type        = string
+  default     = ""
+}
+
+variable "stackit_s3_exports_bucket" {
+  description = "Bucket name used for exports in STACKIT Object Storage."
+  type        = string
+  default     = ""
+}
+
+variable "stackit_s3_quiver_cache_bucket" {
+  description = "Bucket name used for Quiver durable cache in STACKIT Object Storage."
+  type        = string
+  default     = ""
+}
+
+variable "stackit_s3_region" {
+  description = "S3 region value for STACKIT Object Storage."
+  type        = string
+  default     = ""
+}
+
+variable "stackit_s3_secret_key" {
+  description = "S3 secret key for STACKIT Object Storage."
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
 variable "starrocks_s3_bucket_id" {
