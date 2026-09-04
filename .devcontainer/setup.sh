@@ -64,3 +64,9 @@ OS=$(uname | tr '[:upper:]' '[:lower:]')
 sudo curl -fsSL -o /usr/local/bin/k3d \
   "https://github.com/k3d-io/k3d/releases/download/${K3D_VERSION}/k3d-${OS}-${ARCH}"
 sudo chmod +x /usr/local/bin/k3d
+
+# Shared provider cache: TF_PLUGIN_CACHE_DIR (devcontainer.json) makes providers
+# download once and symlink into each working dir; prune it manually as it grows.
+if [ -n "${TF_PLUGIN_CACHE_DIR:-}" ]; then
+  mkdir -p "${TF_PLUGIN_CACHE_DIR}"
+fi

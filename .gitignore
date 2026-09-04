@@ -1,6 +1,9 @@
 # Local .terraform directories
 .terraform/
 
+# Shared provider cache (see .devcontainer/devcontainer.json)
+.terraform-plugin-cache/
+
 # Dependency lock files (users regenerate via terraform init)
 .terraform.lock.hcl
 
