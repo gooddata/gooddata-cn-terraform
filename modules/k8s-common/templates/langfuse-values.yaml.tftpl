@@ -1,5 +1,5 @@
-# Langfuse server values. All four bundled subcharts (postgresql, clickhouse,
-# valkey-as-redis, minio-as-s3) are disabled and pointed at external stores.
+# Langfuse server values. Every bundled store (postgresql, clickhouse,
+# valkey-as-redis, s3) is disabled and pointed at an external one.
 
 langfuse:
   serviceAccount:
@@ -159,8 +159,9 @@ clickhouse:
   migration:
     url: "clickhouse://${clickhouse_host}:${clickhouse_native_port}"
     autoMigrate: true
-  # Single node: ON CLUSTER statements would fail.
-  clusterEnabled: false
+  cluster:
+    # Single node: ON CLUSTER statements would fail.
+    enabled: false
 
 # Object storage (S3 / SeaweedFS / Azure Blob). Without static keys the pods use
 # the ambient credential chain; in azure mode the keys carry account name + key.
