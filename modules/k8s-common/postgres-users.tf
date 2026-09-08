@@ -176,90 +176,34 @@ locals {
 }
 
 locals {
-  # ROLE_NAME is substituted per role, and psql's \gexec runs each generated
-  # statement. The owner predicates make a re-run emit nothing.
-  #
-  # The chart transfers ownership itself, but only while the role does not yet
-  # exist - every caller but gateway-forge guards chownDb with a pg_roles check
-  # - so once Terraform owns the role the chart never does this, and doing it
-  # here in full is required rather than belt-and-braces. Sequences linked to a
-  # table column are skipped because Postgres refuses to reassign them on their
-  # own; they follow their table. That is also what makes gateway-forge's
-  # unguarded per-start pass a no-op instead of an aborted transaction.
-  pg_chown_sql = <<-SQL
-    select format('alter schema %I owner to %I', nspname, 'ROLE_NAME')
-      from pg_namespace
-      where nspname <> 'information_schema' and nspname !~ '^pg_'
-        and nspowner <> 'ROLE_NAME'::regrole
-    union all
-    select format('alter %s %I.%I owner to %I',
-        case c.relkind
-          when 'v' then 'view'
-          when 'm' then 'materialized view'
-          when 'S' then 'sequence'
-          else 'table'
-        end,
-        n.nspname, c.relname, 'ROLE_NAME')
-      from pg_class c
-      join pg_namespace n on n.oid = c.relnamespace
-      where c.relkind in ('r', 'p', 'v', 'm', 'S')
-        and n.nspname <> 'information_schema' and n.nspname !~ '^pg_'
-        and c.relowner <> 'ROLE_NAME'::regrole
-        and not exists (
-          select 1 from pg_depend d
-          where d.classid = 'pg_class'::regclass and d.objid = c.oid
-            and d.deptype in ('a', 'e', 'i')
-        )
-    union all
-    select format('alter %s %I.%I(%s) owner to %I',
-        case when p.prokind = 'p' then 'procedure' else 'function' end,
-        n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), 'ROLE_NAME')
-      from pg_proc p
-      join pg_namespace n on n.oid = p.pronamespace
-      where p.prokind in ('f', 'p')
-        and n.nspname <> 'information_schema' and n.nspname !~ '^pg_'
-        and p.proowner <> 'ROLE_NAME'::regrole
-        and not exists (
-          select 1 from pg_depend d
-          where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e'
-        )
-  SQL
+  # The SQL lives in files/ so it can be read as SQL. Each script takes psql
+  # variables, so nothing is templated and nothing is pasted into SQL text.
+  pg_sql_scripts = {
+    role     = file("${path.module}/files/postgres-role.sql")
+    database = file("${path.module}/files/postgres-database.sql")
+    chown    = file("${path.module}/files/postgres-chown.sql")
+  }
 
-  # One psql session for the role and database, one more for the objects inside
-  # it. The password arrives as a psql variable, so it is never pasted into SQL
-  # text. The temporary role membership is what lets a managed-Postgres master,
-  # which is not a superuser, hand a database over; the chart does the same for
-  # obs_owner.
   pg_role_lines = { for name, user in local.pg_users : name => compact(concat(
-    [
-      "echo '--- ${user.role} ---'",
-      "$PSQL -v pw=\"$PG_PW_${upper(name)}\" <<'SQL'",
-      "select format('create role %I with login', '${user.role}')",
-      "  where not exists (select 1 from pg_roles where rolname = '${user.role}')",
-      "\\gexec",
-      "alter role ${user.role} with login password :'pw';",
+    ["$PSQL -v role=${user.role} -v pw=\"$PG_PW_${upper(name)}\" -f /tmp/sql/role.sql"],
+    user.database == "" ? [] : [
+      "$PSQL -v role=${user.role} -v db=${user.database} -f /tmp/sql/database.sql",
+      user.revoke_public ? "$PSQL -c 'revoke all on database ${user.database} from public'" : "",
+      "$PSQL -d ${user.database} -v role=${user.role} -f /tmp/sql/chown.sql",
     ],
-    user.database == "" ? ["SQL"] : compact([
-      "grant ${user.role} to current_user;",
-      "select format('create database %I owner %I', '${user.database}', '${user.role}')",
-      "  where not exists (select 1 from pg_database where datname = '${user.database}')",
-      "\\gexec",
-      "alter database ${user.database} owner to ${user.role};",
-      user.revoke_public ? "revoke all on database ${user.database} from public;" : "",
-      "SQL",
-      "$PSQL -d ${user.database} <<'SQL'",
-      trimspace(replace(local.pg_chown_sql, "ROLE_NAME", user.role)),
-      "\\gexec",
-      "revoke ${user.role} from current_user;",
-      "SQL",
-    ]),
   )) }
 
   pg_bootstrap_lines = { for job, users in local.pg_users_by_job : job => concat(
     [
       "PSQL='psql -v ON_ERROR_STOP=1'",
       "i=0; until pg_isready -q; do i=$((i+1)); [ $i -lt 30 ] || { echo 'Postgres unreachable'; exit 1; }; sleep 2; done",
+      "mkdir -p /tmp/sql",
     ],
+    flatten([for kind, sql in local.pg_sql_scripts : [
+      "cat > /tmp/sql/${kind}.sql <<'PGSQL'",
+      trimspace(sql),
+      "PGSQL",
+    ]]),
     flatten([for name in sort(keys(users)) : local.pg_role_lines[name]]),
   ) }
 
