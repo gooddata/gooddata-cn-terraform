@@ -544,7 +544,16 @@ resource "kubectl_manifest" "grafana_virtualservice" {
       hosts    = [var.observability_hostname]
       gateways = ["${local.istio_ingress_ns}/${local.istio_public_gateway_name}"]
       http = [
+        # Redirect plain HTTP to HTTPS, matching what the GoodData.CN chart does
+        # for its own hosts.
         {
+          match    = [{ scheme = { exact = "http" } }]
+          redirect = { scheme = "https", redirectCode = 301 }
+        },
+        {
+          headers = {
+            request = { set = { "X-Forwarded-Proto" = "https", "X-Forwarded-Port" = "443" } }
+          }
           route = [
             {
               destination = {
