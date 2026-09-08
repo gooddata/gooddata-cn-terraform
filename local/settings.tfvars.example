@@ -104,14 +104,11 @@ gdcn_orgs = [
 ###
 # LLM observability (Langfuse) configuration (optional)
 ###
-# Deploy self-hosted Langfuse for gen-ai traces; also needs enable_ai_features.
-# All three are required, and expect a few GB more cluster memory.
+# Uncomment to deploy Langfuse for gen-ai traces (requires enable_ai_features to be set).
 # enable_llm_observability   = true
 # llm_observability_hostname = "langfuse.localhost"
 # langfuse_admin_email       = "langfuse-admin@example.com"
-
-# Environment name the gen-ai services report with every trace.
-# langfuse_tracing_environment = "dev"
+# langfuse_tracing_environment = "dev"  # env name attached to each trace
 
 ###
 # Container registry authentication (optional)
