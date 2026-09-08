@@ -13,7 +13,8 @@ locals {
   langfuse_clickhouse_password_key = "clickhouse_password"
   langfuse_valkey_password_key     = "valkey_password"
 
-  # Langfuse owns this database; the chart's Prisma migration creates it on first boot.
+  # Langfuse owns this database; postgres-users.tf creates it and its role, and
+  # the chart's Prisma migration then runs inside it.
   langfuse_postgres_database = "langfuse"
 
   # Each service reads its own langfuse block; one alone enables nothing. These
@@ -151,7 +152,7 @@ resource "kubernetes_secret_v1" "langfuse_server_secrets" {
     salt                                     = random_bytes.langfuse_salt[0].base64
     encryption_key                           = random_bytes.langfuse_encryption_key[0].hex
     init_user_password                       = random_password.langfuse_init_user[0].result
-    postgres_password                        = var.db_password
+    postgres_password                        = local.langfuse_postgres_password
     (local.langfuse_clickhouse_password_key) = random_password.langfuse_clickhouse[0].result
     (local.langfuse_valkey_password_key)     = random_password.langfuse_valkey[0].result
     s3_access_key_id                         = var.langfuse_s3_access_key_id
@@ -243,7 +244,7 @@ resource "helm_release" "langfuse" {
       ingress_tls_secret_name = "langfuse-tls"
 
       postgres_host     = var.db_hostname
-      postgres_username = var.db_username
+      postgres_username = local.langfuse_postgres_username
       postgres_database = local.langfuse_postgres_database
 
       clickhouse_host         = local.langfuse_clickhouse_host
@@ -273,6 +274,7 @@ resource "helm_release" "langfuse" {
   depends_on = [
     kubernetes_secret_v1.langfuse_server_secrets,
     kubernetes_secret_v1.langfuse_keypair,
+    kubernetes_job_v1.gdcn_db_bootstrap,
     kubernetes_stateful_set_v1.langfuse_valkey,
     kubernetes_service_v1.langfuse_valkey,
     helm_release.clickhouse_operator,
