@@ -1,0 +1,182 @@
+###
+# STACKIT project & region
+###
+# Project that owns every resource. Find it in the STACKIT Portal.
+stackit_project_id = "00000000-0000-0000-0000-000000000000"
+
+# Region to deploy resources to: eu01 (Germany) or eu02 (Austria).
+stackit_region = "eu01"
+
+# Availability zones for the node pools. Must belong to stackit_region.
+stackit_availability_zones = ["eu01-1", "eu01-2", "eu01-3"]
+
+# Uncomment to apply additional labels. Only STACKIT network resources accept
+# labels; SKE, PostgreSQL Flex, object storage and DNS have no label field.
+# stackit_additional_labels = {
+#   Environment = "dev"
+# }
+
+###
+# GoodData.CN deployment configuration
+###
+helm_gdcn_version = "4.13.1" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+deployment_name   = "gooddata-cn"
+
+# GoodData.CN license key
+gdcn_license_key = "key/asdf==" # provided by GoodData
+
+# Uncomment to append extra gooddata-cn Helm values
+# gdcn_helm_extra_values = <<-EOT
+#   service:
+#     someComponent:
+#       replicaCount: 3
+# EOT
+
+# Uncomment to disable GoodData generative AI services
+# enable_ai_features = false
+
+# Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
+# enable_experimental_features = true
+
+# Size profile:
+# - dev: lowest footprint, not HA
+# - prod-small: HA (>= 2 replicas per service), increased resources
+# - prod-large: HA, sized for large/high-traffic deployments
+# It sets sensible defaults for the metadata DB flavor/storage, node pool machine
+# types and min/max counts, observability disk sizes, and GoodData.CN/subchart
+# sizing, so you don't set those individually. To override one default, add its
+# variable here yourself (e.g. postgresflex_flavor_id, ske_workload_max_nodes);
+# see variables.tf for the list.
+# NOTE: changing size_profile after deploying isn't a supported migration; PVCs
+# can't shrink, and growing them is a manual, storage-class-dependent step.
+size_profile = "prod-small"
+
+###
+# Networking
+###
+
+# Option 1 — Private (STACKIT Network Area)
+# The control plane and PostgreSQL Flex stay off the public internet. Requires the
+# project to already belong to a network area; areas are organization-scoped, so a
+# platform admin attaches the project outside this configuration. PostgreSQL SNA
+# support is also account-gated, so check it is enabled before choosing this.
+# NOTE: the control-plane access scope is immutable — changing this after the
+# initial deploy recreates the cluster.
+stackit_private_networking = true
+
+# Option 2 — Public endpoints, database restricted by ACL
+# SKE manages its own networking, and PostgreSQL Flex is reachable only from the
+# cluster's egress ranges (which Terraform reads from SKE). No network area needed.
+# The control plane becomes internet-facing, so an API server ACL is required
+# here — use ["0.0.0.0/0"] only if you really do want to allow any source.
+#
+# stackit_private_networking          = false
+# ske_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
+
+###
+# DNS
+###
+
+# Option 1 — Self-managed DNS
+# Terraform outputs the LoadBalancer's public IP and the records you need to create
+# (auth/org/observability hostnames → IP). You create them in your DNS provider.
+dns_provider = "self-managed"
+
+# Option 2 — STACKIT DNS (managed via the SKE DNS extension)
+# Terraform creates a STACKIT DNS zone and enables SKE's DNS extension, which runs
+# a managed externalDNS in the cluster and keeps records in sync. Every GoodData
+# hostname must sit inside the zone.
+#
+# Delegate your domain to STACKIT DNS at your registrar before you rely on it. The
+# stackit_dns_primary_name_server output gives the primary; the full name server
+# set is listed for the zone in the STACKIT Portal.
+#
+# dns_provider          = "stackit-dns"
+# stackit_dns_zone_name = "gooddata.example.com"
+
+###
+# Ingress + TLS
+###
+# Either option is fronted by SKE's built-in yawol load balancer; there is no
+# separate load balancer controller to install.
+
+# Option 1 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (letsencrypt)
+ingress_controller = "ingress-nginx"
+tls_mode           = "letsencrypt"
+letsencrypt_email  = "me@example.com"
+
+# Uncomment when ingress-nginx sits behind another L7 proxy/load balancer.
+# yawol itself is L4, so leave this alone unless you add your own proxy.
+# ingress_nginx_behind_l7 = true
+
+# Option 2 — Istio Gateway + Let's Encrypt certificates (letsencrypt)
+# ingress_controller = "istio_gateway"
+# tls_mode           = "letsencrypt"
+# letsencrypt_email  = "me@example.com"
+#
+# NOTE: Switching to/from Istio after the initial deploy requires a manual
+# restart of all workloads so sidecars are added or removed:
+#   kubectl -n <namespace> rollout restart deployment
+#   kubectl -n <namespace> rollout restart statefulset
+# Repeat for each injected namespace (gooddata-cn, pulsar, observability).
+
+###
+# Organization configuration
+###
+# Authentication endpoint hostname
+auth_hostname = "auth.gooddata.example.com"
+
+# Configure one or more GoodData.CN organizations to be managed by Terraform.
+# - If gdcn_orgs is empty, Terraform will not create any Organization objects.
+# - Each org must include id, name, admin_user, admin_group, and hostname.
+# - Hostnames are provided explicitly per org.
+#
+gdcn_orgs = [
+  {
+    id          = "main"
+    name        = "Main Organization"
+    admin_user  = "admin"
+    admin_group = "adminGroup"
+    hostname    = "gooddata.example.com"
+  }
+]
+
+###
+# Observability stack configuration (optional)
+###
+# Uncomment to enable the observability stack
+# enable_observability = true
+# observability_hostname = "observability.gooddata.example.com"
+
+# Uncomment to override data retention (defaults shown). Loki/Tempo store data in
+# STACKIT Object Storage, so retention bounds bucket usage. Loki needs a multiple of 24h.
+# loki_retention_period       = "720h"
+# prometheus_retention_period = "168h"
+# tempo_retention_period      = "720h"
+
+###
+# Container image registries (optional)
+###
+# Image caching is unavailable on STACKIT: its Container Registry has no Terraform
+# resources, so no pull-through cache can be provisioned. Images are pulled from
+# upstream, which means Docker Hub anonymous pull limits apply. Point these at a
+# mirror you control if you hit them.
+# registry_dockerio = "my-mirror.example.com/dockerio"
+# registry_quayio   = "my-mirror.example.com/quayio"
+# registry_k8sio    = "my-mirror.example.com/k8sio"
+
+###
+# SKE & infrastructure (optional)
+###
+# Uncomment to pin the Kubernetes version. SKE treats it as a floor and may
+# upgrade past it; leaving it unset uses the latest supported version.
+# ske_version = "1.33"
+
+# Uncomment to restrict which sources can reach the Kubernetes API server.
+# ske_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
+
+# Uncomment to override node pool sizing from the size profile. SKE runs a cluster
+# autoscaler that scales each pool between its minimum and maximum.
+# ske_workload_machine_type = "g2a.8d"
+# ske_workload_min_nodes    = 2
+# ske_workload_max_nodes    = 12

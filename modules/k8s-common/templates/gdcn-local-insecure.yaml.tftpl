@@ -1,0 +1,10 @@
+# Exports reach the ingress over loopback via the socat sidecar, and Chrome has
+# to accept the self-signed local certificate.
+
+visualExporterProxy:
+  permittedDestinations: "127.0.0.1/32 ::1/128"
+
+exportBuilder:
+  extraEnvVars:
+    - name: CHROME_FLAGS_EXTRA
+      value: "--ignore-certificate-errors --allow-insecure-localhost"

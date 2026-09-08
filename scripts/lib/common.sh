@@ -121,9 +121,12 @@ require_tf_context() {
   local dir_name has_context=1
   dir_name=$(basename "$(pwd)")
 
-  if [[ "${dir_name}" != "aws" && "${dir_name}" != "azure" && "${dir_name}" != "local" ]]; then
-    has_context=0
-  elif ! has_tf_outputs; then
+  case "${dir_name}" in
+    aws | azure | local | stackit) ;;
+    *) has_context=0 ;;
+  esac
+
+  if [[ ${has_context} -eq 1 ]] && ! has_tf_outputs; then
     has_context=0
   fi
 
@@ -131,11 +134,13 @@ require_tf_context() {
     cat <<EOF
 Warning: Terraform context not detected.
 From the repo root, change into your cloud provider directory and rerun for sane defaults:
-  cd aws   && ../scripts/${script_name}
+  cd aws     && ../scripts/${script_name}
   # or
-  cd azure && ../scripts/${script_name}
+  cd azure   && ../scripts/${script_name}
   # or
-  cd local && ../scripts/${script_name}
+  cd stackit && ../scripts/${script_name}
+  # or
+  cd local   && ../scripts/${script_name}
 Proceeding without Terraform outputs; you'll need to enter values manually.
 EOF
   fi
