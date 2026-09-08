@@ -216,8 +216,8 @@ resource "helm_release" "langfuse" {
   version    = var.helm_langfuse_version
   namespace  = kubernetes_namespace_v1.langfuse[0].metadata[0].name
 
-  values = [
-    templatefile("${path.module}/templates/langfuse-values.yaml.tftpl", {
+  values = concat(
+    [templatefile("${path.module}/templates/langfuse-values.yaml.tftpl", {
       hostname          = var.llm_observability_hostname
       admin_email       = local.langfuse_admin_email
       deployment_name   = var.deployment_name
@@ -263,8 +263,10 @@ resource "helm_release" "langfuse" {
       s3_endpoint           = var.langfuse_s3_endpoint
       s3_force_path_style   = var.langfuse_s3_force_path_style
       s3_static_credentials = local.langfuse_s3_static_credentials
-    })
-  ]
+    })],
+    # Applied last so the dev preset wins over the size-profile values above.
+    var.observability_size == "dev" ? [templatefile("${path.module}/templates/langfuse-size-dev.yaml.tftpl", {})] : [],
+  )
 
   wait          = true
   wait_for_jobs = true
