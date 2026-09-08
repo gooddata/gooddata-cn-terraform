@@ -274,7 +274,7 @@ resource "helm_release" "langfuse" {
   depends_on = [
     kubernetes_secret_v1.langfuse_server_secrets,
     kubernetes_secret_v1.langfuse_keypair,
-    kubernetes_job_v1.langfuse_db_bootstrap,
+    kubernetes_job_v1.gdcn_db_bootstrap,
     kubernetes_stateful_set_v1.langfuse_valkey,
     kubernetes_service_v1.langfuse_valkey,
     helm_release.clickhouse_operator,
