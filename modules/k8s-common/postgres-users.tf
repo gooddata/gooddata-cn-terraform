@@ -1,136 +1,83 @@
 ###
 # Per-service Postgres roles, so a compromised application container reaches
 # one database instead of all of them. var.db_username stays the privileged
-# bootstrap identity: the chart's check-postgres-db init containers run as it to
-# create each database, create each role and sync its password on every start.
+# bootstrap identity, used only by the chart's check-postgres-db init
+# containers and by the Job below - never by an application process.
 ###
 
 locals {
-  # role: Postgres role name. secret/key: where its password lives. database:
-  # the database it owns, "" for roles the chart keeps as runtime-only. scope:
-  # which bootstrap Job and namespace it belongs to.
-  gdcn_db_users = {
-    metadata_api = {
-      role          = "gdcn_md"
-      secret        = "gdcn-db-metadata-api"
-      key           = "postgresql-password"
-      database      = "md"
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = true
-    }
-    # Chart-fixed role name; only the Secret is ours, and the key is fixed too.
-    md_exporter = {
-      role          = "md_exporter"
-      secret        = "gdcn-db-md-exporter"
-      key           = "exporter-password"
-      database      = ""
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = true
-    }
-    automation = {
-      role          = "gdcn_automation"
-      secret        = "gdcn-db-automation"
-      key           = "postgresql-password"
-      database      = "automation"
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = true
-    }
-    dex = {
-      role          = "gdcn_dex"
-      secret        = "gdcn-db-dex"
-      key           = "postgresql-password"
-      database      = "dex"
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = true
-    }
-    # The two gw runtime roles stay CONNECT-only; the owner below holds the DDL.
-    gateway_forge = {
-      role          = "gdcn_gw"
-      secret        = "gdcn-db-gateway-forge"
-      key           = "postgresql-password"
-      database      = ""
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = true
-    }
-    gateway_forge_owner = {
-      role          = "gdcn_gw_owner"
-      secret        = "gdcn-db-gateway-forge-owner"
-      key           = "postgresql-password"
-      database      = "gw"
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = true
-    }
-    api_gw = {
-      role          = "gdcn_api_gw"
-      secret        = "gdcn-db-api-gw"
-      key           = "postgresql-password"
-      database      = ""
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = true
-    }
-    gen_ai = {
-      role          = "gdcn_genai"
-      secret        = "gdcn-db-gen-ai"
-      key           = "postgresql-password"
-      database      = "genai"
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = var.enable_ai_features
-    }
-    ai_lake = {
-      role          = "gdcn_ailake"
-      secret        = "gdcn-db-ai-lake"
-      key           = "postgresql-password"
-      database      = "ailake"
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = var.cloud == "aws" && var.enable_ai_lake
-    }
-    # The chart's deploySpiceDB defaults to false and we never enable it.
-    spicedb = {
-      role          = "gdcn_spicedb"
-      secret        = "gdcn-db-spicedb"
-      key           = "postgresql-password"
-      database      = "spicedb"
-      revoke_public = false
-      scope         = "gdcn"
-      enabled       = false
-    }
+  # Defaults are merged in below, so each entry states only what is unusual.
+  # role: Postgres role name. secret/key: where its password lives.
+  # database: the database it owns, "" for roles the chart keeps runtime-only.
+  # job: which bootstrap Job, and so which namespace, provisions it.
+  pg_user_defaults = {
+    key           = "postgresql-password"
+    database      = ""
+    revoke_public = false
+    job           = "gdcn"
+    enabled       = true
+  }
+
+  pg_users = { for name, user in {
+    metadata_api = { role = "gdcn_md", secret = "gdcn-db-metadata-api", database = "md" }
+    # Chart-fixed role name, and the Secret key is fixed too.
+    md_exporter = { role = "md_exporter", secret = "gdcn-db-md-exporter", key = "exporter-password" }
+    automation  = { role = "gdcn_automation", secret = "gdcn-db-automation", database = "automation" }
+    dex         = { role = "gdcn_dex", secret = "gdcn-db-dex", database = "dex" }
+    # The two gw runtime roles stay CONNECT-only; the owner holds the DDL.
+    gateway_forge       = { role = "gdcn_gw", secret = "gdcn-db-gateway-forge" }
+    gateway_forge_owner = { role = "gdcn_gw_owner", secret = "gdcn-db-gateway-forge-owner", database = "gw" }
+    api_gw              = { role = "gdcn_api_gw", secret = "gdcn-db-api-gw" }
+    gen_ai              = { role = "gdcn_genai", secret = "gdcn-db-gen-ai", database = "genai", enabled = var.enable_ai_features }
+    ai_lake             = { role = "gdcn_ailake", secret = "gdcn-db-ai-lake", database = "ailake", enabled = var.cloud == "aws" && var.enable_ai_lake }
     # Its password rides in the Secret the Langfuse chart already reads, and
-    # nothing but Langfuse connects to this database, so PUBLIC loses access.
+    # nothing else connects to this database, so PUBLIC loses access.
     langfuse = {
       role          = "langfuse"
       secret        = local.langfuse_secret_name
       key           = "postgres_password"
-      database      = "langfuse"
+      database      = local.langfuse_postgres_database
       revoke_public = true
-      scope         = "langfuse"
+      job           = "langfuse"
       enabled       = var.enable_llm_observability
+    }
+    } : name => merge(local.pg_user_defaults, user)
+  }
+
+  pg_users_enabled = { for name, user in local.pg_users : name => user if user.enabled }
+
+  # One Job per namespace that needs one. Namespace names are literals, so this
+  # stays readable while the langfuse feature flag is off.
+  pg_bootstrap_jobs = {
+    gdcn = {
+      namespace    = var.gdcn_namespace
+      admin_secret = "gdcn-db-admin"
+      enabled      = true
+    }
+    langfuse = {
+      namespace    = local.langfuse_namespace
+      admin_secret = "postgres-admin"
+      enabled      = var.enable_llm_observability
     }
   }
 
-  gdcn_db_users_enabled = { for name, user in local.gdcn_db_users : name => user if user.enabled && user.scope == "gdcn" }
+  pg_bootstrap_jobs_enabled = { for job, cfg in local.pg_bootstrap_jobs : job => cfg if cfg.enabled }
 
-  # Langfuse is the only Postgres consumer whose role Terraform has to create
-  # itself; its chart cannot CREATE DATABASE as an unprivileged role.
-  langfuse_postgres_username = local.gdcn_db_users.langfuse.role
-  langfuse_postgres_password = join("", random_password.langfuse_postgres[*].result)
+  pg_users_by_job = {
+    for job in keys(local.pg_bootstrap_jobs) :
+    job => { for name, user in local.pg_users_enabled : name => user if user.job == job }
+  }
 
-  gdcn_db_admin_secret_name     = "gdcn-db-admin"
-  langfuse_db_admin_secret_name = "postgres-admin"
-  gdcn_db_password_key          = "postgresql-password"
+  pg_password_key = local.pg_user_defaults.key
+  pg_client_image = "${var.registry_dockerio}/library/postgres:16-alpine"
+
+  langfuse_postgres_username = local.pg_users.langfuse.role
+  langfuse_postgres_password = one([for name, pw in random_password.gdcn_db_user : pw.result if name == "langfuse"])
 }
 
 # Passwords ride inside connection strings, so they stay alphanumeric.
 resource "random_password" "gdcn_db_user" {
-  for_each = local.gdcn_db_users_enabled
+  for_each = local.pg_users_enabled
 
   length  = 32
   special = false
@@ -138,8 +85,9 @@ resource "random_password" "gdcn_db_user" {
 
 # Pre-created rather than passed as database.password, which would put every
 # password in plaintext into the rendered values and the Helm release secret.
+# Langfuse is absent because its password rides in langfuse-server-secrets.
 resource "kubernetes_secret_v1" "gdcn_db_user" {
-  for_each = local.gdcn_db_users_enabled
+  for_each = local.pg_users_by_job["gdcn"]
 
   metadata {
     name      = each.value.secret
@@ -155,46 +103,60 @@ resource "kubernetes_secret_v1" "gdcn_db_user" {
   ]
 }
 
-# The bootstrap credential, referenced as service.postgres.existingSecret so it
-# no longer appears in the values file.
+# The bootstrap credential. The GDCN copy is referenced as
+# service.postgres.existingSecret, so its password no longer appears in the
+# rendered values; the langfuse copy is read only by the Job.
 resource "kubernetes_secret_v1" "gdcn_db_admin" {
+  for_each = local.pg_bootstrap_jobs_enabled
+
   metadata {
-    name      = local.gdcn_db_admin_secret_name
-    namespace = var.gdcn_namespace
+    name      = each.value.admin_secret
+    namespace = each.value.namespace
   }
 
   data = {
-    (local.gdcn_db_password_key) = var.db_password
+    (local.pg_password_key) = var.db_password
   }
 
   depends_on = [
     kubernetes_namespace_v1.gdcn,
+    kubernetes_namespace_v1.langfuse,
   ]
 }
 
 locals {
-  # dex nests its block under .config and has no existingSecretKey - the chart
-  # hardcodes "postgresql-password" there.
+  # metadataApi pulls a second role's Secret, dex nests under .config and has no
+  # existingSecretKey, and gatewayForge carries the owner alongside its runtime
+  # role - the rest are the same two keys under a camelCase chart name.
+  pg_uniform_value_keys = {
+    automation = "automation"
+    api_gw     = "apiGw"
+    gen_ai     = "genAi"
+    ai_lake    = "aiLake"
+  }
+
   gdcn_db_user_values = merge(
+    {
+      for name, chart_key in local.pg_uniform_value_keys : chart_key => {
+        database = {
+          user           = local.pg_users[name].role
+          existingSecret = local.pg_users[name].secret
+        }
+      } if local.pg_users[name].enabled
+    },
     {
       metadataApi = {
         database = {
-          user                   = local.gdcn_db_users.metadata_api.role
-          existingSecret         = local.gdcn_db_users.metadata_api.secret
-          existingExporterSecret = local.gdcn_db_users.md_exporter.secret
-        }
-      }
-      automation = {
-        database = {
-          user           = local.gdcn_db_users.automation.role
-          existingSecret = local.gdcn_db_users.automation.secret
+          user                   = local.pg_users.metadata_api.role
+          existingSecret         = local.pg_users.metadata_api.secret
+          existingExporterSecret = local.pg_users.md_exporter.secret
         }
       }
       dex = {
         config = {
           database = {
-            user           = local.gdcn_db_users.dex.role
-            existingSecret = local.gdcn_db_users.dex.secret
+            user           = local.pg_users.dex.role
+            existingSecret = local.pg_users.dex.secret
           }
         }
       }
@@ -203,181 +165,124 @@ locals {
       # owner, which is a one-way ownership migration of the gw database.
       gatewayForge = {
         database = {
-          user                  = local.gdcn_db_users.gateway_forge.role
-          existingSecret        = local.gdcn_db_users.gateway_forge.secret
-          gwOwnerUser           = local.gdcn_db_users.gateway_forge_owner.role
-          gwOwnerExistingSecret = local.gdcn_db_users.gateway_forge_owner.secret
-        }
-      }
-      apiGw = {
-        database = {
-          user           = local.gdcn_db_users.api_gw.role
-          existingSecret = local.gdcn_db_users.api_gw.secret
+          user                  = local.pg_users.gateway_forge.role
+          existingSecret        = local.pg_users.gateway_forge.secret
+          gwOwnerUser           = local.pg_users.gateway_forge_owner.role
+          gwOwnerExistingSecret = local.pg_users.gateway_forge_owner.secret
         }
       }
     },
-    local.gdcn_db_users.gen_ai.enabled ? {
-      genAi = {
-        database = {
-          user           = local.gdcn_db_users.gen_ai.role
-          existingSecret = local.gdcn_db_users.gen_ai.secret
-        }
-      }
-    } : {},
-    local.gdcn_db_users.ai_lake.enabled ? {
-      aiLake = {
-        database = {
-          user           = local.gdcn_db_users.ai_lake.role
-          existingSecret = local.gdcn_db_users.ai_lake.secret
-        }
-      }
-    } : {},
   )
 }
 
-# --------------------------------------------------------------------------
-# Langfuse role and database
-# --------------------------------------------------------------------------
-
-resource "random_password" "langfuse_postgres" {
-  count = var.enable_llm_observability ? 1 : 0
-
-  length  = 32
-  special = false
-}
-
-resource "kubernetes_secret_v1" "langfuse_db_admin" {
-  count = var.enable_llm_observability ? 1 : 0
-
-  metadata {
-    name      = local.langfuse_db_admin_secret_name
-    namespace = kubernetes_namespace_v1.langfuse[0].metadata[0].name
-  }
-
-  data = {
-    (local.gdcn_db_password_key) = var.db_password
-  }
-}
-
 locals {
-  # ROLE_NAME is substituted per role. The chart runs the same transfer on every
-  # pod start but enumerates sequences linked to a table column, which Postgres
-  # refuses to reassign on their own - it aborts the transaction that also
-  # creates the role, so the pod then cannot authenticate. Running it here first,
-  # tables before sequences and linked sequences left to follow their table,
-  # makes the chart's own pass a no-op that commits.
-  pg_chown_sql_template = <<-SQL
-    do $chown$
-    declare
-      sql_stmt text;
-    begin
-      for sql_stmt in
-        select stmt from (
-          select 1 as ord, format('alter schema %I owner to %I', nspname, 'ROLE_NAME') as stmt
-            from pg_namespace
-            where nspname <> 'information_schema' and nspname !~ '^pg_'
-          union all
-          select
-            case when c.relkind = 'S' then 3 else 2 end,
-            format('alter %s %I.%I owner to %I',
-              case c.relkind
-                when 'v' then 'view'
-                when 'm' then 'materialized view'
-                when 'S' then 'sequence'
-                else 'table'
-              end,
-              n.nspname, c.relname, 'ROLE_NAME')
-            from pg_class c
-            join pg_namespace n on n.oid = c.relnamespace
-            where c.relkind in ('r', 'p', 'v', 'm', 'S')
-              and n.nspname <> 'information_schema' and n.nspname !~ '^pg_'
-              and not exists (
-                select 1 from pg_depend d
-                where d.classid = 'pg_class'::regclass and d.objid = c.oid
-                  and d.deptype in ('a', 'e', 'i')
-              )
-          union all
-          select 4, format('alter %s %I.%I(%s) owner to %I',
-              case when p.prokind = 'p' then 'procedure' else 'function' end,
-              n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), 'ROLE_NAME')
-            from pg_proc p
-            join pg_namespace n on n.oid = p.pronamespace
-            where p.prokind in ('f', 'p')
-              and n.nspname <> 'information_schema' and n.nspname !~ '^pg_'
-              and not exists (
-                select 1 from pg_depend d
-                where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e'
-              )
-          order by ord
-        ) x
-      loop
-        execute sql_stmt;
-      end loop;
-    end
-    $chown$;
+  # ROLE_NAME is substituted per role, and psql's \gexec runs each generated
+  # statement. The owner predicates make a re-run emit nothing.
+  #
+  # The chart transfers ownership itself, but only while the role does not yet
+  # exist - every caller but gateway-forge guards chownDb with a pg_roles check
+  # - so once Terraform owns the role the chart never does this, and doing it
+  # here in full is required rather than belt-and-braces. Sequences linked to a
+  # table column are skipped because Postgres refuses to reassign them on their
+  # own; they follow their table. That is also what makes gateway-forge's
+  # unguarded per-start pass a no-op instead of an aborted transaction.
+  pg_chown_sql = <<-SQL
+    select format('alter schema %I owner to %I', nspname, 'ROLE_NAME')
+      from pg_namespace
+      where nspname <> 'information_schema' and nspname !~ '^pg_'
+        and nspowner <> 'ROLE_NAME'::regrole
+    union all
+    select format('alter %s %I.%I owner to %I',
+        case c.relkind
+          when 'v' then 'view'
+          when 'm' then 'materialized view'
+          when 'S' then 'sequence'
+          else 'table'
+        end,
+        n.nspname, c.relname, 'ROLE_NAME')
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where c.relkind in ('r', 'p', 'v', 'm', 'S')
+        and n.nspname <> 'information_schema' and n.nspname !~ '^pg_'
+        and c.relowner <> 'ROLE_NAME'::regrole
+        and not exists (
+          select 1 from pg_depend d
+          where d.classid = 'pg_class'::regclass and d.objid = c.oid
+            and d.deptype in ('a', 'e', 'i')
+        )
+    union all
+    select format('alter %s %I.%I(%s) owner to %I',
+        case when p.prokind = 'p' then 'procedure' else 'function' end,
+        n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), 'ROLE_NAME')
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where p.prokind in ('f', 'p')
+        and n.nspname <> 'information_schema' and n.nspname !~ '^pg_'
+        and p.proowner <> 'ROLE_NAME'::regrole
+        and not exists (
+          select 1 from pg_depend d
+          where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e'
+        )
   SQL
 
-  # Create-then-always-alter, the same shape the chart uses for its own roles.
-  # Passwords are alphanumeric, so single quoting them is safe. The temporary
-  # role membership is what lets a managed-Postgres master (not a real
-  # superuser) hand a database over; the chart does the same for obs_owner.
-  pg_role_lines = {
-    for name, user in local.gdcn_db_users : name => concat(
-      [
-        "echo '--- ${user.role} ---'",
-        "if [ \"$(psql -Atqc \"select 1 from pg_roles where rolname = '${user.role}'\")\" != \"1\" ]; then",
-        "  psql -v ON_ERROR_STOP=1 -c \"create role ${user.role} with login password '$PG_PW_${upper(name)}'\"",
-        "fi",
-        "psql -v ON_ERROR_STOP=1 -c \"alter role ${user.role} with login password '$PG_PW_${upper(name)}'\"",
-      ],
-      user.database == "" ? [] : [
-        "psql -v ON_ERROR_STOP=1 -c 'grant ${user.role} to current_user'",
-        "if [ \"$(psql -Atqc \"select 1 from pg_database where datname = '${user.database}'\")\" != \"1\" ]; then",
-        "  createdb -O ${user.role} ${user.database}",
-        "fi",
-        "psql -v ON_ERROR_STOP=1 -c 'alter database ${user.database} owner to ${user.role}'",
-        "psql -v ON_ERROR_STOP=1 -d ${user.database} <<'EOSQL_${upper(name)}'",
-        trimspace(replace(local.pg_chown_sql_template, "ROLE_NAME", user.role)),
-        "EOSQL_${upper(name)}",
-      ],
-      user.revoke_public ? [
-        "psql -v ON_ERROR_STOP=1 -c 'revoke all on database ${user.database} from public'",
-      ] : [],
-      user.database == "" ? [] : [
-        "psql -v ON_ERROR_STOP=1 -c 'revoke ${user.role} from current_user'",
-      ],
-    )
-  }
+  # One psql session for the role and database, one more for the objects inside
+  # it. The password arrives as a psql variable, so it is never pasted into SQL
+  # text. The temporary role membership is what lets a managed-Postgres master,
+  # which is not a superuser, hand a database over; the chart does the same for
+  # obs_owner.
+  pg_role_lines = { for name, user in local.pg_users : name => compact(concat(
+    [
+      "echo '--- ${user.role} ---'",
+      "$PSQL -v pw=\"$PG_PW_${upper(name)}\" <<'SQL'",
+      "select format('create role %I with login', '${user.role}')",
+      "  where not exists (select 1 from pg_roles where rolname = '${user.role}')",
+      "\\gexec",
+      "alter role ${user.role} with login password :'pw';",
+    ],
+    user.database == "" ? ["SQL"] : compact([
+      "grant ${user.role} to current_user;",
+      "select format('create database %I owner %I', '${user.database}', '${user.role}')",
+      "  where not exists (select 1 from pg_database where datname = '${user.database}')",
+      "\\gexec",
+      "alter database ${user.database} owner to ${user.role};",
+      user.revoke_public ? "revoke all on database ${user.database} from public;" : "",
+      "SQL",
+      "$PSQL -d ${user.database} <<'SQL'",
+      trimspace(replace(local.pg_chown_sql, "ROLE_NAME", user.role)),
+      "\\gexec",
+      "revoke ${user.role} from current_user;",
+      "SQL",
+    ]),
+  )) }
 
-  pg_wait_lines = [
-    "echo 'Waiting for Postgres...'",
-    "max=60; i=1",
-    "while [ $i -le $max ]; do",
-    "  if pg_isready -q; then break; fi",
-    "  sleep 5; i=$((i+1))",
-    "done",
-    "if [ $i -gt $max ]; then echo 'Postgres did not become ready in time'; exit 1; fi",
-  ]
+  pg_bootstrap_lines = { for job, users in local.pg_users_by_job : job => concat(
+    [
+      "PSQL='psql -v ON_ERROR_STOP=1'",
+      "i=0; until pg_isready -q; do i=$((i+1)); [ $i -lt 30 ] || { echo 'Postgres unreachable'; exit 1; }; sleep 2; done",
+    ],
+    flatten([for name in sort(keys(users)) : local.pg_role_lines[name]]),
+  ) }
 
-  gdcn_db_bootstrap_lines = concat(local.pg_wait_lines, flatten([
-    for name in sort(keys(local.gdcn_db_users_enabled)) : local.pg_role_lines[name]
-  ]))
+  # Job names are immutable, so this hash in the name is what re-runs a
+  # bootstrap. It covers the credentials and the roles, not the script text;
+  # bump the version when the SQL above changes behaviour.
+  pg_bootstrap_version = "v1"
 
-  langfuse_db_bootstrap_lines = concat(local.pg_wait_lines, local.pg_role_lines["langfuse"])
-
-  # Job names are immutable, so these hashes in the names are what re-run a
-  # bootstrap when a password or the SQL changes.
-  gdcn_db_bootstrap_hash = substr(sha256("${join(",", [
-    for name in sort(keys(local.gdcn_db_users_enabled)) : random_password.gdcn_db_user[name].result
-  ])}${join("\n", local.gdcn_db_bootstrap_lines)}"), 0, 8)
-
-  langfuse_db_bootstrap_hash = substr(sha256("${local.langfuse_postgres_password}${join("\n", local.langfuse_db_bootstrap_lines)}"), 0, 8)
+  pg_bootstrap_hash = { for job, users in local.pg_users_by_job : job => substr(sha256(jsonencode([
+    local.pg_bootstrap_version,
+    var.db_password,
+    { for name, user in users : name => [
+      user.role, user.database, user.revoke_public, random_password.gdcn_db_user[name].result
+    ] },
+  ])), 0, 8) }
 }
 
 resource "kubernetes_job_v1" "gdcn_db_bootstrap" {
+  for_each = local.pg_bootstrap_jobs_enabled
+
   metadata {
-    name      = "gdcn-db-bootstrap-${local.gdcn_db_bootstrap_hash}"
-    namespace = var.gdcn_namespace
+    name      = "${each.key}-db-bootstrap-${local.pg_bootstrap_hash[each.key]}"
+    namespace = each.value.namespace
   }
 
   spec {
@@ -397,7 +302,7 @@ resource "kubernetes_job_v1" "gdcn_db_bootstrap" {
 
         container {
           name  = "bootstrap"
-          image = "${var.registry_dockerio}/library/postgres:16-alpine"
+          image = local.pg_client_image
 
           env {
             name  = "PGHOST"
@@ -419,27 +324,27 @@ resource "kubernetes_job_v1" "gdcn_db_bootstrap" {
             name = "PGPASSWORD"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret_v1.gdcn_db_admin.metadata[0].name
-                key  = local.gdcn_db_password_key
+                name = each.value.admin_secret
+                key  = local.pg_password_key
               }
             }
           }
 
           dynamic "env" {
-            for_each = local.gdcn_db_users_enabled
+            for_each = local.pg_users_by_job[each.key]
 
             content {
               name = "PG_PW_${upper(env.key)}"
               value_from {
                 secret_key_ref {
-                  name = kubernetes_secret_v1.gdcn_db_user[env.key].metadata[0].name
+                  name = env.value.secret
                   key  = env.value.key
                 }
               }
             }
           }
 
-          command = ["/bin/sh", "-ec", join("\n", local.gdcn_db_bootstrap_lines)]
+          command = ["/bin/sh", "-ec", join("\n", local.pg_bootstrap_lines[each.key])]
         }
       }
     }
@@ -452,90 +357,12 @@ resource "kubernetes_job_v1" "gdcn_db_bootstrap" {
     update = "10m"
   }
 
+  # The Secrets are referenced by name, so these edges are not implicit.
   depends_on = [
     kubernetes_namespace_v1.gdcn,
+    kubernetes_namespace_v1.langfuse,
     kubernetes_secret_v1.gdcn_db_admin,
     kubernetes_secret_v1.gdcn_db_user,
-  ]
-}
-
-resource "kubernetes_job_v1" "langfuse_db_bootstrap" {
-  count = var.enable_llm_observability ? 1 : 0
-
-  metadata {
-    name      = "langfuse-db-bootstrap-${local.langfuse_db_bootstrap_hash}"
-    namespace = kubernetes_namespace_v1.langfuse[0].metadata[0].name
-  }
-
-  spec {
-    backoff_limit = 4
-
-    template {
-      metadata {
-        # A sidecar never exits, so the Job would never complete; Postgres'
-        # wire protocol is not proxyable by Envoy anyway.
-        annotations = {
-          "sidecar.istio.io/inject" = "false"
-        }
-      }
-
-      spec {
-        restart_policy = "OnFailure"
-
-        container {
-          name  = "bootstrap"
-          image = "${var.registry_dockerio}/library/postgres:16-alpine"
-
-          env {
-            name  = "PGHOST"
-            value = var.db_hostname
-          }
-          env {
-            name  = "PGUSER"
-            value = var.db_username
-          }
-          env {
-            name  = "PGDATABASE"
-            value = "postgres"
-          }
-          env {
-            name  = "PGSSLMODE"
-            value = "require"
-          }
-          env {
-            name = "PGPASSWORD"
-            value_from {
-              secret_key_ref {
-                name = kubernetes_secret_v1.langfuse_db_admin[0].metadata[0].name
-                key  = local.gdcn_db_password_key
-              }
-            }
-          }
-          env {
-            name = "PG_PW_LANGFUSE"
-            value_from {
-              secret_key_ref {
-                name = local.gdcn_db_users.langfuse.secret
-                key  = local.gdcn_db_users.langfuse.key
-              }
-            }
-          }
-
-          command = ["/bin/sh", "-ec", join("\n", local.langfuse_db_bootstrap_lines)]
-        }
-      }
-    }
-  }
-
-  wait_for_completion = true
-
-  timeouts {
-    create = "10m"
-    update = "10m"
-  }
-
-  depends_on = [
     kubernetes_secret_v1.langfuse_server_secrets,
-    kubernetes_secret_v1.langfuse_db_admin,
   ]
 }
