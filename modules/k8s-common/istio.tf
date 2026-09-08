@@ -11,6 +11,10 @@ locals {
   istio_ingress_name  = "istio-ingress"
   istio_ingress_label = "ingressgateway"
 
+  # Matches "/" and any path not starting with a dot, so the ACME HTTP-01 path
+  # (/.well-known/acme-challenge/*) falls through to cert-manager's solver route.
+  istio_non_acme_uri_regex = "^/([^.].*)?$"
+
   # Hosts that must be accepted by the external Gateway.
   # auth_hostname is required by root module validation; org hostnames may be empty.
   istio_gateway_hosts = distinct(compact(concat(
@@ -202,11 +206,11 @@ resource "kubectl_manifest" "istio_public_gateway" {
           hosts = local.istio_gateway_hosts
           tls   = { credentialName = local.istio_public_tls_secret_name, mode = "SIMPLE" }
         },
-        # HTTP → HTTPS redirect
+        # Plain HTTP. Redirect to HTTPS happens per-route in the VirtualServices,
+        # so the ACME HTTP-01 challenge path stays reachable over HTTP.
         {
           port  = { name = "http", number = 80, protocol = "HTTP" }
           hosts = local.istio_gateway_hosts
-          tls   = { httpsRedirect = true }
         },
       ]
     }
