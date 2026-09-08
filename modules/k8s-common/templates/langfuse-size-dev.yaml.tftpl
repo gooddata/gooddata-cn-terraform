@@ -1,0 +1,42 @@
+# Dev-size overlay for the langfuse chart, applied after the main values so it
+# wins: single replicas, no autoscaling, smallest resources each service boots on.
+
+langfuse:
+  replicas: 1
+  revisionHistoryLimit: 2
+
+  web:
+    replicas: 1
+    # A laptop has nothing to scale into, and a PDB on one replica blocks drains.
+    keda:
+      enabled: false
+    hpa:
+      enabled: false
+    pdb:
+      create: false
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        # Node derives its heap ceiling from this limit (~half), and web needs
+        # more than a 512Mi heap to finish its init scripts, so 2Gi is the floor.
+        memory: 2Gi
+
+  worker:
+    replicas: 1
+    keda:
+      enabled: false
+    hpa:
+      enabled: false
+    pdb:
+      create: false
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        # Same heap rule as web; the worker idles near 360Mi.
+        memory: 1Gi

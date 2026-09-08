@@ -34,7 +34,9 @@ locals {
           worker = 1
         }
         memory = {
-          web        = { request = "512Mi", limit = "1Gi" }
+          # Node sizes its heap from the container limit, so 1Gi caps the heap
+          # near 512MB and langfuse-web aborts during startup.
+          web        = { request = "512Mi", limit = "2Gi" }
           worker     = { request = "512Mi", limit = "2Gi" }
           clickhouse = { request = "1Gi", limit = "4Gi" }
           # Keeper only holds replication/DDL metadata for one shard.
