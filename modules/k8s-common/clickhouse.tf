@@ -19,7 +19,7 @@ locals {
   langfuse_clickhouse_username = "langfuse"
 
   # Keeper and server must stay on the same ClickHouse release.
-  langfuse_clickhouse_image_tag = "25.8-alpine"
+  langfuse_clickhouse_image_tag = "26.8-alpine"
 
   # Langfuse migrates its schema in place and never issues CREATE DATABASE, so
   # its tables live in the built-in database.
