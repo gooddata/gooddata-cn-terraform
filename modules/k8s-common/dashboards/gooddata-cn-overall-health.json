@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Single-pane-of-glass overview. Open this first during any incident.\n\nGoodData CN Service Reference:\n  Calcique         Analytics Engine — computes dashboard & report queries\n  Result Cache     Stores computed results to avoid re-running identical queries\n  SQL Executor     Runs queries against your external data sources\n  Pulsar           Internal message queue for background job processing\n  Export Builder   Renders PDF/PNG exports using headless Chrome\n  Hikari           Database connection pool — number of open DB connections per service",
+  "description": "Single-pane-of-glass overview. Open this first during any incident.\n\nGoodData CN Service Reference:\n  Calcique         Analytics Engine \u2014 computes dashboard & report queries\n  Result Cache     Stores computed results to avoid re-running identical queries\n  SQL Executor     Runs queries against your external data sources\n  Pulsar           Internal message queue for background job processing\n  Export Builder   Renders PDF/PNG exports using headless Chrome\n  Hikari           Database connection pool \u2014 number of open DB connections per service",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -43,7 +43,7 @@
       },
       "id": 92,
       "panels": [],
-      "title": "1 — Cluster & Service Health",
+      "title": "1 \u2014 Cluster & Service Health",
       "type": "row"
     },
     {
@@ -51,7 +51,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Ratio of Ready nodes. Any value < 1.0 = node(s) NotReady — pods may be evicted or unschedulable.",
+      "description": "Ratio of Ready nodes. Any value < 1.0 = node(s) NotReady \u2014 pods may be evicted or unschedulable.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -203,7 +203,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Ready vs desired replica counts for all Deployments and StatefulSets in the selected namespace, plus Pulsar message broker components (brokers, bookies, ZooKeeper) from pulsar-related namespaces.\n\nSTATUS COLUMN GUIDE\n  🟢 100%        -- all replicas running and ready\n  🔴 0%          -- no replicas running; this service is completely down\n  partial %      -- service degraded, some replicas unavailable (investigate immediately)\n  Scaled down    -- Desired = 0; the service was intentionally stopped, not an error\n  Stuck Pending  -- pods have been waiting to be scheduled for more than 2 minutes; usually means nodes are full or a taint/toleration mismatch\n\nSorted by Status ascending so partially-ready and down services appear at the top.",
+      "description": "Ready vs desired replica counts for all Deployments and StatefulSets in the selected namespace, plus Pulsar message broker components (brokers, bookies, ZooKeeper) from pulsar-related namespaces.\n\nSTATUS COLUMN GUIDE\n  \ud83d\udfe2 100%        -- all replicas running and ready\n  \ud83d\udd34 0%          -- no replicas running; this service is completely down\n  partial %      -- service degraded, some replicas unavailable (investigate immediately)\n  Scaled down    -- Desired = 0; the service was intentionally stopped, not an error\n  Stuck Pending  -- pods have been waiting to be scheduled for more than 2 minutes; usually means nodes are full or a taint/toleration mismatch\n\nSorted by Status ascending so partially-ready and down services appear at the top.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -289,7 +289,7 @@
                       "from": 0.99,
                       "result": {
                         "index": 0,
-                        "text": "🟢 100%"
+                        "text": "\ud83d\udfe2 100%"
                       },
                       "to": 1.001
                     },
@@ -300,7 +300,7 @@
                       "from": -0.001,
                       "result": {
                         "index": 1,
-                        "text": "🔴 0%"
+                        "text": "\ud83d\udd34 0%"
                       },
                       "to": 0.009
                     },
@@ -311,7 +311,7 @@
                       "match": "nan",
                       "result": {
                         "index": 2,
-                        "text": "⚫ Scaled down"
+                        "text": "\u26ab Scaled down"
                       }
                     },
                     "type": "special"
@@ -384,7 +384,7 @@
               },
               {
                 "id": "noValue",
-                "value": "—"
+                "value": "\u2014"
               }
             ]
           },
@@ -412,7 +412,7 @@
               },
               {
                 "id": "noValue",
-                "value": "—"
+                "value": "\u2014"
               },
               {
                 "id": "thresholds",
@@ -711,7 +711,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Containers in OOMKilled state at the end of the selected time range. Set the range end to “now” to see the current count.",
+      "description": "Containers in OOMKilled state at the end of the selected time range. Set the range end to \u201cnow\u201d to see the current count.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -847,7 +847,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Start time of the most recently launched pod in this namespace — a reliable proxy for the last Helm deployment timestamp.",
+      "description": "Start time of the most recently launched pod in this namespace \u2014 a reliable proxy for the last Helm deployment timestamp.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -918,7 +918,7 @@
       },
       "id": 20,
       "panels": [],
-      "title": "2 — API Traffic & Errors",
+      "title": "2 \u2014 API Traffic & Errors",
       "type": "row"
     },
     {
@@ -1022,14 +1022,14 @@
       ],
       "title": "API Request Rate by Upstream Service",
       "type": "timeseries",
-      "description": "Request rate through the API Gateway broken down by upstream service and HTTP status class.\n\nUses forward_call_response_status_count_total which provides per-upstream-host granularity (upstream_host label). This metric may not be available in all GoodData.CN versions.\n\nMIGRATION NOTE: In GoodData.CN ≥ 3.58 the equivalent OTel metric is http_server_request_duration_seconds_count with labels http_route (upstream route) and http_response_status_code. If this panel shows no data, switch to that metric."
+      "description": "Request rate through the API Gateway broken down by upstream service and HTTP status class.\n\nUses forward_call_response_status_count_total which provides per-upstream-host granularity (upstream_host label). This metric may not be available in all GoodData.CN versions.\n\nMIGRATION NOTE: In GoodData.CN \u2265\u00a03.58 the equivalent OTel metric is http_server_request_duration_seconds_count with labels http_route (upstream route) and http_response_status_code. If this panel shows no data, switch to that metric."
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "HOW TO READ THIS CHART\n• X-axis = time\n• Y-axis = how long the API took to respond, in milliseconds (lower = faster)\n• Color = how many requests landed at that response speed. Brighter/warmer = more requests at that latency.\n\nHEALTHY PATTERN\nNearly all activity clusters in the lower rows (< 500 ms). Short bright spikes to 1–2 s are normal when users run heavy or complex reports.\n\nWARNING SIGNS TO WATCH FOR\n▲ A warm band that drifts upward over time\n   → A backend service is gradually getting slower.\n\n▲ A sudden bright streak near the top (5 s or higher)\n   → A service may be stalled, restarting, or hitting a hard timeout.\n\n▲ The entire chart lights up at once (wide bright band)\n   → A traffic spike or a slowdown affecting all services simultaneously.\n\nNOTE: This chart combines all upstream services. To find which specific service is responsible, check the 'API Request Rate by Upstream Service' panel to the left — look for the service with rising 5xx counts or matching request timing.",
+      "description": "HOW TO READ THIS CHART\n\u2022 X-axis = time\n\u2022 Y-axis = how long the API took to respond, in milliseconds (lower = faster)\n\u2022 Color = how many requests landed at that response speed. Brighter/warmer = more requests at that latency.\n\nHEALTHY PATTERN\nNearly all activity clusters in the lower rows (< 500 ms). Short bright spikes to 1\u20132 s are normal when users run heavy or complex reports.\n\nWARNING SIGNS TO WATCH FOR\n\u25b2 A warm band that drifts upward over time\n   \u2192 A backend service is gradually getting slower.\n\n\u25b2 A sudden bright streak near the top (5 s or higher)\n   \u2192 A service may be stalled, restarting, or hitting a hard timeout.\n\n\u25b2 The entire chart lights up at once (wide bright band)\n   \u2192 A traffic spike or a slowdown affecting all services simultaneously.\n\nNOTE: This chart combines all upstream services. To find which specific service is responsible, check the 'API Request Rate by Upstream Service' panel to the left \u2014 look for the service with rising 5xx counts or matching request timing.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1103,7 +1103,7 @@
           "refId": "A"
         }
       ],
-      "title": "API Latency Distribution — all upstream services",
+      "title": "API Latency Distribution \u2014 all upstream services",
       "type": "heatmap"
     },
     {
@@ -1307,7 +1307,7 @@
       },
       "id": 30,
       "panels": [],
-      "title": "3 — Service Memory & CPU",
+      "title": "3 \u2014 Service Memory & CPU",
       "type": "row"
     },
     {
@@ -1572,7 +1572,7 @@
           "refId": "E"
         }
       ],
-      "title": "Container Memory Usage — Last · Avg · Max · % Requests · % Limits",
+      "title": "Container Memory Usage \u2014 Last \u00b7 Avg \u00b7 Max \u00b7 % Requests \u00b7 % Limits",
       "transformations": [
         {
           "id": "merge",
@@ -1875,7 +1875,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Services with restarts or OOM kills in the selected time range. Restarts = counter delta (max–min over range) — catches pods that restarted and were replaced mid-window. OOM Kills = currently OOM-killed containers (sticky metric). OOM Pod = which pod was last OOM-killed.",
+      "description": "Services with restarts or OOM kills in the selected time range. Restarts = counter delta (max\u2013min over range) \u2014 catches pods that restarted and were replaced mid-window. OOM Kills = currently OOM-killed containers (sticky metric). OOM Pod = which pod was last OOM-killed.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2055,7 +2055,7 @@
               },
               {
                 "id": "noValue",
-                "value": "—"
+                "value": "\u2014"
               }
             ]
           },
@@ -2075,7 +2075,7 @@
               },
               {
                 "id": "noValue",
-                "value": "—"
+                "value": "\u2014"
               }
             ]
           }
@@ -2154,7 +2154,7 @@
           "refId": "E"
         }
       ],
-      "title": "OOM Kills & Pod Restarts — by Service",
+      "title": "OOM Kills & Pod Restarts \u2014 by Service",
       "transformations": [
         {
           "id": "merge",
@@ -2295,9 +2295,420 @@
         "x": 0,
         "y": 59
       },
+      "panels": [],
+      "title": "3b \u2014 Autoscaling | KEDA HPAs",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "type": "stat",
+      "title": "KEDA HPAs",
+      "description": "Number of KEDA-managed HPAs in the namespace. 0 means autoscaling is disabled or KEDA is not installed.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 60
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "count(kube_horizontalpodautoscaler_spec_min_replicas{cluster_name=~\"$cluster\", namespace=~\"${ns}\", horizontalpodautoscaler=~\"keda-hpa-.*\"}) or vector(0)",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "type": "stat",
+      "title": "ScalingActive false",
+      "description": "HPAs unable to compute their metric (missing metrics-server, Prometheus unreachable, or target workload absent).",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 60
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "count(kube_horizontalpodautoscaler_status_condition{cluster_name=~\"$cluster\", namespace=~\"${ns}\", horizontalpodautoscaler=~\"keda-hpa-.*\", condition=\"ScalingActive\", status=\"false\"} == 1) or vector(0)",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "type": "stat",
+      "title": "Pinned at Max",
+      "description": "HPAs at their replica ceiling right now. Sustained time at max means the ceiling is the bottleneck: raise maxReplicaCount.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 60
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "count(kube_horizontalpodautoscaler_status_current_replicas{cluster_name=~\"$cluster\", namespace=~\"${ns}\", horizontalpodautoscaler=~\"keda-hpa-.*\"} >= on (cluster_name, namespace, horizontalpodautoscaler) kube_horizontalpodautoscaler_spec_max_replicas{cluster_name=~\"$cluster\", namespace=~\"${ns}\", horizontalpodautoscaler=~\"keda-hpa-.*\"}) or vector(0)",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "type": "stat",
+      "title": "Scale Transitions (24h)",
+      "description": "Replica-count changes across all HPAs in the last 24 h. A sudden rise usually means one service is flapping.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 60
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 150
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(changes(kube_horizontalpodautoscaler_status_current_replicas{cluster_name=~\"$cluster\", namespace=~\"${ns}\", horizontalpodautoscaler=~\"keda-hpa-.*\"}[24h])) or vector(0)",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "type": "timeseries",
+      "title": "HPA Replicas \u2014 current vs ceiling",
+      "description": "Current replicas per KEDA HPA. Flat at the floor is healthy idle; riding the ceiling means raise maxReplicaCount.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 64
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 6,
+            "lineWidth": 1,
+            "pointSize": 4,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "label_replace(kube_horizontalpodautoscaler_status_current_replicas{cluster_name=~\"$cluster\", namespace=~\"${ns}\", horizontalpodautoscaler=~\"keda-hpa-.*\"}, \"hpa\", \"$1\", \"horizontalpodautoscaler\", \"keda-hpa-(?:tiger-)?(.*)-scaledobject\")",
+          "legendFormat": "{{hpa}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "max(kube_horizontalpodautoscaler_spec_max_replicas{cluster_name=~\"$cluster\", namespace=~\"${ns}\", horizontalpodautoscaler=~\"keda-hpa-.*\"})",
+          "legendFormat": "highest ceiling",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "type": "timeseries",
+      "title": "Scale Transitions per Hour \u2014 by HPA",
+      "description": "Replica changes per hour per HPA. Sustained values above the red line (6/h) indicate flapping: check the CPU request vs the target.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 64
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 6,
+            "lineWidth": 1,
+            "pointSize": 4,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 6
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (hpa) (label_replace(changes(kube_horizontalpodautoscaler_status_current_replicas{cluster_name=~\"$cluster\", namespace=~\"${ns}\", horizontalpodautoscaler=~\"keda-hpa-.*\"}[1h]), \"hpa\", \"$1\", \"horizontalpodautoscaler\", \"keda-hpa-(?:tiger-)?(.*)-scaledobject\"))",
+          "legendFormat": "{{hpa}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 72
+      },
       "id": 40,
       "panels": [],
-      "title": "4a — Background Jobs | Pulsar",
+      "title": "4a \u2014 Background Jobs | Pulsar",
       "type": "row"
     },
     {
@@ -2367,7 +2778,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 60
+        "y": 73
       },
       "id": 41,
       "options": {
@@ -2426,7 +2837,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Unacknowledged message backlog per topic. A growing backlog means consumers are falling behind — correlate with pod restarts or Calcique/SQL Executor slowness.",
+      "description": "Unacknowledged message backlog per topic. A growing backlog means consumers are falling behind \u2014 correlate with pod restarts or Calcique/SQL Executor slowness.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2488,7 +2899,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 60
+        "y": 73
       },
       "id": 42,
       "options": {
@@ -2530,11 +2941,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 68
+        "y": 81
       },
       "id": 102,
       "panels": [],
-      "title": "4b — Redis",
+      "title": "4b \u2014 Redis",
       "type": "row"
     },
     {
@@ -2593,7 +3004,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 68
+        "y": 81
       },
       "id": 101,
       "options": {
@@ -2635,11 +3046,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 76
+        "y": 89
       },
       "id": 50,
       "panels": [],
-      "title": "4c — Internal Metadata Database | PostgreSQL",
+      "title": "4c \u2014 Internal Metadata Database | PostgreSQL",
       "type": "row"
     },
     {
@@ -2709,7 +3120,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 77
+        "y": 90
       },
       "id": 51,
       "options": {
@@ -2760,7 +3171,7 @@
           "refId": "C"
         }
       ],
-      "title": "Metadata Database — PostgreSQL & Hikari Connection Pools",
+      "title": "Metadata Database \u2014 PostgreSQL & Hikari Connection Pools",
       "type": "timeseries"
     },
     {
@@ -2769,11 +3180,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 85
+        "y": 98
       },
       "id": 60,
       "panels": [],
-      "title": "4d — Analytics Engine | Calcique · SQL Executor · Result Cache",
+      "title": "4d \u2014 Analytics Engine | Calcique \u00b7 SQL Executor \u00b7 Result Cache",
       "type": "row"
     },
     {
@@ -2782,11 +3193,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 110
+        "y": 123
       },
       "id": 70,
       "panels": [],
-      "title": "4e — Exports | export-controller · tabular-exporter · visual-exporter-service",
+      "title": "4e \u2014 Exports | export-controller \u00b7 tabular-exporter \u00b7 visual-exporter-service",
       "type": "row"
     },
     {
@@ -2879,7 +3290,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 111
+        "y": 124
       },
       "id": 71,
       "options": {
@@ -2921,7 +3332,7 @@
           "refId": "B"
         }
       ],
-      "title": "Export Duration — avg & peak by type",
+      "title": "Export Duration \u2014 avg & peak by type",
       "type": "timeseries"
     },
     {
@@ -3038,7 +3449,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 119
+        "y": 132
       },
       "id": 72,
       "options": {
@@ -3089,7 +3500,7 @@
           "refId": "C"
         }
       ],
-      "title": "Visual Export — Browser Pool (export-builder)",
+      "title": "Visual Export \u2014 Browser Pool (export-builder)",
       "type": "timeseries"
     },
     {
@@ -3098,7 +3509,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 127
+        "y": 140
       },
       "id": 80,
       "panels": [
@@ -3311,7 +3722,7 @@
             "type": "loki",
             "uid": "${DS_LOKI}"
           },
-          "description": "API gateway (api-gw) log lines for 5xx upstream responses. Click a line to expand details — includes requestID and upstream service for quick diagnosis.",
+          "description": "API gateway (api-gw) log lines for 5xx upstream responses. Click a line to expand details \u2014 includes requestID and upstream service for quick diagnosis.",
           "gridPos": {
             "h": 10,
             "w": 24,
@@ -3439,7 +3850,7 @@
           "type": "logs"
         }
       ],
-      "title": "5 — Error Logs | when LOKI deployed",
+      "title": "5 \u2014 Error Logs | when LOKI deployed",
       "type": "row"
     },
     {
@@ -3529,7 +3940,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 86
+        "y": 99
       },
       "id": 95,
       "options": {
@@ -3571,7 +3982,7 @@
           "refId": "B"
         }
       ],
-      "title": "Calcique — Request Rate & API Errors",
+      "title": "Calcique \u2014 Request Rate & API Errors",
       "type": "timeseries"
     },
     {
@@ -3641,7 +4052,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 86
+        "y": 99
       },
       "id": 96,
       "options": {
@@ -3683,7 +4094,7 @@
           "refId": "B"
         }
       ],
-      "title": "Calcique — Compute Latency (avg & peak)",
+      "title": "Calcique \u2014 Compute Latency (avg & peak)",
       "type": "timeseries"
     },
     {
@@ -3781,7 +4192,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 94
+        "y": 107
       },
       "id": 61,
       "options": {
@@ -3835,7 +4246,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Hikari connection pools used by SQL Executor to connect to external customer databases (sqlxhikaricp_*). Pool saturation (active ≈ max) = queries are queueing waiting for a connection.",
+      "description": "Hikari connection pools used by SQL Executor to connect to external customer databases (sqlxhikaricp_*). Pool saturation (active \u2248 max) = queries are queueing waiting for a connection.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3897,7 +4308,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 94
+        "y": 107
       },
       "id": 62,
       "options": {
@@ -4054,7 +4465,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 102
+        "y": 115
       },
       "id": 64,
       "options": {
@@ -4140,7 +4551,7 @@
             }
           },
           "mappings": [],
-          "noValue": "0 — no failures",
+          "noValue": "0 \u2014 no failures",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -4162,7 +4573,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 111
+        "y": 124
       },
       "id": 99,
       "options": {
@@ -4194,7 +4605,7 @@
           "refId": "A"
         }
       ],
-      "title": "Export Failure Rate — by type & format",
+      "title": "Export Failure Rate \u2014 by type & format",
       "type": "timeseries"
     },
     {
@@ -4264,7 +4675,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 111
+        "y": 124
       },
       "id": 100,
       "options": {
@@ -4297,7 +4708,7 @@
           "refId": "A"
         }
       ],
-      "title": "Export File Size — by type & format",
+      "title": "Export File Size \u2014 by type & format",
       "type": "timeseries"
     }
   ],

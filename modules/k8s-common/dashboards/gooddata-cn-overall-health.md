@@ -53,6 +53,19 @@ Import `gooddata-cn-overall-health.json` into Grafana to use it.
 | CPU Throttling | `container_cpu_cfs_throttled_periods_total` / `container_cpu_cfs_periods_total` | K8s standard: share of scheduling periods where the container was throttled. Non-zero values mean the container is being slowed by the kernel scheduler even if raw CPU usage looks healthy. |
 | OOM Kills & Restarts by Service | `kube_pod_container_status_restarts_total`, `kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}` | K8s standard: per-service restart and OOM history. |
 
+### Section 3b — Autoscaling (KEDA HPAs)
+
+Populated when `kedaAutoscaling.enabled: true` in the GoodData.CN chart (or per-component opt-ins). All panels read the standard `kube_horizontalpodautoscaler_*` metrics from kube-state-metrics, filtered to the `keda-hpa-` prefix KEDA gives its HPAs.
+
+| Metric | Expression | Description |
+|---|---|---|
+| KEDA HPAs | `count(kube_horizontalpodautoscaler_spec_min_replicas{horizontalpodautoscaler=~"keda-hpa-.*"})` | Number of KEDA-managed HPAs. 0 means autoscaling is disabled or KEDA is not installed. |
+| ScalingActive false | `kube_horizontalpodautoscaler_status_condition{condition="ScalingActive", status="false"}` | HPAs unable to compute their metric. **Watch for:** any non-zero value — the usual causes are a missing metrics-server, an unreachable Prometheus for the metric-scaled services, or an absent target workload. An inactive HPA silently stops scaling. |
+| Pinned at Max | `status_current_replicas >= spec_max_replicas` | HPAs at their replica ceiling right now. **Watch for:** sustained time at max — the ceiling has become the bottleneck; raise `maxReplicaCount` for that component. |
+| Scale Transitions (24h) | `changes(kube_horizontalpodautoscaler_status_current_replicas[24h])` | Total replica-count changes in 24 h. A sudden rise usually means one service is flapping. |
+| HPA Replicas — current vs ceiling | `kube_horizontalpodautoscaler_status_current_replicas`, `spec_max_replicas` | Replica timeline per HPA. Flat at the floor is healthy idle; riding the ceiling means the bound needs raising. |
+| Scale Transitions per Hour | `changes(kube_horizontalpodautoscaler_status_current_replicas[1h])` by HPA | Flapping detector with a red line at 6/h. **Watch for:** one HPA sustained above the line — its CPU request is usually too far below actual usage, so brief spikes cross the target; right-size the request before touching the target. |
+
 ### Section 4a — Background Jobs (Pulsar)
 
 | Metric | Expression | Description |
