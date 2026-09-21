@@ -1,0 +1,56 @@
+# KEDA autoscaling opt-in per component.
+# Replica bounds and CPU targets come from the chart defaults, overridden per
+# component in the size profiles where the profile's replicaCount differs.
+analyticalDesigner:
+  kedaAutoscaling:
+    enabled: true
+dashboards:
+  kedaAutoscaling:
+    enabled: true
+homeUi:
+  kedaAutoscaling:
+    enabled: true
+hostApplication:
+  kedaAutoscaling:
+    enabled: true
+webComponents:
+  kedaAutoscaling:
+    enabled: true
+apiGw:
+  kedaAutoscaling:
+    enabled: true
+authService:
+  kedaAutoscaling:
+    enabled: true
+metadataApi:
+  kedaAutoscaling:
+    enabled: true
+afmExecApi:
+  kedaAutoscaling:
+    enabled: true
+calcique:
+  kedaAutoscaling:
+    enabled: true
+resultCache:
+  kedaAutoscaling:
+    enabled: true
+%{ if prometheus_enabled ~}
+kedaAutoscaling:
+  prometheusAddress: "${prometheus_address}"
+
+# gen-ai-metadata-sync
+# scaling based on: projection outbox queue
+genAiMetadataSync:
+  kedaAutoscaling:
+    enabled: true
+
+# export-builder
+# scaling based on: browser-pool saturation
+exportBuilder:
+  kedaAutoscaling:
+    enabled: true
+%{ else ~}
+# Prometheus is not enabled: these two components scale on Prometheus queries,
+# so they cannot use autoscaling. They keep the replicaCount from the size
+# profile, which owns replica counts.
+%{ endif ~}

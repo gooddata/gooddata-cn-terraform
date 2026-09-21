@@ -18,7 +18,10 @@ platform_limits:
   # take as much as a little over 6 minutes to complete (XLSX most often).
   export_result_timeout_seconds: 420
 afmExecApi:
-  jvmOptions: -Xmx480M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 8
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:MaxRAMPercentage=34
   resources:
     limits:
       cpu: 1000m
@@ -32,7 +35,6 @@ analyticalDesigner:
       cpu: 200m
       memory: 45Mi
     requests:
-      cpu: 20m
       memory: 15Mi
 apiDocs:
   resources:
@@ -52,7 +54,7 @@ apiGateway:
       cpu: 100m
       memory: 1Gi
 authService:
-  jvmOptions: -Xmx220M -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M
+  jvmOptions: -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M -XX:MaxRAMPercentage=30
   resources:
     limits:
       cpu: 500m
@@ -61,7 +63,10 @@ authService:
       cpu: 100m
       memory: 716Mi
 calcique:
-  jvmOptions: -Xmx850M -XX:MaxMetaspaceSize=224M -XX:MaxDirectMemorySize=650M
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 8
+  jvmOptions: -XX:MaxMetaspaceSize=224M -XX:MaxDirectMemorySize=650M -XX:MaxRAMPercentage=42
   resources:
     limits:
       cpu: 1000m
@@ -93,7 +98,6 @@ dashboards:
       cpu: 200m
       memory: 45Mi
     requests:
-      cpu: 20m
       memory: 15Mi
 exportController:
   jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M
@@ -110,7 +114,6 @@ homeUi:
       cpu: 200m
       memory: 45Mi
     requests:
-      cpu: 20m
       memory: 15Mi
 ldmModeler:
   resources:
@@ -129,7 +132,7 @@ measureEditor:
       cpu: 20m
       memory: 15Mi
 metadataApi:
-  jvmOptions: -Xmx2500M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:ActiveProcessorCount=6 -Dkotlinx.coroutines.io.parallelism=16
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:ActiveProcessorCount=6 -Dkotlinx.coroutines.io.parallelism=16 -XX:MaxRAMPercentage=69
   resources:
     limits:
       cpu: 2000m
@@ -240,7 +243,10 @@ redis-ha:
         memory: 64Mi
         cpu: 150m
 resultCache:
-  jvmOptions: -Xmx2000M -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 8
+  jvmOptions: -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M -XX:MaxRAMPercentage=74
   resources:
     limits:
       cpu: 700m
@@ -311,7 +317,6 @@ webComponents:
       cpu: 200m
       memory: 45Mi
     requests:
-      cpu: 20m
       memory: 15Mi
 exportBuilder:
   replicaCount: 2
@@ -340,4 +345,4 @@ apiGw:
       memory: 2000Mi
   # -- Custom JVM options
   # These settings must be aligned with resource.limits.memory value
-  jvmOptions: "-Xms1000m -Xmx1000m -XX:ActiveProcessorCount=2 -XX:MaxDirectMemorySize=256m"
+  jvmOptions: "-XX:ActiveProcessorCount=2 -XX:MaxDirectMemorySize=256m -XX:MaxRAMPercentage=50"

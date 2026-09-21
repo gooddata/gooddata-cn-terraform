@@ -101,6 +101,7 @@ module "k8s_common" {
   enable_ai_features           = var.enable_ai_features
   enable_experimental_features = var.enable_experimental_features
   enable_image_cache           = false
+  enable_gdcn_autoscaling      = var.enable_gdcn_autoscaling
   registry_dockerio            = var.registry_dockerio
   registry_quayio              = var.registry_quayio
   registry_k8sio               = var.registry_k8sio
