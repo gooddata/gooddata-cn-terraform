@@ -1,0 +1,21 @@
+modules/k8s-common/dashboards/gooddata-cn-overall-health.json
+  s_bd7fd9695026fb::t_2498370d7e1076 2932,2992,3087-3088
+modules/k8s-common/dashboards/gooddata-cn-overall-health.md
+  s_bd7fd9695026fb::t_557892161064c6 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cfcc354a10e1b8662392206e0cbb2535dd536e70",
+  "prompts": {},
+  "sessions": {
+    "s_bd7fd9695026fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1429dfe-cbf6-4a24-8ac9-455c0c85ced4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Vojtěch Tollar <vojtech.tollar@gooddata.com>"
+    }
+  }
+}
