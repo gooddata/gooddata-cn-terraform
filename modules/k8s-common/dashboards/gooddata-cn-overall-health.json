@@ -4792,7 +4792,7 @@
         "name": "ns",
         "options": [],
         "query": {
-          "query": "label_values(kube_pod_info{cluster_name=~\"$cluster\", namespace=~\".*gooddata.*\"}, namespace)",
+          "query": "label_values(kube_pod_info{cluster_name=~\"$cluster\", namespace=~\"tiger-.*|.*gooddata.*\"}, namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
