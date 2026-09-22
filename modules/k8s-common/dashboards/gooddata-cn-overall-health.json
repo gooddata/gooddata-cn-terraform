@@ -3399,8 +3399,8 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "avg acquire time"
+              "id": "byRegexp",
+              "options": "^avg (wait|browser connect).*"
             },
             "properties": [
               {
