@@ -3340,7 +3340,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Headless Chromium browser pool used for PDF/PNG visual exports. Pool exhaustion (active = total, zero idle, rising wait time) will queue and eventually fail all visual export requests.",
+      "description": "Headless Chromium browser pool used for PDF/PNG visual exports. Pool exhaustion (active = total, zero idle, rising slot wait) will shed and eventually fail visual export requests. Slot wait is measured in export-controller; browser connect (CDP) is the export-builder startup time.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3400,7 +3400,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "avg wait for a slot"
+              "options": "avg acquire time"
             },
             "properties": [
               {
@@ -3495,9 +3495,18 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(export_controller_browser_pool_acquire_seconds_sum{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) / sum(rate(export_controller_browser_pool_acquire_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
-          "legendFormat": "avg wait for a slot",
+          "expr": "sum(rate(export_controller_browser_pool_acquire_seconds_sum{cluster_name=~\"$cluster\", namespace=~\"$ns\", outcome=~\"acquired|\"}[$__rate_interval])) / sum(rate(export_controller_browser_pool_acquire_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\", outcome=~\"acquired|\"}[$__rate_interval]))",
+          "legendFormat": "avg wait for browser slot",
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(rate(export_builder_browser_connect_seconds_sum{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval])) / sum(rate(export_builder_browser_connect_seconds_count{cluster_name=~\"$cluster\", namespace=~\"$ns\"}[$__rate_interval]))",
+          "legendFormat": "avg browser connect (CDP)",
+          "refId": "D"
         }
       ],
       "title": "Visual Export \u2014 Browser Pool (export-builder)",
