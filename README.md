@@ -156,6 +156,7 @@ The repo ships agent skills under `.claude/skills/`: step-by-step procedures tha
 
 - `install-gdcn`: a guided first deployment on AWS, Azure, or local k3d, from prerequisites to a working login.
 - `troubleshoot-gdcn`: symptom-routed diagnostics for a deployment that is unreachable, unhealthy, slow, or stuck, ending with what to send to support.
+- `upgrade-gdcn`: a chart upgrade walkthrough: pull, sync settings, validate the target version, plan, confirm, apply, verify, and recover if it fails.
 - `sync-settings-tfvars`: merges new variables from `settings.tfvars.example` into your `settings.tfvars` without touching values you set.
 
 The skills read and plan freely but never run `terraform apply` or change the cluster without your confirmation, in line with the conventions in [`CLAUDE.md`](CLAUDE.md). They are unrelated to the GenAI features of GoodData.CN itself (`enable_ai_features`).
