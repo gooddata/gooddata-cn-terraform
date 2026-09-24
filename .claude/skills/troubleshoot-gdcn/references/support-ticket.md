@@ -69,7 +69,7 @@ and connection strings removed.
 The README says it plainly: reach out to your GoodData contact. Customers with
 a support portal login open the ticket at https://support.gooddata.com/ and
 attach the bundle there. Suggest a title that names the component and the
-symptom, for example "metadata-api CrashLoopBackOff after upgrade to 4.13.2".
+symptom, for example "metadata-api CrashLoopBackOff after upgrade to 4.14.0".
 
 Once the ticket is out, stop diagnosing. Re-running the same checks does not
 change the answer, and the transcript of what was tried is already in the

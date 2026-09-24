@@ -205,7 +205,7 @@ Quote variable names, never secret values.
 - Repo: gooddata-cn-terraform, `README.md` Quickstart plus `variables.tf` and
   `settings.tfvars.example` under `aws/`, `azure/`, and `local/`. Re-verify
   against them after every pull.
-- Chart: gooddata-cn 4.13.2 (the `helm_gdcn_version` in the example files when
+- Chart: gooddata-cn 4.14.0 (the `helm_gdcn_version` in the example files when
   this skill was written).
 - Docs: https://www.gooddata.com/docs/cloud-native/latest/manage-organization/set-up-authentication/
 - Docs: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/

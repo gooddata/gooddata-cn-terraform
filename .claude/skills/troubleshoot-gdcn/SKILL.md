@@ -108,7 +108,7 @@ difference between a one-message ticket and a week of back and forth.
   (`gooddata-cn.tf`, `gooddata-orgs.tf`, `observability.tf`), and
   `modules/k8s-common/dashboards/gooddata-cn-overall-health.md`. Re-verify
   workload names and outputs against them after every pull.
-- Chart: gooddata-cn 4.13.2 (workload names taken from its rendered manifests).
+- Chart: gooddata-cn 4.14.0 (workload names taken from its rendered manifests).
 - Docs: https://www.gooddata.com/docs/cloud-native/latest/manage-organization/set-up-authentication/
 - Docs: https://troubleshoot.sh/docs/
 - Last reviewed: 2026-09 by nortonsk.
