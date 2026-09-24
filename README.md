@@ -150,6 +150,18 @@ terraform output -raw langfuse_admin_password
 
 Invitations are not wired up (Langfuse blocks sign-up before it checks them), so treat this output as a shared deployment secret and keep it within the team that already has cluster access.
 
+## AI-assisted usage
+
+The repo ships agent skills under `.claude/skills/`: step-by-step procedures that an AI coding agent loads on demand. Claude Code picks them up automatically after `git clone`; other agents that implement the Agent Skills format can load the same directory, and any other tool can be pointed at a `SKILL.md` file directly.
+
+- `install-gdcn`: a guided first deployment on AWS, Azure, or local k3d, from prerequisites to a working login.
+- `troubleshoot-gdcn`: symptom-routed diagnostics for a deployment that is unreachable, unhealthy, slow, or stuck, ending with what to send to support.
+- `sync-settings-tfvars`: merges new variables from `settings.tfvars.example` into your `settings.tfvars` without touching values you set.
+
+The skills read and plan freely but never run `terraform apply` or change the cluster without your confirmation, in line with the conventions in [`CLAUDE.md`](CLAUDE.md). They are unrelated to the GenAI features of GoodData.CN itself (`enable_ai_features`).
+
+When you need help from GoodData, `scripts/support-bundle.yaml` is a [troubleshoot.sh](https://troubleshoot.sh/) spec that collects the cluster state and logs support will ask for: `kubectl support-bundle scripts/support-bundle.yaml`.
+
 ## Installing an internal build (GoodData employees)
 
 > Internal only — the registry is unreachable outside GoodData. Leave these unset
@@ -185,3 +197,5 @@ Invitations are not wired up (Langfuse blocks sign-up before it checks them), so
 ## Need help?
 
 Reach out to your GoodData contact and they'll point you in the right direction!
+
+Before you do, the `troubleshoot-gdcn` agent skill and `scripts/support-bundle.yaml` gather what support will ask to see (see [AI-assisted usage](#ai-assisted-usage)).
