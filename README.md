@@ -129,7 +129,7 @@ To delete all resources associated with the GoodData POC, follow these steps:
 
 ## Autoscaling
 
-GoodData.CN services autoscale by default (`enable_gdcn_autoscaling`, requires chart >= 4.12.0). See [Configure Autoscaling in GoodData.CN](https://www.gooddata.com/docs/cloud-native/latest/install/installation-configuration/autoscaling/) for prerequisites, which services scale, and how to tune or disable it.
+Set `enable_gdcn_autoscaling = true` (requires chart >= 4.12.0) to horizontally autoscale the GoodData.CN services. See [Configure Autoscaling in GoodData.CN](https://www.gooddata.com/docs/cloud-native/latest/install/installation-configuration/autoscaling/) for prerequisites, which services scale, and how to tune or disable it.
 
 ## Observability
 

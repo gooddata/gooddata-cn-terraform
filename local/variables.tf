@@ -41,7 +41,7 @@ variable "enable_ai_features" {
 variable "enable_gdcn_autoscaling" {
   description = "Enable KEDA-based horizontal autoscaling for the GoodData.CN UI and core services."
   type        = bool
-  default     = true
+  default     = false
 
   validation {
     condition = !var.enable_gdcn_autoscaling || try(
