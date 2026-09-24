@@ -195,6 +195,10 @@ resource "helm_release" "gooddata_cn" {
     local.use_internal_registry_auth ? yamlencode({
       imagePullSecrets = [{ name = kubernetes_secret_v1.internal_registry[0].metadata[0].name }]
     }) : null,
+    var.enable_gdcn_autoscaling ? templatefile("${path.module}/templates/gdcn-autoscaling.yaml.tftpl", {
+      prometheus_enabled = var.enable_observability
+      prometheus_address = var.enable_observability ? "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090" : ""
+    }) : null,
     var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,
   ])
 
@@ -213,6 +217,7 @@ resource "helm_release" "gooddata_cn" {
     helm_release.istio_ingress_gateway,
     kubectl_manifest.istio_public_gateway,
     helm_release.kube_prometheus_stack,
+    helm_release.keda,
   ]
 }
 
