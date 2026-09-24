@@ -258,3 +258,9 @@ of the private-file sync.
 subscription IDs live in these files. Refer to them by variable name. Prefer
 `structure_diff.py` over `diff`/`cat` when showing the user what changed, and
 never paste a private file's contents into a report, commit message, or PR body.
+
+## Derived from
+
+- Repo: gooddata-cn-terraform, the `settings.tfvars.example` and `variables.tf` files under `aws/`, `azure/`, and `local/`. Re-verify against them after every pull.
+- Chart: gooddata-cn 4.13.2 (the `helm_gdcn_version` in the example files when this footer was added).
+- Last reviewed: 2026-09 by nortonsk.
