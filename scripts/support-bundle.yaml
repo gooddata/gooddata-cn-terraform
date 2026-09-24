@@ -1,0 +1,133 @@
+apiVersion: troubleshoot.sh/v1beta2
+kind: SupportBundle
+metadata:
+  name: support-bundle-gooddata-cn
+spec:
+  collectors:
+    - clusterInfo: {}
+    # Adjust the release names and namespaces if your deployment uses different ones.
+    - helm:
+        releaseName: gooddata-cn
+        namespace: gooddata-cn
+        includeValues: true
+        includeManifest: true
+    - helm:
+        releaseName: gooddata-cn
+        namespace: gooddata-cn
+        history:
+          max: 5
+    - helm:
+        releaseName: pulsar
+        namespace: pulsar
+        includeValues: true
+        includeManifest: true
+    - clusterResources:
+        namespaces:
+          - gooddata-cn
+          - pulsar
+          - ingress-nginx
+          - cert-manager
+    - logs:
+        selector:
+          - app.kubernetes.io/name=gooddata-cn
+        limits:
+          maxAge: 1d
+          maxLines: 1000
+    - logs:
+        selector:
+          - app=pulsar
+          - cluster=pulsar
+        limits:
+          maxAge: 1d
+          maxLines: 1000
+    - logs:
+        selector:
+          - app.kubernetes.io/instance=cert-manager
+        limits:
+          maxAge: 1d
+          maxLines: 1000
+    # With ingress_controller = "alb" or "istio_gateway", change this selector to your controller's pods.
+    - logs:
+        selector:
+          - app.kubernetes.io/name=ingress-nginx
+        limits:
+          maxAge: 1d
+          maxLines: 1000
+  redactors:
+    - name: redact-helm-values
+      removals:
+        regex:
+          - '(?i)(password|passwd|secret|token|apiKey|apikey|clientSecret|privateKey):.*'
+    - name: redact-base64-secrets
+      removals:
+        regex:
+          - '(?i)(password|passwd|secret|token|apikey|key):\s*[A-Za-z0-9+/=]{20,}'
+    - name: redact-k8s-secrets
+      fileSelectors:
+        - pathRegex: ".*secret.*\\.yaml"
+      removals:
+        regex:
+          - 'data:.*'
+          - 'stringData:.*'
+    - name: redact-env-secrets
+      removals:
+        regex:
+          - '(?i)(PASSWORD|SECRET|TOKEN|KEY)=[^ ]+'
+  analyzers:
+    - clusterVersion:
+        outcomes:
+          - fail:
+              when: "< 1.26.0"
+              message: GoodData.CN requires Kubernetes 1.26.0 or later
+              uri: https://kubernetes.io
+          - warn:
+              when: "< 1.28.0"
+              message: Your cluster meets the minimum version of Kubernetes, but we recommend you update to 1.28.0 or later.
+              uri: https://kubernetes.io
+          - pass:
+              message: Your cluster meets the recommended and required versions of Kubernetes.
+    - clusterPodStatuses:
+        namespaces:
+          - gooddata-cn
+          - pulsar
+          - ingress-nginx
+          - cert-manager
+        outcomes:
+          - fail:
+              when: "!= Healthy"
+              message: "Pod {{ .Namespace }}/{{ .Name }} is unhealthy with a status of {{ .Status.Reason }}."
+    - nodeResources:
+        checkName: Must have at least 3 amd64 nodes in the cluster
+        filters:
+          cpuArchitecture: amd64
+        outcomes:
+          - fail:
+              when: "count() < 3"
+              message: This application requires at least 3 nodes
+          - pass:
+              message: This cluster has enough nodes.
+    - nodeResources:
+        checkName: Total CPU Cores on amd64 nodes in the cluster is 12 or greater
+        filters:
+          cpuArchitecture: amd64
+        outcomes:
+          - fail:
+              when: "sum(cpuCapacity) < 12"
+              message: The cluster must contain at least 12 cores on amd64 nodes
+          - pass:
+              message: There are at least 12 cores on amd64 nodes in the cluster
+    - statefulsetStatus: {}
+    - deploymentStatus: {}
+    - jobStatus: {}
+    - replicasetStatus: {}
+    - nodeResources:
+        checkName: Node status check
+        outcomes:
+          - fail:
+              when: "nodeCondition(Ready) == False"
+              message: "Not all nodes are online."
+          - fail:
+              when: "nodeCondition(Ready) == Unknown"
+              message: "Not all nodes are online."
+          - pass:
+              message: "All nodes are online."
