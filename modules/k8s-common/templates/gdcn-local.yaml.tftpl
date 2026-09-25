@@ -40,3 +40,31 @@ quiver:
     authType: "aws_tokens"
     s3AccessKey: "${s3_access_key}"
     s3SecretKey: "${s3_secret_key}"
+%{ if geo_enabled ~}
+
+  geoCollections:
+    storageType: "S3"
+
+  s3GeoCollectionsStorage:
+    s3Region: "${s3_region}"
+    s3Bucket: "${s3_geo_collections_bucket}"
+    endpointOverride: "${s3_endpoint_override}"
+    scheme: "http"
+    authType: "aws_tokens"
+    s3AccessKey: "${s3_access_key}"
+    s3SecretKey: "${s3_secret_key}"
+
+deployQuiverGeoCollections: true
+
+# The ingestion job uploads with rclone, which only reaches SeaweedFS when its
+# built-in "s3" remote is pointed at the in-cluster endpoint.
+mapIngestionJob:
+  enabled: true
+  extraEnvVars:
+    - name: RCLONE_CONFIG_S3_PROVIDER
+      value: "Other"
+    - name: RCLONE_CONFIG_S3_ENDPOINT
+      value: "${s3_endpoint_override}"
+    - name: RCLONE_CONFIG_S3_FORCE_PATH_STYLE
+      value: "true"
+%{ endif ~}

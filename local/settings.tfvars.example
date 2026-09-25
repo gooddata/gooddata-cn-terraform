@@ -36,6 +36,11 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
 
+# Uncomment to enable geo charts via Mapbox (requires geo_mapbox_token). Also
+# wires up geo-collections storage and runs the map ingestion job.
+# geo_basemap_provider = "mapbox"
+# geo_mapbox_token     = "pk.ey..."
+
 # Size profile controls replicas/resources across services plus the in-cluster
 # metadata postgres sizing. Local installs only support "dev" (the smallest,
 # non-HA footprint).

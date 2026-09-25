@@ -216,6 +216,29 @@ variable "gdcn_orgs" {
   }
 }
 
+variable "geo_basemap_provider" {
+  description = "Basemap provider backing geo charts: \"none\" disables them, \"mapbox\" uses Mapbox with geo_mapbox_token."
+  type        = string
+  default     = "none"
+
+  validation {
+    condition     = contains(["none", "mapbox"], var.geo_basemap_provider)
+    error_message = "geo_basemap_provider must be one of: none, mapbox."
+  }
+}
+
+variable "geo_mapbox_token" {
+  description = "Mapbox access token. Required when geo_basemap_provider is \"mapbox\"."
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.geo_basemap_provider != "mapbox" || trimspace(var.geo_mapbox_token) != ""
+    error_message = "geo_mapbox_token must be set when geo_basemap_provider is \"mapbox\"."
+  }
+}
+
 variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string

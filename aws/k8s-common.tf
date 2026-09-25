@@ -4,6 +4,8 @@
 
 locals {
   gdcn_service_account_name = "gooddata-cn"
+  enable_aws_location       = var.geo_basemap_provider == "awslocation"
+  geo_aws_location_region   = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region
   use_alb                   = var.ingress_controller == "alb"
   use_ingress_nginx         = var.ingress_controller == "ingress-nginx"
   nlb_load_balancer_name    = local.use_ingress_nginx ? "${var.deployment_name}-ingress" : ""
@@ -59,6 +61,11 @@ module "k8s_common" {
   cloud                  = "aws"
   ingress_controller     = var.ingress_controller
   gdcn_irsa_role_arn     = aws_iam_role.gdcn_irsa.arn
+
+  geo_basemap_provider    = var.geo_basemap_provider
+  geo_aws_location_region = local.geo_aws_location_region
+  geo_irsa_role_arn       = local.enable_aws_location ? aws_iam_role.gdcn_geo_irsa[0].arn : ""
+  geo_mapbox_token        = var.geo_mapbox_token
 
   letsencrypt_email       = var.letsencrypt_email
   auth_hostname           = var.auth_hostname
@@ -162,10 +169,11 @@ module "k8s_common" {
   db_password = local.db_password
 
   # AWS-specific storage configuration
-  aws_region                 = var.aws_region
-  s3_quiver_cache_bucket_id  = aws_s3_bucket.buckets["quiver_cache"].id
-  s3_datasource_fs_bucket_id = aws_s3_bucket.buckets["datasource_fs"].id
-  s3_exports_bucket_id       = aws_s3_bucket.buckets["exports"].id
+  aws_region                   = var.aws_region
+  s3_quiver_cache_bucket_id    = aws_s3_bucket.buckets["quiver_cache"].id
+  s3_datasource_fs_bucket_id   = aws_s3_bucket.buckets["datasource_fs"].id
+  s3_exports_bucket_id         = aws_s3_bucket.buckets["exports"].id
+  s3_geo_collections_bucket_id = aws_s3_bucket.buckets["geo_collections"].id
 
   ingress_annotations_override     = local.alb_shared_annotations
   dex_ingress_annotations_override = local.alb_shared_annotations

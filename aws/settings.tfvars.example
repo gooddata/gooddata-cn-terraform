@@ -40,6 +40,19 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
 # enable_experimental_features = true
 
+# Uncomment to enable geo charts. Also wires up geo-collections S3 storage and
+# runs the map ingestion job. geo_basemap_provider accepts two values:
+# - "awslocation": Amazon Location Service, authenticated with a dedicated IRSA
+#   role Terraform creates. No token needed.
+# - "mapbox": Mapbox, requires geo_mapbox_token below.
+# geo_basemap_provider = "awslocation"
+#
+# Region serving Amazon Location Service basemap tiles. Defaults to aws_region.
+# geo_aws_location_region = "us-east-1"
+#
+# Required when geo_basemap_provider = "mapbox".
+# geo_mapbox_token = "pk.ey..."
+
 # Size profile:
 # - dev: lowest footprint, not HA
 # - prod-small: HA (>= 2 replicas per service), increased resources
