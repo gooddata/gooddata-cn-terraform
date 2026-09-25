@@ -35,6 +35,75 @@ resource "aws_iam_role_policy_attachment" "gdcn_irsa_s3_access" {
 }
 
 ###
+# IAM role for Amazon Location Service basemaps (IRSA)
+###
+
+# api-gw assumes this role via apiGw.cloudIdentity, which projects its own
+# sts.amazonaws.com token rather than using the service account's role-arn
+# annotation, so the basemap grant stays off the main GoodData.CN role.
+data "aws_iam_policy_document" "gdcn_geo_irsa_assume_role" {
+  count = local.enable_aws_location ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = local.eks_oidc_condition_key
+      values = [
+        "system:serviceaccount:${var.gdcn_namespace}:${local.gdcn_service_account_name}"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+# The geo-maps actions do not support resource-level permissions.
+data "aws_iam_policy_document" "gdcn_geo_maps_access" {
+  count = local.enable_aws_location ? 1 : 0
+
+  statement {
+    sid    = "AllowLocationServiceBasemapReads"
+    effect = "Allow"
+    actions = [
+      "geo-maps:GetGlyphs",
+      "geo-maps:GetSprites",
+      "geo-maps:GetStyleDescriptor",
+      "geo-maps:GetTile",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role" "gdcn_geo_irsa" {
+  count = local.enable_aws_location ? 1 : 0
+
+  name               = "${var.deployment_name}-gdcn-geo-irsa"
+  assume_role_policy = data.aws_iam_policy_document.gdcn_geo_irsa_assume_role[0].json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy" "gdcn_geo_maps_access" {
+  count = local.enable_aws_location ? 1 : 0
+
+  name   = "${var.deployment_name}-GeoMapsAccess"
+  role   = aws_iam_role.gdcn_geo_irsa[0].id
+  policy = data.aws_iam_policy_document.gdcn_geo_maps_access[0].json
+}
+
+###
 # IAM role for the EBS CSI driver (IRSA)
 ###
 

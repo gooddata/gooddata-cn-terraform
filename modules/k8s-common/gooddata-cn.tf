@@ -17,6 +17,11 @@ locals {
   dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
   fast_storage_class      = var.fast_storage_class != "" ? var.fast_storage_class : var.gdcn_storage_class
+
+  # Geo charts need both a basemap provider and geo collections storage, so one
+  # flag gates the api-gw plugin and the Quiver/ingestion-job storage wiring.
+  geo_enabled        = var.geo_basemap_provider != "none"
+  geo_mapbox_enabled = var.geo_basemap_provider == "mapbox"
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
@@ -82,6 +87,24 @@ resource "kubernetes_secret_v1" "gdcn_encryption" {
     # the `data` field again unless you taint/replace the
     # resource manually.
     ignore_changes = [data]
+  }
+
+  depends_on = [
+    kubernetes_namespace_v1.gdcn,
+  ]
+}
+
+# Mapbox access token consumed by api-gw via locationService.mapbox.existingSecret
+resource "kubernetes_secret_v1" "gdcn_mapbox_token" {
+  count = local.geo_mapbox_enabled ? 1 : 0
+
+  metadata {
+    name      = "gdcn-mapbox-token"
+    namespace = var.gdcn_namespace
+  }
+
+  data = {
+    token = var.geo_mapbox_token
   }
 
   depends_on = [
@@ -157,6 +180,9 @@ resource "helm_release" "gooddata_cn" {
       azure_exports_container       = var.azure_exports_container
       azure_quiver_container        = var.azure_quiver_container
       azure_datasource_fs_container = var.azure_datasource_fs_container
+
+      geo_enabled                     = local.geo_enabled
+      azure_geo_collections_container = var.azure_geo_collections_container
     }) : null,
     var.cloud == "aws" ? templatefile("${path.module}/templates/gdcn-aws.yaml.tftpl", {
       aws_region                 = var.aws_region
@@ -165,6 +191,9 @@ resource "helm_release" "gooddata_cn" {
       s3_datasource_fs_bucket_id = var.s3_datasource_fs_bucket_id
       gdcn_service_account_name  = local.gdcn_service_account_name
       gdcn_irsa_role_arn         = var.gdcn_irsa_role_arn
+
+      geo_enabled                  = local.geo_enabled
+      s3_geo_collections_bucket_id = var.s3_geo_collections_bucket_id
     }) : null,
     var.cloud == "aws" && var.enable_ai_lake ? templatefile("${path.module}/templates/gdcn-ai-lake.yaml.tftpl", {
       aws_region       = var.aws_region
@@ -190,6 +219,15 @@ resource "helm_release" "gooddata_cn" {
       s3_exports_bucket       = var.local_s3_exports_bucket
       s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
       s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
+
+      geo_enabled               = local.geo_enabled
+      s3_geo_collections_bucket = var.local_s3_geo_collections_bucket
+    }) : null,
+    local.geo_enabled ? templatefile("${path.module}/templates/gdcn-geo.yaml.tftpl", {
+      provider            = var.geo_basemap_provider
+      aws_location_region = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region
+      geo_irsa_role_arn   = var.geo_irsa_role_arn
+      mapbox_secret_name  = local.geo_mapbox_enabled ? kubernetes_secret_v1.gdcn_mapbox_token[0].metadata[0].name : ""
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
     local.use_internal_registry_auth ? yamlencode({
@@ -205,6 +243,7 @@ resource "helm_release" "gooddata_cn" {
 
   depends_on = [
     kubernetes_namespace_v1.gdcn,
+    kubernetes_secret_v1.gdcn_mapbox_token,
     kubernetes_secret_v1.langfuse_gdcn_keypair,
     helm_release.pulsar,
     helm_release.ingress_nginx,

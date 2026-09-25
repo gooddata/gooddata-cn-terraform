@@ -1,0 +1,20 @@
+# Geo chart basemap provider. Credentials stay on api-gw, never in the browser.
+
+apiGw:
+%{ if provider == "awslocation" ~}
+  awsLocationRegion: "${aws_location_region}"
+  locationService:
+    plugin: "AwsLocation"
+  cloudIdentity:
+    enabled: true
+    aws:
+      roleArn: "${geo_irsa_role_arn}"
+      region: "${aws_location_region}"
+%{ endif ~}
+%{ if provider == "mapbox" ~}
+  locationService:
+    plugin: "MapboxLocation"
+    mapbox:
+      existingSecret: "${mapbox_secret_name}"
+      existingSecretKey: "token"
+%{ endif ~}

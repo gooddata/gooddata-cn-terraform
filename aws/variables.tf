@@ -262,6 +262,35 @@ variable "gdcn_orgs" {
   }
 }
 
+variable "geo_aws_location_region" {
+  description = "AWS region serving Amazon Location Service basemap tiles. Falls back to aws_region when empty."
+  type        = string
+  default     = ""
+}
+
+variable "geo_basemap_provider" {
+  description = "Basemap provider backing geo charts: \"none\" disables them, \"awslocation\" uses Amazon Location Service via IRSA, \"mapbox\" uses Mapbox with geo_mapbox_token."
+  type        = string
+  default     = "none"
+
+  validation {
+    condition     = contains(["none", "awslocation", "mapbox"], var.geo_basemap_provider)
+    error_message = "geo_basemap_provider must be one of: none, awslocation, mapbox."
+  }
+}
+
+variable "geo_mapbox_token" {
+  description = "Mapbox access token. Required when geo_basemap_provider is \"mapbox\"."
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.geo_basemap_provider != "mapbox" || trimspace(var.geo_mapbox_token) != ""
+    error_message = "geo_mapbox_token must be set when geo_basemap_provider is \"mapbox\"."
+  }
+}
+
 variable "helm_aws_lb_controller_version" {
   description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string

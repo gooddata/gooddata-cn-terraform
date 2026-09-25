@@ -85,7 +85,12 @@ module "k8s_common" {
   azure_exports_container       = azurerm_storage_container.containers["exports"].name
   azure_quiver_container        = azurerm_storage_container.containers["quiver-cache"].name
   azure_datasource_fs_container = azurerm_storage_container.containers["quiver-datasource-fs"].name
-  azure_uami_client_id          = azurerm_user_assigned_identity.gdcn.client_id
+
+  azure_geo_collections_container = azurerm_storage_container.containers["geo-collections"].name
+  azure_uami_client_id            = azurerm_user_assigned_identity.gdcn.client_id
+
+  geo_basemap_provider = var.geo_basemap_provider
+  geo_mapbox_token     = var.geo_mapbox_token
 
   # Observability object storage: Loki + Tempo write to Blob (no big PVC),
   # authenticating via workload identity (obs UAMI federated to their SAs).

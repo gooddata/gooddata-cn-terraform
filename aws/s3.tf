@@ -7,6 +7,7 @@
 # - quiver-cache: Query acceleration cache
 # - quiver-datasource-fs: Data source files (e.g., uploaded CSVs)
 # - exports: Exported reports or data
+# - geo-collections: Country/region boundary parquet files backing geo charts
 
 # Ensure the name is lower-case and contains no spaces or invalid chars
 resource "random_id" "s3_suffix" {
@@ -23,9 +24,10 @@ locals {
   )
 
   s3_buckets = {
-    quiver_cache  = "-quiver-cache"
-    datasource_fs = "-quiver-datasource-fs"
-    exports       = "-exports"
+    quiver_cache    = "-quiver-cache"
+    datasource_fs   = "-quiver-datasource-fs"
+    exports         = "-exports"
+    geo_collections = "-geo-collections"
   }
 }
 
