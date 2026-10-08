@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Configure kubectl to connect to the Kubernetes cluster provisioned by Terraform.
-# Run this script from the aws/, azure/, or local/ directory after running `terraform apply`.
+# Run this script from the aws/, azure/, stackit/, or local/ directory after running `terraform apply`.
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=/dev/null
@@ -62,6 +62,52 @@ case "${CURRENT_DIR}" in
     echo ">> kubectl configured successfully."
     ;;
 
+  stackit)
+    require_command kubectl "kubectl not found; install it to interact with Kubernetes."
+    require_tf_outputs
+
+    SKE_CLUSTER_NAME=$(tf_output_value "ske_cluster_name")
+    SKE_KUBECONFIG=$(tf_output_value "kubeconfig")
+
+    if [[ -z "${SKE_CLUSTER_NAME}" || -z "${SKE_KUBECONFIG}" ]]; then
+      echo ">> ERROR: Missing required Terraform outputs (ske_cluster_name, kubeconfig)." >&2
+      exit 1
+    fi
+
+    # SKE hands out a ready-made kubeconfig rather than an exec-credential
+    # plugin, so it is merged into the default kubeconfig here. It is short-lived:
+    # rerun this script once it expires.
+    SKE_KUBECONFIG_TMP=$(mktemp)
+    SKE_MERGED_TMP=$(mktemp)
+    # shellcheck disable=SC2064
+    trap "rm -f '${SKE_KUBECONFIG_TMP}' '${SKE_MERGED_TMP}'" EXIT
+    printf '%s' "${SKE_KUBECONFIG}" >"${SKE_KUBECONFIG_TMP}"
+
+    echo ">> Merging kubeconfig for SKE cluster '${SKE_CLUSTER_NAME}'..."
+    unset KUBECONFIG || true
+    DEFAULT_KUBECONFIG="${HOME}/.kube/config"
+    mkdir -p "$(dirname "${DEFAULT_KUBECONFIG}")"
+    # The SKE file comes first so its entries win: the kubeconfig is short-lived,
+    # and rerunning this must replace the expired one rather than be ignored.
+    # --raw keeps credentials intact without --flatten, which would inline every
+    # other cluster's key material into the user's config.
+    KUBECONFIG="${SKE_KUBECONFIG_TMP}:${DEFAULT_KUBECONFIG}" \
+      kubectl config view --raw >"${SKE_MERGED_TMP}"
+    cp "${SKE_MERGED_TMP}" "${DEFAULT_KUBECONFIG}"
+    chmod 600 "${DEFAULT_KUBECONFIG}"
+
+    SKE_CONTEXT=$(KUBECONFIG="${SKE_KUBECONFIG_TMP}" kubectl config current-context)
+    echo ">> Switching kubectl context to '${SKE_CONTEXT}'..."
+    kubectl config use-context "${SKE_CONTEXT}"
+
+    SKE_EXPIRES_AT=$(tf_output_value "kubeconfig_expires_at")
+    if [[ -n "${SKE_EXPIRES_AT}" ]]; then
+      echo ">> NOTE: this kubeconfig expires at ${SKE_EXPIRES_AT}; rerun this script afterwards."
+    fi
+
+    echo ">> kubectl configured successfully."
+    ;;
+
   local)
     require_command k3d "k3d CLI not found; install it to configure kubectl for local clusters."
     require_command kubectl "kubectl not found; install it to interact with Kubernetes."
@@ -99,14 +145,16 @@ case "${CURRENT_DIR}" in
 
   *)
     cat <<EOF
->> ERROR: This script must be run from the 'aws', 'azure', or 'local' directory.
+>> ERROR: This script must be run from the 'aws', 'azure', 'stackit', or 'local' directory.
 
 Usage:
-  cd aws   && ../scripts/configure-kubectl.sh
+  cd aws     && ../scripts/configure-kubectl.sh
   # or
-  cd azure && ../scripts/configure-kubectl.sh
+  cd azure   && ../scripts/configure-kubectl.sh
   # or
-  cd local && ../scripts/configure-kubectl.sh
+  cd stackit && ../scripts/configure-kubectl.sh
+  # or
+  cd local   && ../scripts/configure-kubectl.sh
 EOF
     exit 1
     ;;

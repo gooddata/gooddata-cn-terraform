@@ -5,8 +5,9 @@ TINKEY_VERSION="$(curl -fsSL https://api.github.com/repos/tink-crypto/tink-tinke
 K9S_VERSION="$(curl -fsSL https://api.github.com/repos/derailed/k9s/releases/latest | jq -r '.tag_name')"
 KUBELOGIN_VERSION="$(curl -fsSL https://api.github.com/repos/Azure/kubelogin/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
 K3D_VERSION="$(curl -fsSL https://api.github.com/repos/k3d-io/k3d/releases/latest | jq -r '.tag_name')"
+STACKIT_CLI_VERSION="$(curl -fsSL https://api.github.com/repos/stackitcloud/stackit-cli/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
 
-for var_name in TINKEY_VERSION K9S_VERSION KUBELOGIN_VERSION K3D_VERSION; do
+for var_name in TINKEY_VERSION K9S_VERSION KUBELOGIN_VERSION K3D_VERSION STACKIT_CLI_VERSION; do
   val="${!var_name}"
   if [ -z "${val}" ] || [ "${val}" = "null" ]; then
     echo "ERROR: Failed to fetch ${var_name} from GitHub API" >&2
@@ -48,6 +49,22 @@ curl -fsSL -o /tmp/kubelogin.zip "https://github.com/Azure/kubelogin/releases/do
 sudo unzip -q /tmp/kubelogin.zip -d /tmp
 sudo install -m 0755 "/tmp/bin/linux_${PKG_ARCH}/kubelogin" /usr/local/bin/kubelogin
 sudo rm -rf /tmp/kubelogin.zip /tmp/bin
+
+# Install the STACKIT CLI. Terraform authenticates from a service account key, so
+# this is for listing machine types and PostgreSQL Flex flavors.
+ARCH=$(dpkg --print-architecture)
+case "$ARCH" in
+  amd64) PKG_ARCH="amd64" ;;
+  arm64) PKG_ARCH="arm64" ;;
+  *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+# mktemp, not a fixed /tmp path: dpkg runs under sudo, so a pre-created file or
+# symlink there would hand a local process control of what gets installed.
+STACKIT_DEB="$(mktemp --suffix=.deb)"
+trap 'rm -f -- "${STACKIT_DEB}"' EXIT
+curl -fsSL -o "${STACKIT_DEB}" "https://github.com/stackitcloud/stackit-cli/releases/download/v${STACKIT_CLI_VERSION}/stackit_${STACKIT_CLI_VERSION}_linux_${PKG_ARCH}.deb"
+sudo dpkg -i "${STACKIT_DEB}" || sudo apt-get -y -f install
+command -v stackit >/dev/null || { echo "ERROR: stackit CLI install failed" >&2; exit 1; }
 
 # Install k3d (for local deployments)
 ARCH=$(uname -m)
