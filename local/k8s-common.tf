@@ -53,6 +53,7 @@ module "k8s_local" {
     external   = external
   }
 
+  enable_geo_charts      = var.geo_basemap_provider != "none"
   enable_istio_injection = var.ingress_controller == "istio_gateway"
   enable_observability   = var.enable_observability
   helm_cnpg_version      = var.helm_cnpg_version

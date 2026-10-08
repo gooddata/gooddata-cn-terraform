@@ -21,6 +21,12 @@ variable "db_username" {
   type        = string
 }
 
+variable "enable_geo_charts" {
+  description = "Create the geo collections bucket used by geo charts."
+  type        = bool
+  default     = false
+}
+
 variable "enable_istio_injection" {
   description = "Whether to label namespaces with istio-injection=enabled."
   type        = bool

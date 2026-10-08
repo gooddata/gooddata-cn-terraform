@@ -7,17 +7,16 @@ locals {
 
   seaweedfs_s3_access_key = "gdcn"
 
-  seaweedfs_buckets = [
+  seaweedfs_buckets = concat([
     var.seaweedfs_bucket_exports,
     var.seaweedfs_bucket_datasource_fs,
     var.seaweedfs_bucket_quiver_cache,
-    var.seaweedfs_bucket_geo_collections,
     # Observability object storage (Loki chunks/index, Tempo trace blocks).
     var.seaweedfs_bucket_loki,
     var.seaweedfs_bucket_tempo,
     # Langfuse trace events, media and batch exports.
     var.seaweedfs_bucket_langfuse,
-  ]
+  ], var.enable_geo_charts ? [var.seaweedfs_bucket_geo_collections] : [])
 
   # Per-workload S3 users, each confined to its own bucket, keeping a compromised
   # pod away from exports, datasource files and the Quiver cache.

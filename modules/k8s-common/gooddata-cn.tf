@@ -18,8 +18,7 @@ locals {
   dex_tls_enabled         = local.use_cert_manager
   fast_storage_class      = var.fast_storage_class != "" ? var.fast_storage_class : var.gdcn_storage_class
 
-  # Geo charts need both a basemap provider and geo collections storage, so one
-  # flag gates the api-gw plugin and the Quiver/ingestion-job storage wiring.
+  # One flag gates the api-gw basemap plugin and the geo collections storage.
   geo_enabled        = var.geo_basemap_provider != "none"
   geo_mapbox_enabled = var.geo_basemap_provider == "mapbox"
 }
@@ -226,7 +225,6 @@ resource "helm_release" "gooddata_cn" {
     local.geo_enabled ? templatefile("${path.module}/templates/gdcn-geo.yaml.tftpl", {
       provider            = var.geo_basemap_provider
       aws_location_region = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region
-      geo_irsa_role_arn   = var.geo_irsa_role_arn
       mapbox_secret_name  = local.geo_mapbox_enabled ? kubernetes_secret_v1.gdcn_mapbox_token[0].metadata[0].name : ""
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),

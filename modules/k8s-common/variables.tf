@@ -157,7 +157,7 @@ variable "gdcn_orgs" {
 }
 
 variable "geo_aws_location_region" {
-  description = "AWS region serving Amazon Location Service basemap tiles."
+  description = "AWS region serving Amazon Location Service basemap tiles. Falls back to aws_region when empty."
   type        = string
   default     = ""
 }
@@ -166,12 +166,6 @@ variable "geo_basemap_provider" {
   description = "Basemap provider backing geo charts: \"none\", \"awslocation\" or \"mapbox\"."
   type        = string
   default     = "none"
-}
-
-variable "geo_irsa_role_arn" {
-  description = "IAM role ARN api-gw assumes to read Amazon Location Service basemap tiles."
-  type        = string
-  default     = ""
 }
 
 variable "geo_mapbox_token" {

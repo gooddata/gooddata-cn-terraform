@@ -5,11 +5,6 @@ apiGw:
   awsLocationRegion: "${aws_location_region}"
   locationService:
     plugin: "AwsLocation"
-  cloudIdentity:
-    enabled: true
-    aws:
-      roleArn: "${geo_irsa_role_arn}"
-      region: "${aws_location_region}"
 %{ endif ~}
 %{ if provider == "mapbox" ~}
   locationService:

@@ -7,7 +7,7 @@
 # - quiver-cache: Query acceleration cache
 # - quiver-datasource-fs: Data source files (e.g., uploaded CSVs)
 # - exports: Exported reports or data
-# - geo-collections: Country/region boundary parquet files backing geo charts
+# - geo-collections: Country/region boundaries for geo charts (only when enabled)
 
 # Ensure the name is lower-case and contains no spaces or invalid chars
 resource "random_id" "s3_suffix" {
@@ -23,12 +23,11 @@ locals {
     random_id.s3_suffix.hex
   )
 
-  s3_buckets = {
-    quiver_cache    = "-quiver-cache"
-    datasource_fs   = "-quiver-datasource-fs"
-    exports         = "-exports"
-    geo_collections = "-geo-collections"
-  }
+  s3_buckets = merge({
+    quiver_cache  = "-quiver-cache"
+    datasource_fs = "-quiver-datasource-fs"
+    exports       = "-exports"
+  }, var.geo_basemap_provider != "none" ? { geo_collections = "-geo-collections" } : {})
 }
 
 resource "aws_s3_bucket" "buckets" {
@@ -69,7 +68,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "buckets" {
   }
 }
 
-# IAM policy granting GoodData.CN access to the three S3 buckets
+# IAM policy granting GoodData.CN access to its S3 buckets
 locals {
   # Bucket ARNs derived from the S3 bucket map
   gdcn_s3_bucket_arns = [for k in keys(local.s3_buckets) : aws_s3_bucket.buckets[k].arn]
@@ -314,7 +313,7 @@ resource "aws_iam_access_key" "starrocks_s3_tables" {
 
 resource "aws_iam_policy" "gdcn_s3_access" {
   name        = "${var.deployment_name}-GoodDataCNS3Access"
-  description = "Allow GoodData.CN workloads to use S3 buckets for quiver cache, datasource FS, and exports."
+  description = "Allow GoodData.CN workloads to use their S3 buckets (quiver cache, datasource FS, exports, geo collections)."
 
   policy = local.s3_rw_policy_json["gdcn"]
 }
