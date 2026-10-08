@@ -61,12 +61,13 @@ dex:
 %{ endif }
 
 service:
-  # Use the external Postgres instance
+  # External Postgres. This user is the privileged bootstrap identity: the init
+  # containers create each database and each per-service role as it.
   postgres:
     host: "${db_hostname}"
     port: 5432
     username: "${db_username}"
-    password: "${db_password}"
+    existingSecret: "${db_admin_secret_name}"
 
 # Common Quiver datasource filesystem limits
 quiver:
