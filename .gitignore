@@ -36,7 +36,7 @@ override.tf.json
 # !example_override.tf
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
-# example: *tfplan*
+*tfplan*
 
 # Ignore CLI configuration files
 .terraformrc
@@ -48,7 +48,11 @@ local/k3d-config.generated.yaml
 # Claude Code local state
 .claude/worktrees/
 .claude/settings.local.json
+.claude/settings.json
 
 # Python bytecode from helper scripts
 __pycache__/
 *.py[cod]
+
+# OS files
+.DS_Store
