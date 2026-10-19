@@ -188,7 +188,7 @@ variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway)."
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
-  default = "1.30.5"
+  default = "1.30.6"
 }
 
 variable "helm_langfuse_version" {
