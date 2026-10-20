@@ -16,9 +16,9 @@ Always let the user review and approve applies themselves. You may run `terrafor
 
 ### Validating across environments
 
-When a change affects shared modules, run `terraform plan -var-file=settings.tfvars` in all three environment directories (aws, azure, local) to catch environment-specific issues.
+When a change affects shared modules, run `terraform plan -var-file=settings.tfvars` in all four environment directories (aws, azure, local, stackit) to catch environment-specific issues.
 
-AWS and Azure may not have active clusters, so plan errors from missing state or credentials are expected. Focus on catching Terraform configuration errors (missing variables, type mismatches, invalid references).
+AWS, Azure and STACKIT may not have active clusters, so plan errors from missing state or credentials are expected. Focus on catching Terraform configuration errors (missing variables, type mismatches, invalid references).
 
 ## Commit messages
 

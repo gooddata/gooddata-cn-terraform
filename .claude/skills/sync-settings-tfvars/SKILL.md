@@ -15,15 +15,16 @@ That asymmetry drives every rule below: the example is the authority on
 *structure*, the private file is the authority on *values*, and a mistake in the
 private file is unrecoverable.
 
-## The three pairs
+## The four pairs
 
 | Env | Example (checked in) | Private (gitignored) |
 | --- | --- | --- |
 | `aws/` | `settings.tfvars.example` | `settings.tfvars` |
 | `azure/` | `settings.tfvars.example` | `settings.tfvars` |
+| `stackit/` | `settings.tfvars.example` | `settings.tfvars` |
 | `local/` | `settings.tfvars.example` | `settings.tfvars` |
 
-Sync all three unless the user names specific ones. A private file that doesn't
+Sync all four unless the user names specific ones. A private file that doesn't
 exist yet isn't a sync — say so and offer to seed it from the example instead of
 inventing values.
 
@@ -33,7 +34,7 @@ inventing values.
 
 ```bash
 BACKUP=$(mktemp -d) || { echo "could not create backup dir — stop"; exit 1; }
-for e in aws azure local; do
+for e in aws azure stackit local; do
   [ -f "$e/settings.tfvars" ] || continue
   cp "$e/settings.tfvars" "$BACKUP/$e-settings.tfvars" \
     && cmp -s "$e/settings.tfvars" "$BACKUP/$e-settings.tfvars" \
@@ -54,7 +55,7 @@ committed with live secrets in it. Report the backup path to the user.
 ### 2. Survey the drift
 
 ```bash
-python3 .claude/skills/sync-settings-tfvars/scripts/structure_diff.py aws azure local
+python3 .claude/skills/sync-settings-tfvars/scripts/structure_diff.py aws azure stackit local
 ```
 
 This redacts every value, so its output is safe to read and quote. Per pair it
@@ -76,12 +77,12 @@ developer still recognizes, not a regenerated one.
 ### 4. Verify
 
 ```bash
-# fmt only the files that exist — a developer using one cloud has no azure/local tfvars
+# fmt only the files that exist — a developer using one cloud has no azure/stackit/local tfvars
 # no -diff: on a misformatted file it prints the offending lines, secrets included
-for e in aws azure local; do
+for e in aws azure stackit local; do
   [ -f "$e/settings.tfvars" ] && terraform fmt -check "$e/settings.tfvars"
 done
-python3 .claude/skills/sync-settings-tfvars/scripts/structure_diff.py aws azure local
+python3 .claude/skills/sync-settings-tfvars/scripts/structure_diff.py aws azure stackit local
 
 # definitive: exits non-zero if any value fails a validation block
 cd <env> && terraform plan -var-file=settings.tfvars
@@ -201,14 +202,17 @@ mistake later.
 example is an intentional override. Leave it, keep its rationale comment, and
 list it in the report so the user can confirm it's still wanted.
 
-**Respect per-cloud asymmetry — check before adding.** The three environments
+**Respect per-cloud asymmetry — check before adding.** The four environments
 have genuinely different variable sets, so never copy a section across clouds by
 analogy. Confirm against that environment's `variables.tf` that a variable exists
-and a value is legal before introducing it. Two real examples: AI Lake
+and a value is legal before introducing it. Three real examples: AI Lake
 (`enable_ai_lake`, `starrocks_size_profile`) exists for AWS and has no Azure
 counterpart, and `size_profile` accepts `prod-xl` on AWS while Azure's validation
-block rejects it. Comments listing valid values are part of this — an
-AWS-accurate list pasted into Azure documents a value that fails validation.
+block rejects it; and STACKIT declares `enable_image_cache` but validates that
+it stays `false`, with no `dockerhub_*` variables at all, because STACKIT's
+container registry has no Terraform resources. Comments listing valid values
+are part of this — an AWS-accurate list pasted into Azure documents a value
+that fails validation.
 
 **Fix comments that are wrong, and say that you did.** Occasionally a private
 file carries a comment that no longer describes the code under it — a leftover

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Terraform for deploying GoodData CN across AWS, Azure, and local environments.
+Terraform for deploying GoodData CN across AWS, Azure, STACKIT, and local environments.
 
 This repo is primarily authored against Claude Code, but any capable coding agent can drive it.
 
