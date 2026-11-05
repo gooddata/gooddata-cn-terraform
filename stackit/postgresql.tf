@@ -49,9 +49,10 @@ resource "stackit_postgresflex_instance" "main" {
 # same way the admin login does on the other clouds. The user owns every database
 # it creates, which is enough to CREATE EXTENSION pg_trgm — trusted since
 # PostgreSQL 13 — so no server-parameter allow-listing is needed here.
+# createrole lets the gen-ai migration create its obs_owner role.
 resource "stackit_postgresflex_user" "gdcn" {
   project_id  = var.stackit_project_id
   instance_id = stackit_postgresflex_instance.main.instance_id
   username    = local.db_username
-  roles       = ["login", "createdb"]
+  roles       = ["login", "createdb", "createrole"]
 }
