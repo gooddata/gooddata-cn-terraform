@@ -112,15 +112,18 @@ resource "helm_release" "kube_prometheus_stack" {
 resource "helm_release" "loki" {
   count = var.enable_observability ? 1 : 0
 
-  name       = "loki"
-  repository = "https://grafana.github.io/helm-charts"
+  name = "loki"
+  # OSS Loki chart. grafana.github.io/helm-charts/loki is Grafana Enterprise
+  # Logs only since 7.x; the OSS chart now lives in grafana-community.
+  repository = "https://grafana-community.github.io/helm-charts"
   chart      = "loki"
   version    = var.helm_loki_version
   namespace  = kubernetes_namespace_v1.observability[0].metadata[0].name
 
   values = [
     yamlencode({
-      deploymentMode = "SingleBinary"
+      # "SingleBinary" was renamed "Monolithic" in community chart 12.0.0.
+      deploymentMode = "Monolithic"
       loki = {
         image = { registry = var.registry_dockerio }
         commonConfig = {
@@ -185,16 +188,13 @@ resource "helm_release" "loki" {
       chunksCache  = { enabled = false }
       resultsCache = { enabled = false }
       gateway      = { enabled = false }
-      minio        = { enabled = false }
       sidecar = {
         image = { registry = var.registry_dockerio }
       }
       lokiCanary = {
-        image = { registry = var.registry_dockerio }
-      }
-      monitoring = {
-        selfMonitoring = { enabled = false }
-        lokiCanary     = { enabled = false }
+        # Without this the chart deploys the loki-canary DaemonSet by default.
+        enabled = false
+        image   = { registry = var.registry_dockerio }
       }
       test = { enabled = false }
     })
