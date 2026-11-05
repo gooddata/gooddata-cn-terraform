@@ -154,6 +154,9 @@ resource "kubectl_manifest" "karpenter_node_pool" {
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
         consolidateAfter    = "15m"
+        # At most one node at a time may be disrupted (consolidation, drift, expiry).
+        # Load test: 11 nodes were consolidated within 2 minutes and evicted 13 Quiver pods.
+        budgets = [{ nodes = "1" }]
       }
     }
   })

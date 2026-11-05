@@ -247,6 +247,11 @@ qdrant:
       cpu: 1000m
       memory: 3500Mi
 quiver:
+  # Karpenter must not move Quiver pods: a restarted pod loses its local results, and many pods
+  # starting at once run the etcd init range together (load test: consolidation of 11 nodes evicted
+  # 13 Quiver pods and caused an etcd OOM). Applies to cache, xtab, policy, datasource and ml.
+  podAnnotations:
+    karpenter.sh/do-not-disrupt: "true"
   limitFlightCount: 150000
   cacheCountLimit: 150000
   concurrentPutRequests: 64

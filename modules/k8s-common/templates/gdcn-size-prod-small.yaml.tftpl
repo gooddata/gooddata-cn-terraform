@@ -158,6 +158,10 @@ pdfStaplerService:
       cpu: 100m
       memory: 620Mi
 quiver:
+  # Karpenter must not move Quiver pods (a restarted pod loses its local results).
+  # Applies to cache, xtab, policy, datasource and ml.
+  podAnnotations:
+    karpenter.sh/do-not-disrupt: "true"
   storage:
     cache:
       diskCacheSize: 25Gi
