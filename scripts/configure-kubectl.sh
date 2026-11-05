@@ -74,6 +74,15 @@ case "${CURRENT_DIR}" in
       exit 1
     fi
 
+    # Outputs keep the kubeconfig from the last apply and never renew it, so an
+    # expired one would only surface later as 401s from kubectl.
+    SKE_EXPIRES_AT=$(tf_output_value "kubeconfig_expires_at")
+    if [[ -n "${SKE_EXPIRES_AT}" ]] && jq -en --arg t "${SKE_EXPIRES_AT}" \
+      '($t | sub("\\.[0-9]+"; "") | fromdateiso8601) <= now' >/dev/null 2>&1; then
+      echo ">> ERROR: The SKE kubeconfig expired at ${SKE_EXPIRES_AT}. Run 'terraform apply' to renew it, then rerun this script." >&2
+      exit 1
+    fi
+
     # SKE hands out a ready-made kubeconfig rather than an exec-credential
     # plugin, so it is merged into the default kubeconfig here. It is short-lived:
     # rerun this script once it expires.
@@ -100,7 +109,6 @@ case "${CURRENT_DIR}" in
     echo ">> Switching kubectl context to '${SKE_CONTEXT}'..."
     kubectl config use-context "${SKE_CONTEXT}"
 
-    SKE_EXPIRES_AT=$(tf_output_value "kubeconfig_expires_at")
     if [[ -n "${SKE_EXPIRES_AT}" ]]; then
       echo ">> NOTE: this kubeconfig expires at ${SKE_EXPIRES_AT}; rerun this script afterwards."
     fi
