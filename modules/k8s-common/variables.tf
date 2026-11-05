@@ -175,11 +175,24 @@ variable "geo_mapbox_token" {
   default     = ""
 }
 
+variable "enable_gdcn_autoscaling" {
+  description = "Enable KEDA autoscaling for GoodData.CN services."
+  type        = bool
+  default     = false
+}
+
 variable "helm_cert_manager_version" { type = string }
 
 variable "helm_clickhouse_operator_version" { type = string }
 
 variable "helm_gdcn_version" { type = string }
+
+variable "helm_keda_version" {
+  description = "Version of the KEDA Helm chart to deploy."
+  type        = string
+  # renovate: depName=keda registryUrl=https://kedacore.github.io/charts
+  default = "2.21.0"
+}
 
 variable "helm_grafana_version" { type = string }
 

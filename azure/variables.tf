@@ -136,6 +136,20 @@ variable "enable_ai_features" {
   default     = true
 }
 
+variable "enable_gdcn_autoscaling" {
+  description = "Enable KEDA-based horizontal autoscaling for the GoodData.CN UI and core services."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.enable_gdcn_autoscaling || try(
+      tonumber(split(".", var.helm_gdcn_version)[0]) > 4 ||
+      (tonumber(split(".", var.helm_gdcn_version)[0]) == 4 && tonumber(split(".", var.helm_gdcn_version)[1]) >= 12),
+    false)
+    error_message = "Autoscaling requires helm_gdcn_version >= 4.12.0. Upgrade the chart, or set enable_gdcn_autoscaling = false."
+  }
+}
+
 variable "enable_experimental_features" {
   description = "Enable experimental AI features in the gooddata-cn chart. These are subject to change and the set of features may evolve over time."
   type        = bool
@@ -243,7 +257,7 @@ variable "helm_cert_manager_version" {
   description = "Version of the cert-manager Helm chart to deploy. https://artifacthub.io/packages/helm/cert-manager/cert-manager"
   type        = string
   # renovate: depName=cert-manager registryUrl=https://charts.jetstack.io
-  default = "v1.21.2"
+  default = "v1.21.3"
 }
 
 variable "helm_clickhouse_operator_version" {
@@ -257,7 +271,7 @@ variable "helm_external_dns_version" {
   description = "Version of the external-dns Helm chart to deploy. https://artifacthub.io/packages/helm/external-dns/external-dns"
   type        = string
   # renovate: depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
-  default = "1.22.0"
+  default = "1.23.0"
 }
 
 variable "helm_gdcn_version" {
@@ -303,14 +317,14 @@ variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
-  default = "1.30.4"
+  default = "1.30.7"
 }
 
 variable "helm_langfuse_version" {
   description = "Version of the langfuse Helm chart to deploy. https://artifacthub.io/packages/helm/langfuse/langfuse"
   type        = string
   # renovate: depName=langfuse registryUrl=https://langfuse.github.io/langfuse-k8s
-  default = "2.1.1"
+  default = "2.1.5"
 }
 
 variable "helm_loki_version" {
@@ -324,7 +338,7 @@ variable "helm_kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack"
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "91.4.1"
+  default = "92.17.0"
 }
 
 variable "helm_promtail_version" {
@@ -338,7 +352,7 @@ variable "helm_pulsar_version" {
   description = "Version of the pulsar Helm chart to deploy. https://artifacthub.io/packages/helm/apache/pulsar"
   type        = string
   # renovate: depName=pulsar registryUrl=https://pulsar.apache.org/charts
-  default = "4.7.0"
+  default = "4.8.0"
 }
 
 variable "helm_tempo_version" {
