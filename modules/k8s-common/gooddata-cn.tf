@@ -258,6 +258,19 @@ resource "helm_release" "gooddata_cn" {
     helm_release.kube_prometheus_stack,
     helm_release.keda,
   ]
+
+  lifecycle {
+    precondition {
+      # Charts with semver build metadata (1.2.3+abc) are pre-release builds;
+      # skip the floor check for them, as the helm_gdcn_version checks do.
+      condition = !local.geo_enabled ? true : (strcontains(var.helm_gdcn_version, "+") ? true : (
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) && can(tonumber(split(".", var.helm_gdcn_version)[1])) ? (
+          tonumber(split(".", var.helm_gdcn_version)[0]) * 1000 + tonumber(split(".", var.helm_gdcn_version)[1]) >= (local.geo_mapbox_enabled ? 4009 : 4000)
+        ) : false
+      ))
+      error_message = "Geo charts need helm_gdcn_version >= 4.0.0 (awslocation) or >= 4.9.0 (mapbox, for locationService.mapbox.existingSecret). Upgrade the chart, or set geo_basemap_provider = \"none\"."
+    }
+  }
 }
 
 # PodMonitor for Redis HA exporter sidecar.
