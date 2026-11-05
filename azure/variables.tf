@@ -305,10 +305,10 @@ variable "helm_langfuse_version" {
 }
 
 variable "helm_loki_version" {
-  description = "Version of the loki Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/loki"
+  description = "Version of the loki Helm chart to deploy (grafana-community). https://github.com/grafana-community/helm-charts/tree/main/charts/loki"
   type        = string
-  # renovate: depName=loki registryUrl=https://grafana.github.io/helm-charts
-  default = "7.3.0"
+  # renovate: depName=loki registryUrl=https://grafana-community.github.io/helm-charts
+  default = "21.0.0"
 }
 
 variable "helm_kube_prometheus_stack_version" {
