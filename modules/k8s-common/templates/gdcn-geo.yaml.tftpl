@@ -7,6 +7,10 @@ apiGw:
     plugin: "AwsLocation"
 %{ endif ~}
 %{ if provider == "mapbox" ~}
+  # api-gw reads MAPBOX_TOKEN only at pod start. A token change modifies this
+  # checksum, so the pods restart and use the new token.
+  podAnnotations:
+    checksum/mapbox-token: "${mapbox_token_checksum}"
   locationService:
     plugin: "MapboxLocation"
     mapbox:

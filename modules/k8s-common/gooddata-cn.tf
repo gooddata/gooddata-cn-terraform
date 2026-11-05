@@ -226,6 +226,8 @@ resource "helm_release" "gooddata_cn" {
       provider            = var.geo_basemap_provider
       aws_location_region = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region
       mapbox_secret_name  = local.geo_mapbox_enabled ? kubernetes_secret_v1.gdcn_mapbox_token[0].metadata[0].name : ""
+      # Hash only, so the plan diff of the values stays readable.
+      mapbox_token_checksum = local.geo_mapbox_enabled ? nonsensitive(sha256(var.geo_mapbox_token)) : ""
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
     local.use_internal_registry_auth ? yamlencode({
