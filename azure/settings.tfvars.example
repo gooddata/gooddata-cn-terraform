@@ -82,13 +82,13 @@ dns_provider = "self-managed"
 # Ingress + TLS
 ###
 
-# Option 1 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (letsencrypt)
-ingress_controller = "ingress-nginx"
+# Option 1 — Ingress Controller (traefik) + Let's Encrypt certificates (letsencrypt)
+ingress_controller = "traefik"
 tls_mode           = "letsencrypt"
 letsencrypt_email  = "me@example.com"
 
-# Uncomment when ingress-nginx sits behind another L7 proxy/load balancer.
-# ingress_nginx_behind_l7 = true
+# Uncomment when the ingress controller sits behind another L7 proxy/load balancer.
+# ingress_behind_l7 = true
 
 # Option 2 — Istio Gateway + Let's Encrypt certificates (letsencrypt)
 # ingress_controller = "istio_gateway"

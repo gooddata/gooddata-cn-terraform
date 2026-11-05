@@ -489,9 +489,6 @@ resource "helm_release" "grafana" {
         enabled          = !local.use_istio_gateway
         ingressClassName = local.resolved_ingress_class_name
         annotations = merge(
-          {
-            "nginx.ingress.kubernetes.io/proxy-body-size" = "50m"
-          },
           local.cert_manager_issuer_annotation,
           var.ingress_annotations_override
         )
@@ -509,9 +506,8 @@ resource "helm_release" "grafana" {
   wait_for_jobs = true
   timeout       = 1800
 
-  # ingress_nginx included so Grafana's Ingress isn't created until the admission
-  # webhook controller is up (it creates an Ingress; see ingress block above).
-  depends_on = [helm_release.kube_prometheus_stack, helm_release.loki, helm_release.tempo, helm_release.ingress_nginx]
+  # Traefik and its Middlewares first, so Grafana's router resolves on creation.
+  depends_on = [helm_release.kube_prometheus_stack, helm_release.loki, helm_release.tempo, helm_release.traefik, kubectl_manifest.traefik_middleware]
 }
 
 resource "kubectl_manifest" "peerauth_observability_strict" {

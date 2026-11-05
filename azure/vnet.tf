@@ -69,19 +69,6 @@ resource "azurerm_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
-  # Allow LoadBalancer health checks
-  security_rule {
-    name                       = "allow-lb-health-check"
-    priority                   = 101
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "10254" # nginx health check port
-    source_address_prefix      = "AzureLoadBalancer"
-    destination_address_prefix = "*"
-  }
-
   # Allow VNet internal traffic to NodePorts (for internal communication)
   security_rule {
     name                       = "allow-vnet-nodeports"
