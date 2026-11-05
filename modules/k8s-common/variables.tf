@@ -224,7 +224,14 @@ variable "ingress_annotations_override" {
 
 variable "ingress_behind_l7" { type = bool }
 
-variable "ingress_controller" { type = string }
+variable "ingress_controller" {
+  type = string
+
+  validation {
+    condition     = contains(["alb", "traefik", "istio_gateway"], var.ingress_controller)
+    error_message = "ingress_controller must be one of: \"alb\", \"traefik\", \"istio_gateway\"."
+  }
+}
 
 # GoodData internal use only: install an unreleased build instead of the public chart.
 # Empty internal_registry_server disables both the pull secret and the chart repo
