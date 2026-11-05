@@ -34,6 +34,7 @@ module "k8s_common" {
 
   enable_ai_features           = var.enable_ai_features
   enable_experimental_features = var.enable_experimental_features
+  enable_gdcn_autoscaling      = var.enable_gdcn_autoscaling
   # AI lake is AWS-only: its StarRocks shared-data storage config exists only in
   # the AWS values template, so enabling it elsewhere never brings StarRocks up.
   enable_ai_lake = false

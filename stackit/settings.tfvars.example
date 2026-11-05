@@ -19,7 +19,7 @@ stackit_availability_zones = ["eu01-1", "eu01-2", "eu01-3"]
 ###
 # GoodData.CN deployment configuration
 ###
-helm_gdcn_version = "4.13.1" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+helm_gdcn_version = "4.15.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
 deployment_name   = "gooddata-cn"
 
 # GoodData.CN license key
@@ -32,7 +32,8 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 #       replicaCount: 3
 # EOT
 
-# Uncomment to disable GoodData generative AI services
+# Uncomment to disable AI features: the GenAI service, semantic search, chat,
+# metadata sync and Qdrant.
 # enable_ai_features = false
 
 # Uncomment to enable experimental features (unofficially unsupported and unstable; talk to GoodData to learn more)
@@ -50,6 +51,9 @@ gdcn_license_key = "key/asdf==" # provided by GoodData
 # NOTE: changing size_profile after deploying isn't a supported migration; PVCs
 # can't shrink, and growing them is a manual, storage-class-dependent step.
 size_profile = "prod-small"
+
+# Enable KEDA autoscaling for the GoodData.CN services; requires GoodData.CN 4.12.0+.
+# enable_gdcn_autoscaling = true
 
 ###
 # Networking
@@ -150,12 +154,18 @@ gdcn_orgs = [
 
 # Uncomment to override data retention (defaults shown). Loki/Tempo store data in
 # STACKIT Object Storage, so retention bounds bucket usage. Loki needs a multiple of 24h.
-# loki_retention_period       = "720h"
+# loki_retention_period       = "168h"
 # prometheus_retention_period = "168h"
-# tempo_retention_period      = "720h"
+# tempo_retention_period      = "168h"
 
 ###
-# Container image registries (optional)
+# LLM observability (Langfuse) configuration (optional)
+###
+# Not available on STACKIT yet: Langfuse needs its own object storage bucket and
+# credentials, which this module does not provision.
+
+###
+# Container image caching (optional)
 ###
 # Image caching is unavailable on STACKIT: its Container Registry has no Terraform
 # resources, so no pull-through cache can be provisioned. Images are pulled from
