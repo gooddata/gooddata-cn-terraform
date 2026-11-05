@@ -59,16 +59,10 @@ resource "stackit_ske_cluster" "main" {
     }
   }
 
-  # dns runs a managed externalDNS in the cluster, so there is no self-hosted
-  # external-dns release to deploy (see dns.tf).
   extensions = {
     acl = length(var.ske_api_server_authorized_ip_ranges) > 0 ? {
       enabled       = true
       allowed_cidrs = var.ske_api_server_authorized_ip_ranges
-    } : null
-    dns = local.external_dns_enabled ? {
-      enabled = true
-      zones   = [local.external_dns_zone_name]
     } : null
   }
 }
