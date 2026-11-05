@@ -54,6 +54,10 @@ module "k8s_common" {
   helm_promtail_version              = var.helm_promtail_version
   helm_tempo_version                 = var.helm_tempo_version
   helm_grafana_version               = var.helm_grafana_version
+  # Required by the module even though LLM observability (Langfuse) stays off on
+  # STACKIT (enable_llm_observability defaults to false).
+  helm_clickhouse_operator_version = var.helm_clickhouse_operator_version
+  helm_langfuse_version            = var.helm_langfuse_version
 
   enable_observability        = var.enable_observability
   observability_hostname      = var.observability_hostname
