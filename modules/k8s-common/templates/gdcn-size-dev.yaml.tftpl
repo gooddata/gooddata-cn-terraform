@@ -1,4 +1,20 @@
 # Apply GoodData.CN "dev" size profile
+#
+# Target: ~1 DRPS, functional testing only. No HA, no performance guarantee; large
+# result sets can exhaust memory.
+#
+# Load unit: data requests per second (DRPS) = AFM executions per second, that is
+# POST /api/v1/actions/workspaces/{ws}/execution/afm/execute. Each execution is followed
+# by ~1 result read, so afm-exec-api serves ~2 HTTP requests per data request. One rendered
+# visualization is one data request, and an AI agent query is one data request too.
+# The other services scale with DRPS times the workload shape (GoodData Cloud production
+# averages, 2026-09/10, cn-dobra-data docs/load-testing/workload-profile.md):
+#   - metadata-api HTTP requests per data request: ~6.4 (BI dashboards; API and agent
+#     clients can differ a lot). metadata-api is the first bottleneck per data request.
+#   - result-cache hit ratio: ~0.3-0.4. Each miss runs one SQL query (sql-executor,
+#     calcique, the customer database).
+#   - exports and AI chat are separate, low-volume dimensions (exports/hour, turns/hour).
+#
 
 replicaCount: 1
 

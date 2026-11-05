@@ -28,6 +28,28 @@ resource "kubernetes_storage_class_v1" "gp3_perf" {
   }
 }
 
+# etcd class for prod-large and prod-xl. Quiver confirms every write through etcd fsync:
+# at ~10,000 puts/s (load test 2026-10-22) the 3000-IOPS gp3-perf etcd volumes were
+# 78-93 % busy. 10000 IOPS needs a volume of at least 20 GiB (gp3 caps IOPS at 500/GiB);
+# the chart's etcd PVCs are 30 GiB.
+resource "kubernetes_storage_class_v1" "gp3_etcd" {
+  metadata {
+    name = "gp3-etcd"
+  }
+
+  storage_provisioner    = "ebs.csi.aws.com"
+  reclaim_policy         = "Delete"
+  volume_binding_mode    = "WaitForFirstConsumer"
+  allow_volume_expansion = true
+
+  parameters = {
+    type       = "gp3"
+    iops       = "10000"
+    throughput = "500"
+    encrypted  = "true"
+  }
+}
+
 resource "kubernetes_storage_class_v1" "gp3" {
   metadata {
     name = "gp3"

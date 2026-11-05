@@ -95,7 +95,9 @@ locals {
     prod-large = {
       observability = {
         memory = {
-          prometheus = { request = "1Gi", limit = "4Gi" }
+          # Request = limit: with a 1Gi request the scheduler packed Prometheus onto full
+          # nodes and the kubelet evicted it under memory pressure during load tests.
+          prometheus = { request = "6Gi", limit = "6Gi" }
           loki       = { request = "1Gi", limit = "4Gi" }
           # Higher request/limit gives the single-binary Tempo headroom for the
           # raised ingestion limits below, so the larger live-trace buffer does

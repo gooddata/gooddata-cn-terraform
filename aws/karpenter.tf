@@ -212,6 +212,63 @@ resource "kubectl_manifest" "karpenter_node_pool_starrocks" {
   depends_on = [kubectl_manifest.karpenter_node_class]
 }
 
+# etcd NodePool (prod-large, prod-xl): dedicated 4-vCPU nodes, one etcd member per
+# node (chart anti-affinity). The prod-large GoodData.CN profile sets the matching
+# nodeSelector and toleration on AWS. Load test 2026-10-22: the etcd member on a
+# shared node took 1-3 min per compaction against 9-26 s on the others, and all
+# queries stopped while it ran.
+resource "kubectl_manifest" "karpenter_node_pool_etcd" {
+  count = local.etcd_dedicated_nodes ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "karpenter.sh/v1"
+    kind       = "NodePool"
+    metadata = {
+      name = "etcd"
+    }
+    spec = {
+      template = {
+        metadata = {
+          labels = { workload = "etcd" }
+        }
+        spec = {
+          taints = [{
+            key    = "dedicated"
+            value  = "etcd"
+            effect = "NoSchedule"
+          }]
+          requirements = [
+            { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
+            { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
+            { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
+            { key = "karpenter.k8s.aws/instance-category", operator = "In", values = ["m"] },
+            { key = "karpenter.k8s.aws/instance-cpu-manufacturer", operator = "In", values = ["amd"] },
+            { key = "karpenter.k8s.aws/instance-generation", operator = "Gt", values = ["5"] },
+            { key = "karpenter.k8s.aws/instance-cpu", operator = "In", values = ["4"] },
+          ]
+          nodeClassRef = {
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = "default"
+          }
+          expireAfter = "720h"
+        }
+      }
+      # 3 members x 4 vCPU, plus room for one replacement node.
+      limits = {
+        cpu = 16
+      }
+      # WhenEmpty: never consolidate a node that runs an etcd member.
+      disruption = {
+        consolidationPolicy = "WhenEmpty"
+        consolidateAfter    = "5m"
+      }
+    }
+  })
+
+  depends_on = [kubectl_manifest.karpenter_node_class]
+}
+
 # ---------------------------------------------------------------------------
 # Karpenter destroy-time NodeClaim drain
 # ---------------------------------------------------------------------------
@@ -257,6 +314,7 @@ resource "null_resource" "karpenter_nodeclaim_drain" {
   depends_on = [
     kubectl_manifest.karpenter_node_pool,
     kubectl_manifest.karpenter_node_pool_starrocks,
+    kubectl_manifest.karpenter_node_pool_etcd,
     module.vpc,
     aws_vpc_endpoint.s3,
   ]
