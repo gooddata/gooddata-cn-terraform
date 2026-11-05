@@ -25,13 +25,26 @@ resource "random_id" "bucket_suffix" {
 locals {
   bucket_prefix = "${substr(join("", regexall("[0-9a-z]", lower(var.deployment_name))), 0, 18)}${random_id.bucket_suffix.hex}"
 
-  buckets = [
-    "quiver-cache",
-    "quiver-datasource-fs",
-    "exports",
-    "loki",
-    "tempo",
-  ]
+  # exports is created on its own first; see stackit_objectstorage_bucket.exports.
+  buckets = ["quiver-cache", "quiver-datasource-fs", "loki", "tempo"]
+
+  bucket_names = merge(
+    { exports = stackit_objectstorage_bucket.exports.name },
+    { for key, bucket in stackit_objectstorage_bucket.buckets : key => bucket.name },
+  )
+}
+
+# The first bucket in a project enables Object Storage on it. Parallel bucket
+# creates race that call and fail with 409 "Two concurrent calls try to create
+# the same project", so one bucket goes first and the rest wait for it.
+resource "stackit_objectstorage_bucket" "exports" {
+  project_id = var.stackit_project_id
+  name       = "${local.bucket_prefix}-exports"
+}
+
+moved {
+  from = stackit_objectstorage_bucket.buckets["exports"]
+  to   = stackit_objectstorage_bucket.exports
 }
 
 resource "stackit_objectstorage_bucket" "buckets" {
@@ -39,6 +52,8 @@ resource "stackit_objectstorage_bucket" "buckets" {
 
   project_id = var.stackit_project_id
   name       = "${local.bucket_prefix}-${each.value}"
+
+  depends_on = [stackit_objectstorage_bucket.exports]
 }
 
 # Both credentials groups follow the buckets so the call that enables object
@@ -47,7 +62,7 @@ resource "stackit_objectstorage_credentials_group" "gdcn" {
   project_id = var.stackit_project_id
   name       = "${var.deployment_name}-gdcn"
 
-  depends_on = [stackit_objectstorage_bucket.buckets]
+  depends_on = [stackit_objectstorage_bucket.exports, stackit_objectstorage_bucket.buckets]
 }
 
 # No expiration_timestamp: the key does not expire. Rotate by changing
@@ -61,7 +76,7 @@ resource "stackit_objectstorage_credentials_group" "observability" {
   project_id = var.stackit_project_id
   name       = "${var.deployment_name}-observability"
 
-  depends_on = [stackit_objectstorage_bucket.buckets]
+  depends_on = [stackit_objectstorage_bucket.exports, stackit_objectstorage_bucket.buckets]
 }
 
 resource "stackit_objectstorage_credential" "observability" {
@@ -73,6 +88,6 @@ locals {
   # Derived from the provider's own bucket URL rather than hardcoded, so a change
   # to STACKIT's storage domain doesn't need a code change here. The GoodData.CN
   # chart wants the full URL; the Loki/Tempo S3 clients want a bare host.
-  s3_endpoint_url  = regex("^https://[^/]+", stackit_objectstorage_bucket.buckets["exports"].url_path_style)
+  s3_endpoint_url  = regex("^https://[^/]+", stackit_objectstorage_bucket.exports.url_path_style)
   s3_endpoint_host = replace(local.s3_endpoint_url, "https://", "")
 }

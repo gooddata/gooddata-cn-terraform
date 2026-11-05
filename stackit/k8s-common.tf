@@ -77,9 +77,9 @@ module "k8s_common" {
   stackit_s3_region               = var.stackit_region
   stackit_s3_access_key           = stackit_objectstorage_credential.gdcn.access_key
   stackit_s3_secret_key           = stackit_objectstorage_credential.gdcn.secret_access_key
-  stackit_s3_exports_bucket       = stackit_objectstorage_bucket.buckets["exports"].name
-  stackit_s3_quiver_cache_bucket  = stackit_objectstorage_bucket.buckets["quiver-cache"].name
-  stackit_s3_datasource_fs_bucket = stackit_objectstorage_bucket.buckets["quiver-datasource-fs"].name
+  stackit_s3_exports_bucket       = local.bucket_names["exports"]
+  stackit_s3_quiver_cache_bucket  = local.bucket_names["quiver-cache"]
+  stackit_s3_datasource_fs_bucket = local.bucket_names["quiver-datasource-fs"]
 
   # Observability object storage: Loki + Tempo write to Object Storage (no big
   # PVC) using their own credentials group. Their S3 clients want a bare host,
@@ -91,9 +91,9 @@ module "k8s_common" {
       # The SingleBinary chart references all three bucket names even with
       # ruler/admin features off; point them at the one loki bucket.
       bucketNames = {
-        chunks = stackit_objectstorage_bucket.buckets["loki"].name
-        ruler  = stackit_objectstorage_bucket.buckets["loki"].name
-        admin  = stackit_objectstorage_bucket.buckets["loki"].name
+        chunks = local.bucket_names["loki"]
+        ruler  = local.bucket_names["loki"]
+        admin  = local.bucket_names["loki"]
       }
       s3 = {
         endpoint         = local.s3_endpoint_host
@@ -107,7 +107,7 @@ module "k8s_common" {
   tempo_objstore = {
     backend = "s3"
     s3 = {
-      bucket         = stackit_objectstorage_bucket.buckets["tempo"].name
+      bucket         = local.bucket_names["tempo"]
       endpoint       = local.s3_endpoint_host
       region         = var.stackit_region
       access_key     = stackit_objectstorage_credential.observability.access_key
@@ -124,6 +124,7 @@ module "k8s_common" {
     # Object storage must outlive the helm releases: pre-delete hooks still read
     # and write it, so listing these here makes destroy tear down k8s_common
     # first and the buckets after.
+    stackit_objectstorage_bucket.exports,
     stackit_objectstorage_bucket.buckets,
     stackit_objectstorage_credential.gdcn,
     stackit_objectstorage_credential.observability,
