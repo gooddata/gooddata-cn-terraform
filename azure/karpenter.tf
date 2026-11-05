@@ -63,6 +63,9 @@ resource "kubectl_manifest" "karpenter_node_pool" {
             name  = "default"
           }
           expireAfter = "720h"
+          # Expiry is forceful but still waits for karpenter.sh/do-not-disrupt pods
+          # (Quiver). Without this bound, an expired node with such a pod never drains.
+          terminationGracePeriod = "24h"
         }
       }
       # Total vCPU ceiling for this NodePool (size-profiles.tf).
@@ -76,6 +79,13 @@ resource "kubectl_manifest" "karpenter_node_pool" {
         # Hold a drained node 15m so a brief dip doesn't tear it down right as
         # load returns (avoids scale-up lag).
         consolidateAfter = "15m"
+        # Consolidation of underutilized nodes and drift replace at most one node at a
+        # time, so Quiver and other pods are not evicted in bulk. Empty nodes keep the
+        # default 10%. Budgets do not apply to expiry.
+        budgets = [
+          { nodes = "1", reasons = ["Underutilized", "Drifted"] },
+          { nodes = "10%" },
+        ]
       }
     }
   })

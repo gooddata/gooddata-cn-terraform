@@ -142,6 +142,9 @@ resource "kubectl_manifest" "karpenter_node_pool" {
             name  = "default"
           }
           expireAfter = "720h"
+          # Expiry is forceful but still waits for karpenter.sh/do-not-disrupt pods
+          # (Quiver). Without this bound, an expired node with such a pod never drains.
+          terminationGracePeriod = "24h"
         }
       }
       # Total vCPU ceiling for this NodePool (size-profiles.tf). StarRocks pool
@@ -154,9 +157,13 @@ resource "kubectl_manifest" "karpenter_node_pool" {
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
         consolidateAfter    = "15m"
-        # At most one node at a time may be disrupted (consolidation, drift, expiry).
-        # Load test: 11 nodes were consolidated within 2 minutes and evicted 13 Quiver pods.
-        budgets = [{ nodes = "1" }]
+        # Consolidation of underutilized nodes and drift replace at most one node at a
+        # time. Load test: 11 nodes were consolidated within 2 minutes and evicted 13
+        # Quiver pods. Empty nodes keep the default 10%. Budgets do not apply to expiry.
+        budgets = [
+          { nodes = "1", reasons = ["Underutilized", "Drifted"] },
+          { nodes = "10%" },
+        ]
       }
     }
   })
