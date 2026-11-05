@@ -40,6 +40,20 @@ variable "enable_experimental_features" {
   default     = false
 }
 
+variable "enable_gdcn_autoscaling" {
+  description = "Enable KEDA-based horizontal autoscaling for the GoodData.CN UI and core services."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.enable_gdcn_autoscaling || try(
+      tonumber(split(".", var.helm_gdcn_version)[0]) > 4 ||
+      (tonumber(split(".", var.helm_gdcn_version)[0]) == 4 && tonumber(split(".", var.helm_gdcn_version)[1]) >= 12),
+    false)
+    error_message = "Autoscaling requires helm_gdcn_version >= 4.12.0. Upgrade the chart, or set enable_gdcn_autoscaling = false."
+  }
+}
+
 variable "enable_image_cache" {
   description = "Image caching is unavailable on STACKIT: its Container Registry has no Terraform resources, so no pull-through cache can be provisioned. Point registry_dockerio at a mirror instead."
   type        = bool
