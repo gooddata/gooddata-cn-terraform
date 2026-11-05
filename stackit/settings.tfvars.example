@@ -68,13 +68,13 @@ ske_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
 ###
 # Ingress + TLS
 ###
-# Option 1 — NGINX Ingress Controller (ingress-nginx) + Let's Encrypt certificates (letsencrypt)
-ingress_controller = "ingress-nginx"
+# Option 1 — Ingress Controller (traefik) + Let's Encrypt certificates (letsencrypt)
+ingress_controller = "traefik"
 tls_mode           = "letsencrypt"
 letsencrypt_email  = "me@example.com"
 
-# Uncomment only if you put your own L7 proxy in front of ingress-nginx.
-# ingress_nginx_behind_l7 = true
+# Uncomment only if you put your own L7 proxy in front of the ingress controller.
+# ingress_behind_l7 = true
 
 # Option 2 — Istio Gateway + Let's Encrypt certificates (letsencrypt)
 # If you switch to or from Istio after the first deploy, restart all workloads in each injected namespace.

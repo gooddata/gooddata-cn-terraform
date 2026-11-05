@@ -27,10 +27,10 @@ module "k8s_common" {
   cloud                  = "stackit"
   ingress_controller     = var.ingress_controller
 
-  letsencrypt_email       = var.letsencrypt_email
-  auth_hostname           = var.auth_hostname
-  tls_mode                = var.tls_mode
-  ingress_nginx_behind_l7 = var.ingress_nginx_behind_l7
+  letsencrypt_email = var.letsencrypt_email
+  auth_hostname     = var.auth_hostname
+  tls_mode          = var.tls_mode
+  ingress_behind_l7 = var.ingress_behind_l7
 
   enable_ai_features           = var.enable_ai_features
   enable_experimental_features = var.enable_experimental_features
@@ -49,7 +49,7 @@ module "k8s_common" {
   helm_gdcn_version                  = var.helm_gdcn_version
   helm_istio_version                 = var.helm_istio_version
   helm_pulsar_version                = var.helm_pulsar_version
-  helm_ingress_nginx_version         = var.helm_ingress_nginx_version
+  helm_traefik_version               = var.helm_traefik_version
   helm_kube_prometheus_stack_version = var.helm_kube_prometheus_stack_version
   helm_loki_version                  = var.helm_loki_version
   helm_promtail_version              = var.helm_promtail_version
@@ -160,11 +160,11 @@ output "org_ids" {
 # The kubernetes provider is already wired to the cluster, so the LoadBalancer IP
 # is read directly instead of shelling out to a cloud CLI.
 data "kubernetes_service_v1" "ingress_lb" {
-  count = var.ingress_controller == "ingress-nginx" ? 1 : 0
+  count = var.ingress_controller == "traefik" ? 1 : 0
 
   metadata {
-    name      = "ingress-nginx-controller"
-    namespace = "ingress-nginx"
+    name      = "traefik"
+    namespace = "traefik"
   }
 
   depends_on = [module.k8s_common]
