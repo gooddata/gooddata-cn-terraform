@@ -318,12 +318,12 @@ variable "size_profile" {
 }
 
 variable "ske_api_server_authorized_ip_ranges" {
-  description = "CIDR ranges allowed to reach the SKE API server, applied as the cluster ACL extension. Empty applies no ACL, which is only allowed when stackit_private_networking keeps the control plane off the internet. Use [\"0.0.0.0/0\"] to deliberately allow any source."
+  description = "CIDR ranges allowed to reach the public SKE API server, applied as the cluster ACL extension. Include the address Terraform runs from. Use [\"0.0.0.0/0\"] to deliberately allow any source."
   type        = list(string)
-  default     = []
+
   validation {
-    condition     = var.stackit_private_networking || length(var.ske_api_server_authorized_ip_ranges) > 0
-    error_message = "ske_api_server_authorized_ip_ranges must list at least one CIDR when stackit_private_networking is false, because the control plane is then reachable from the internet. Use [\"0.0.0.0/0\"] if you really do want to allow any source."
+    condition     = length(var.ske_api_server_authorized_ip_ranges) > 0
+    error_message = "ske_api_server_authorized_ip_ranges must list at least one CIDR, because the SKE API server is reachable from the internet. Use [\"0.0.0.0/0\"] if you really do want to allow any source."
   }
 }
 
@@ -381,12 +381,6 @@ variable "stackit_availability_zones" {
     condition     = alltrue([for z in var.stackit_availability_zones : startswith(z, "${var.stackit_region}-")])
     error_message = "Every entry in stackit_availability_zones must start with \"<stackit_region>-\", e.g. \"eu01-1\" for region \"eu01\"."
   }
-}
-
-variable "stackit_private_networking" {
-  description = "Place the SKE control plane and PostgreSQL Flex inside a STACKIT Network Area (SNA) instead of exposing them publicly. Requires stackit_project_id to already belong to a network area, which is an organization-level prerequisite configured outside this repo. Postgres SNA support is also account-gated; set false to fall back to public endpoints restricted by CIDR ACL. The cluster's control-plane access scope is immutable, so changing this recreates the cluster."
-  type        = bool
-  default     = true
 }
 
 variable "stackit_project_id" {

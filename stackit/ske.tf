@@ -50,20 +50,22 @@ resource "stackit_ske_cluster" "main" {
     },
   ]
 
-  # access_scope is immutable: switching between SNA and PUBLIC recreates the
-  # cluster. id is null when SKE manages its own networking.
+  # Nodes sit in the Network Area network, but the API server stays public behind
+  # the ACL extension below. A private control plane (access_scope = "SNA") is a
+  # STACKIT Private Preview feature, needs a VPN or bastion to run Terraform, and
+  # cannot be combined with the ACL extension.
   network = {
-    id = local.ske_network_id
+    id = stackit_network.main.network_id
     control_plane = {
-      access_scope = var.stackit_private_networking ? "SNA" : "PUBLIC"
+      access_scope = "PUBLIC"
     }
   }
 
   extensions = {
-    acl = length(var.ske_api_server_authorized_ip_ranges) > 0 ? {
+    acl = {
       enabled       = true
       allowed_cidrs = var.ske_api_server_authorized_ip_ranges
-    } : null
+    }
   }
 }
 
