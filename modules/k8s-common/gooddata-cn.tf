@@ -244,7 +244,7 @@ resource "helm_release" "gooddata_cn" {
   depends_on = [
     kubernetes_namespace_v1.gdcn,
     kubernetes_secret_v1.gdcn_mapbox_token,
-    kubernetes_job_v1.gdcn_db_bootstrap,
+    kubernetes_job_v1.gdcn_db_bootstrap["gdcn"],
     kubernetes_secret_v1.langfuse_gdcn_keypair,
     helm_release.pulsar,
     helm_release.traefik,
