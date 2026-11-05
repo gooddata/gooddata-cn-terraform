@@ -18,16 +18,6 @@ variable "deployment_name" {
   }
 }
 
-variable "dns_provider" {
-  description = "DNS management mode on STACKIT. \"self-managed\" leaves DNS to the user; \"stackit-dns\" enables the SKE DNS extension (managed externalDNS) against a STACKIT DNS zone and maintains records for each GoodData hostname."
-  type        = string
-  default     = "self-managed"
-  validation {
-    condition     = contains(["self-managed", "stackit-dns"], var.dns_provider)
-    error_message = "dns_provider must be \"self-managed\" or \"stackit-dns\"."
-  }
-}
-
 variable "enable_ai_features" {
   description = "Enable AI features in the gooddata-cn chart (GenAI service, semantic search, chat, metadata sync, and Qdrant)."
   type        = bool
@@ -390,16 +380,6 @@ variable "stackit_availability_zones" {
   validation {
     condition     = alltrue([for z in var.stackit_availability_zones : startswith(z, "${var.stackit_region}-")])
     error_message = "Every entry in stackit_availability_zones must start with \"<stackit_region>-\", e.g. \"eu01-1\" for region \"eu01\"."
-  }
-}
-
-variable "stackit_dns_zone_name" {
-  description = "DNS zone name (e.g. \"example.com\") managed via STACKIT DNS when dns_provider = \"stackit-dns\". The zone is created by Terraform; delegate it at your registrar using the stackit_dns_primary_name_server output and the full name server set shown for the zone in the STACKIT Portal."
-  type        = string
-  default     = ""
-  validation {
-    condition     = var.dns_provider != "stackit-dns" || length(trimspace(var.stackit_dns_zone_name)) > 0
-    error_message = "stackit_dns_zone_name is required when dns_provider is \"stackit-dns\"."
   }
 }
 

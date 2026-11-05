@@ -81,22 +81,10 @@ stackit_private_networking = true
 # DNS
 ###
 
-# Option 1 — Self-managed DNS
-# Terraform outputs the LoadBalancer's public IP and the records you need to create
-# (auth/org/observability hostnames → IP). You create them in your DNS provider.
-dns_provider = "self-managed"
-
-# Option 2 — STACKIT DNS (managed via the SKE DNS extension)
-# Terraform creates a STACKIT DNS zone and enables SKE's DNS extension, which runs
-# a managed externalDNS in the cluster and keeps records in sync. Every GoodData
-# hostname must sit inside the zone.
-#
-# Delegate your domain to STACKIT DNS at your registrar before you rely on it. The
-# stackit_dns_primary_name_server output gives the primary; the full name server
-# set is listed for the zone in the STACKIT Portal.
-#
-# dns_provider          = "stackit-dns"
-# stackit_dns_zone_name = "gooddata.example.com"
+# Terraform does not manage DNS on STACKIT. After apply, the manual_dns_records
+# output lists the A records to create (auth/org/observability hostnames → load
+# balancer IP). Create them in your DNS provider before Let's Encrypt issues the
+# first certificates.
 
 ###
 # Ingress + TLS

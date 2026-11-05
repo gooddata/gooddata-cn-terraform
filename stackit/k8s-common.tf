@@ -129,9 +129,6 @@ module "k8s_common" {
     stackit_objectstorage_credential.observability,
     # The database user must exist before the chart bootstraps its schemas.
     stackit_postgresflex_user.gdcn,
-    # DNS must resolve before cert-manager issues its first Let's Encrypt cert;
-    # a failed issuance backs off up to 32h. No-op unless dns_provider=stackit-dns.
-    stackit_dns_zone.main,
   ]
 }
 
@@ -192,8 +189,8 @@ locals {
 }
 
 output "manual_dns_records" {
-  description = "DNS records to create for STACKIT ingress. Empty when dns_provider = \"stackit-dns\" — the SKE DNS extension maintains the records automatically."
-  value = local.external_dns_enabled || local.resolved_lb_ip == "" ? [] : [
+  description = "DNS records to create for STACKIT ingress. Empty until the load balancer has a public IP."
+  value = local.resolved_lb_ip == "" ? [] : [
     for hostname in distinct(compact(concat(
       [module.k8s_common.auth_hostname],
       module.k8s_common.org_domains,
