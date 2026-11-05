@@ -26,17 +26,13 @@ resource "stackit_postgresflex_instance" "main" {
   backup_schedule = "0 2 * * *"
   retention_days  = local.postgresflex_backup_retention_days
 
-  # SNA keeps the instance off the public internet; the public fallback is
-  # reachable only from the cluster. Either way an ACL is mandatory: the provider
-  # requires exactly one of acl or network.acl, so leaving it null is rejected.
-  # Egress ranges are the real source of database traffic in both access scopes,
-  # and the network prefix is added under SNA so in-network clients still reach it.
+  # The instance has a public endpoint that only the cluster's egress ranges can
+  # reach. Placing it in the Network Area (access_scope = "SNA") is a STACKIT
+  # Private Preview feature that the API rejects unless the account is enabled.
+  # The provider requires exactly one of acl or network.acl, so the ACL is set here.
   network = {
-    access_scope = var.stackit_private_networking ? "SNA" : "PUBLIC"
-    acl = distinct(concat(
-      stackit_ske_cluster.main.egress_address_ranges,
-      var.stackit_private_networking ? stackit_network.main[0].ipv4_prefixes : [],
-    ))
+    access_scope = "PUBLIC"
+    acl          = stackit_ske_cluster.main.egress_address_ranges
   }
 
   lifecycle {
@@ -44,7 +40,7 @@ resource "stackit_postgresflex_instance" "main" {
     # surface later as connection failures from the chart.
     precondition {
       condition     = length(stackit_ske_cluster.main.egress_address_ranges) > 0
-      error_message = "The SKE cluster reported no egress address ranges, so the PostgreSQL ACL would be empty. Set postgresflex ACLs manually or re-run once the cluster reports its ranges."
+      error_message = "The SKE cluster reported no egress address ranges, so the PostgreSQL ACL would be empty. Re-run the apply once the cluster reports its ranges."
     }
   }
 }

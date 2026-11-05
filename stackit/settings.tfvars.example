@@ -59,23 +59,15 @@ size_profile = "prod-small"
 # Networking
 ###
 
-# Option 1 — Private (STACKIT Network Area)
-# The control plane and PostgreSQL Flex stay off the public internet. Requires the
-# project to already belong to a network area; areas are organization-scoped, so a
-# platform admin attaches the project outside this configuration. PostgreSQL SNA
-# support is also account-gated, so check it is enabled before choosing this.
-# NOTE: the control-plane access scope is immutable — changing this after the
-# initial deploy recreates the cluster.
-stackit_private_networking = true
-
-# Option 2 — Public endpoints, database restricted by ACL
-# SKE manages its own networking, and PostgreSQL Flex is reachable only from the
-# cluster's egress ranges (which Terraform reads from SKE). No network area needed.
-# The control plane becomes internet-facing, so an API server ACL is required
-# here — use ["0.0.0.0/0"] only if you really do want to allow any source.
+# The project must belong to a STACKIT Network Area. Terraform creates a /22
+# network in it for the SKE nodes and load balancer, so the area must allow /22
+# networks and must set a public DNS server.
 #
-# stackit_private_networking          = false
-# ske_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
+# The Kubernetes API server is public, and only these sources can reach it.
+# Include the public IP that Terraform runs from (for example, from
+# `curl icanhazip.com`). PostgreSQL Flex is public too, but only the cluster's
+# egress IPs can reach it; Terraform sets that ACL automatically.
+ske_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
 
 ###
 # DNS
@@ -169,9 +161,6 @@ gdcn_orgs = [
 # Uncomment to pin the Kubernetes version. SKE treats it as a floor and may
 # upgrade past it; leaving it unset uses the latest supported version.
 # ske_version = "1.33"
-
-# Uncomment to restrict which sources can reach the Kubernetes API server.
-# ske_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
 
 # Uncomment to override node pool sizing from the size profile. SKE runs a cluster
 # autoscaler that scales each pool between its minimum and maximum.
