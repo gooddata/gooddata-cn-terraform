@@ -5,7 +5,7 @@ locals {
   starrocks_namespace            = "starrocks"
   starrocks_service_account_name = "starrocks"
 
-  use_ingress_nginx = var.ingress_controller == "ingress-nginx"
+  use_traefik       = var.ingress_controller == "traefik"
   use_lets_encrypt  = var.tls_mode == "letsencrypt"
   use_self_signed   = var.tls_mode == "selfsigned"
   use_cert_manager  = local.use_lets_encrypt || local.use_self_signed
@@ -14,9 +14,9 @@ locals {
   cert_manager_cluster_issuer_name = local.use_self_signed ? "selfsigned" : "letsencrypt"
 
   # Reuse a single ingress class name throughout the module
-  resolved_ingress_class_name = lookup({ alb = "alb", istio_gateway = "" }, var.ingress_controller, "nginx")
+  resolved_ingress_class_name = lookup({ alb = "alb", istio_gateway = "" }, var.ingress_controller, "traefik")
 
-  # Shared across the ingress-nginx Service (ingress.tf) and the Istio ingress
+  # Shared across the Traefik Service (ingress.tf) and the Istio ingress
   # gateway Service (istio.tf) — the standard AWS NLB posture for both.
   aws_nlb_common_annotations = {
     "service.beta.kubernetes.io/aws-load-balancer-type"                              = "external"

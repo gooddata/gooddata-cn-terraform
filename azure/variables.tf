@@ -306,13 +306,6 @@ variable "helm_grafana_version" {
   default = "10.5.15"
 }
 
-variable "helm_ingress_nginx_version" {
-  description = "Version of the ingress-nginx Helm chart to deploy. https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx"
-  type        = string
-  # renovate: depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
-  default = "4.15.1"
-}
-
 variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
   type        = string
@@ -362,19 +355,15 @@ variable "helm_tempo_version" {
   default = "1.24.4"
 }
 
-variable "ingress_controller" {
-  description = "Ingress controller to deploy. Use ingress-nginx for Kubernetes Ingress, or istio_gateway to expose the Istio ingress gateway via LoadBalancer."
+variable "helm_traefik_version" {
+  description = "Version of the Traefik Helm chart to deploy. https://artifacthub.io/packages/helm/traefik/traefik"
   type        = string
-  default     = "ingress-nginx"
-
-  validation {
-    condition     = contains(["ingress-nginx", "istio_gateway"], var.ingress_controller)
-    error_message = "ingress_controller must be one of: \"ingress-nginx\", \"istio_gateway\"."
-  }
+  # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
+  default = "40.2.0"
 }
 
-variable "ingress_nginx_behind_l7" {
-  description = "Whether ingress-nginx is running behind an L7 proxy/load balancer (enables use-forwarded-headers)."
+variable "ingress_behind_l7" {
+  description = "Whether the ingress controller is running behind an L7 proxy/load balancer (enables trusting X-Forwarded-* headers)."
   type        = bool
   default     = false
 }
@@ -427,6 +416,17 @@ variable "langfuse_tracing_environment" {
   description = "Langfuse tracing environment reported by the GoodData.CN gen-ai services. Empty keeps the chart default."
   type        = string
   default     = "dev"
+}
+
+variable "ingress_controller" {
+  description = "Ingress controller to deploy. Use traefik for Kubernetes Ingress via Traefik, or istio_gateway to expose the Istio ingress gateway via LoadBalancer."
+  type        = string
+  default     = "traefik"
+
+  validation {
+    condition     = contains(["traefik", "istio_gateway"], var.ingress_controller)
+    error_message = "ingress_controller must be one of: \"traefik\", \"istio_gateway\". ingress-nginx was removed: use \"traefik\", and rename ingress_nginx_behind_l7 -> ingress_behind_l7 and helm_ingress_nginx_version -> helm_traefik_version."
+  }
 }
 
 variable "letsencrypt_email" {

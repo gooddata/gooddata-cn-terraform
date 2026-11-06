@@ -50,9 +50,6 @@ locals {
   # ALB health checks default to GET / expecting 200, but langfuse-web redirects
   # / to the sign-in page, so point them at its health endpoint instead.
   langfuse_ingress_annotations = merge(
-    local.use_ingress_nginx ? {
-      "nginx.ingress.kubernetes.io/proxy-body-size" = "50m"
-    } : {},
     local.cert_manager_issuer_annotation,
     var.ingress_annotations_override,
     var.ingress_controller == "alb" ? {
@@ -282,7 +279,8 @@ resource "helm_release" "langfuse" {
     # The CR is only accepted here, not serving; the chart's own wait below is
     # what actually gates the migration on ClickHouse being reachable.
     kubectl_manifest.langfuse_clickhouse,
-    helm_release.ingress_nginx,
+    helm_release.traefik,
+    kubectl_manifest.traefik_middleware,
     kubectl_manifest.letsencrypt_cluster_issuer,
     kubectl_manifest.selfsigned_cluster_issuer,
   ]

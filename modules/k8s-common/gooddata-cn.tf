@@ -3,18 +3,13 @@
 ###
 
 locals {
-  auth_hostname = trimspace(var.auth_hostname)
-  org_ids       = distinct(compact([for org in var.gdcn_orgs : trimspace(org.id)]))
-  org_domains   = distinct(compact([for org in var.gdcn_orgs : trimspace(org.hostname)]))
-  ingress_annotation_defaults = local.use_ingress_nginx ? merge(
-    {
-      "nginx.ingress.kubernetes.io/proxy-body-size" = "200m"
-    },
-    local.cert_manager_issuer_annotation
-  ) : {}
-  dex_annotation_defaults = local.use_ingress_nginx ? local.cert_manager_issuer_annotation : {}
-  ingress_annotations     = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
-  dex_ingress_annotations = merge(local.dex_annotation_defaults, var.dex_ingress_annotations_override)
+  auth_hostname               = trimspace(var.auth_hostname)
+  org_ids                     = distinct(compact([for org in var.gdcn_orgs : trimspace(org.id)]))
+  org_domains                 = distinct(compact([for org in var.gdcn_orgs : trimspace(org.hostname)]))
+  ingress_annotation_defaults = local.use_traefik ? local.cert_manager_issuer_annotation : {}
+  ingress_annotations         = merge(local.ingress_annotation_defaults, var.ingress_annotations_override)
+  # Dex uses the same cert-manager issuer as the GoodData.CN ingress.
+  dex_ingress_annotations = merge(local.ingress_annotation_defaults, var.dex_ingress_annotations_override)
   dex_tls_enabled         = local.use_cert_manager
   fast_storage_class      = var.fast_storage_class != "" ? var.fast_storage_class : var.gdcn_storage_class
 
@@ -250,7 +245,8 @@ resource "helm_release" "gooddata_cn" {
     kubernetes_secret_v1.gdcn_mapbox_token,
     kubernetes_secret_v1.langfuse_gdcn_keypair,
     helm_release.pulsar,
-    helm_release.ingress_nginx,
+    helm_release.traefik,
+    kubectl_manifest.traefik_middleware,
     kubectl_manifest.letsencrypt_cluster_issuer,
     kubectl_manifest.selfsigned_cluster_issuer,
     helm_release.istio_ingress_gateway,
@@ -320,10 +316,10 @@ resource "kubectl_manifest" "redis_ha_podmonitor" {
 
 # Server-side-apply patch onto the gooddata-cn-export-builder Deployment
 # created by the GoodData.CN Helm chart. Injects a socat sidecar that
-# forwards localhost:443 to ingress-nginx, so export-builder can reach
-# the ingress endpoint via 127.0.0.1:443 inside k3d.
+# forwards localhost:443 to the ingress controller, so export-builder
+# can reach the ingress endpoint via 127.0.0.1:443 inside k3d.
 resource "kubectl_manifest" "export_builder_localhost_forwarder" {
-  count = var.cloud == "local" && local.use_ingress_nginx ? 1 : 0
+  count = var.cloud == "local" && local.use_traefik ? 1 : 0
 
   server_side_apply = true
   force_conflicts   = true
@@ -345,8 +341,8 @@ resource "kubectl_manifest" "export_builder_localhost_forwarder" {
                 - /bin/sh
                 - -ec
                 - |
-                  socat TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork TCP4:ingress-nginx-controller.ingress-nginx.svc.cluster.local:443 &
-                  socat TCP6-LISTEN:443,bind=[::1],reuseaddr,fork TCP4:ingress-nginx-controller.ingress-nginx.svc.cluster.local:443 &
+                  socat TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork TCP4:traefik.traefik.svc.cluster.local:443 &
+                  socat TCP6-LISTEN:443,bind=[::1],reuseaddr,fork TCP4:traefik.traefik.svc.cluster.local:443 &
                   wait
               securityContext:
                 allowPrivilegeEscalation: false

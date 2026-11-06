@@ -200,13 +200,6 @@ variable "helm_grafana_version" {
   default = "10.5.15"
 }
 
-variable "helm_ingress_nginx_version" {
-  description = "Version of the ingress-nginx Helm chart to deploy."
-  type        = string
-  # renovate: depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
-  default = "4.15.1"
-}
-
 variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway)."
   type        = string
@@ -263,20 +256,27 @@ variable "helm_tempo_version" {
   default = "1.24.4"
 }
 
+variable "helm_traefik_version" {
+  description = "Version of the Traefik Helm chart to deploy."
+  type        = string
+  # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
+  default = "40.2.0"
+}
+
+variable "ingress_behind_l7" {
+  description = "Whether the ingress controller is running behind an L7 proxy/load balancer (enables trusting X-Forwarded-* headers)."
+  type        = bool
+  default     = false
+}
+
 variable "ingress_controller" {
   description = "Ingress controller used to expose GoodData.CN."
   type        = string
-  default     = "ingress-nginx"
+  default     = "traefik"
   validation {
-    condition     = contains(["ingress-nginx", "istio_gateway"], var.ingress_controller)
-    error_message = "For local deployments, ingress_controller must be one of: \"ingress-nginx\", \"istio_gateway\"."
+    condition     = contains(["traefik", "istio_gateway"], var.ingress_controller)
+    error_message = "For local deployments, ingress_controller must be one of: \"traefik\", \"istio_gateway\". ingress-nginx was removed: use \"traefik\", and rename ingress_nginx_behind_l7 -> ingress_behind_l7 and helm_ingress_nginx_version -> helm_traefik_version."
   }
-}
-
-variable "ingress_nginx_behind_l7" {
-  description = "Whether ingress-nginx is running behind an L7 proxy/load balancer (enables use-forwarded-headers)."
-  type        = bool
-  default     = false
 }
 
 # GoodData internal use only: install an unreleased build instead of the public

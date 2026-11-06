@@ -1,129 +1,153 @@
 ###
-# Deploy ingress-nginx to Kubernetes with cloud-specific settings
+# Deploy Traefik to Kubernetes with cloud-specific settings
 ###
 
 locals {
-  # Shared between brotli-types and gzip-types below so the two encodings
-  # never silently drift out of sync.
-  ingress_compressible_mime_types = "application/vnd.gooddata.api+json application/xml+rss application/atom+xml application/javascript application/x-javascript application/json application/rss+xml application/vnd.ms-fontobject application/x-font-ttf application/x-web-app-manifest+json application/xhtml+xml application/xml font/opentype image/svg+xml image/x-icon text/css text/javascript text/plain text/x-component"
+  traefik_namespace = "traefik"
 
-  ingress_values = {
-    controller = merge(
-      {
-        replicaCount = var.ingress_replicas
-        # A PDB (which NAP/Karpenter honors) plus cross-node spread keep >=1
-        # controller — and thus the admission webhook's endpoints — alive through
-        # node consolidation, so an in-flight ingress create (e.g. Grafana) can't
-        # fail against a webhook that momentarily has no endpoints.
-        podDisruptionBudget = {
-          enabled      = var.ingress_replicas > 1
-          minAvailable = 1
+  # Applied to every router on the websecure entrypoint, so no Ingress can drop
+  # them by overriding its annotations.
+  traefik_entrypoint_middlewares = [for name in keys(local.traefik_middlewares) : "${local.traefik_namespace}-${name}@kubernetescrd"]
+
+  traefik_middlewares = {
+    default-headers = {
+      headers = {
+        customResponseHeaders = {
+          "Permissions-Policy"        = "geolocation=(), midi=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), fullscreen=(), payment=()"
+          "Strict-Transport-Security" = "max-age=31536000; includeSubDomains"
         }
-        # Spread replicas across nodes so one node's disruption can't take them all.
-        topologySpreadConstraints = [{
-          maxSkew           = 1
-          topologyKey       = "kubernetes.io/hostname"
-          whenUnsatisfiable = "ScheduleAnyway"
-          labelSelector = {
-            matchLabels = {
-              "app.kubernetes.io/name"      = "ingress-nginx"
-              "app.kubernetes.io/component" = "controller"
-            }
+      }
+    }
+    # Text types only: images, PDFs and XLSX exports are already compressed.
+    compress = {
+      compress = {
+        includedContentTypes = [
+          "application/atom+xml", "application/javascript", "application/json",
+          "application/rss+xml", "application/vnd.gooddata.api+json", "application/vnd.ms-fontobject",
+          "application/x-font-ttf", "application/x-javascript", "application/x-web-app-manifest+json",
+          "application/xhtml+xml", "application/xml", "application/xml+rss", "font/opentype",
+          "image/svg+xml", "image/x-icon", "text/css", "text/html", "text/javascript",
+          "text/plain", "text/x-component",
+        ]
+      }
+    }
+  }
+
+  traefik_values = {
+    image = {
+      registry = var.registry_dockerio
+      # Official Docker Hub images live under library/; only docker.io adds it implicitly.
+      repository = "library/traefik"
+    }
+
+    deployment = {
+      replicas = var.ingress_replicas
+    }
+
+    # A PDB (which NAP/Karpenter honors) plus cross-node spread keep at least one
+    # replica serving through node consolidation.
+    podDisruptionBudget = {
+      enabled      = var.ingress_replicas > 1
+      minAvailable = 1
+    }
+    topologySpreadConstraints = [{
+      maxSkew           = 1
+      topologyKey       = "kubernetes.io/hostname"
+      whenUnsatisfiable = "ScheduleAnyway"
+      labelSelector = {
+        matchLabels = { "app.kubernetes.io/name" = "traefik" }
+      }
+    }]
+
+    providers = {
+      kubernetesIngress = {
+        enabled          = true
+        publishedService = { enabled = true }
+      }
+      kubernetesCRD = { enabled = true }
+    }
+
+    ingressClass = {
+      enabled        = true
+      isDefaultClass = false
+      name           = "traefik"
+    }
+
+    ports = {
+      web = {
+        forwardedHeaders = { insecure = var.ingress_behind_l7 }
+        # Redirect HTTP to HTTPS. Behind an L7 proxy, the proxy owns the redirect,
+        # and a redirect here would loop. Let's Encrypt follows it for HTTP-01.
+        http = {
+          redirections = {
+            entryPoint = var.ingress_behind_l7 ? null : { to = "websecure", scheme = "https", permanent = true }
           }
-        }]
-        image = {
-          registry = var.registry_k8sio
+          # Behind an L7 proxy that terminates TLS, all traffic arrives on web, so
+          # web needs the same headers and compression as websecure.
+          middlewares = var.ingress_behind_l7 ? local.traefik_entrypoint_middlewares : null
         }
-        admissionWebhooks = merge(
-          {
-            patch = {
-              image = {
-                registry = var.registry_k8sio
-              }
-            }
-          },
-          var.cloud == "local" ? { enabled = false } : {}
-        )
-        config = merge(
-          {
-            allow-snippet-annotations   = "true"
-            strict-validate-path-type   = "false"
-            client-body-buffer-size     = "10m"
-            client-body-timeout         = "180"
-            large-client-header-buffers = "4 32k"
-            client-header-buffer-size   = "32k"
-            proxy-buffer-size           = "16k"
-            brotli-types                = local.ingress_compressible_mime_types
-            enable-brotli               = "true"
-            use-gzip                    = "true"
-            gzip-types                  = local.ingress_compressible_mime_types
-          },
-          var.ingress_nginx_behind_l7 ? {
-            use-forwarded-headers = "true"
-          } : {}
-        )
-        addHeaders = {
-          Permissions-Policy        = "geolocation=(), midi=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), fullscreen=(), payment=()"
-          Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-        }
+        # Same upload read timeout as websecure, for traffic that an L7 proxy forwards here.
+        transport = { respondingTimeouts = { readTimeout = "600s" } }
+      }
+      websecure = {
+        forwardedHeaders = { insecure = var.ingress_behind_l7 }
+        http             = { middlewares = local.traefik_entrypoint_middlewares }
+        # The 60s default caps the whole request read, which cuts off large uploads.
+        transport = { respondingTimeouts = { readTimeout = "600s" } }
+      }
+    }
+
+    service = merge(
+      {
+        enabled = true
+        spec    = { type = "LoadBalancer" }
       },
       var.cloud == "aws" ? {
-        service = {
-          annotations = merge(
-            local.aws_nlb_common_annotations,
-            {
-              "service.beta.kubernetes.io/aws-load-balancer-backend-protocol"        = "tcp"
-              "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes" = "deregistration_delay.connection_termination.enabled=true,preserve_client_ip.enabled=true"
-              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-port"        = "10254"
-              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-path"        = "/healthz"
-              "service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol"    = "HTTP"
-              "service.beta.kubernetes.io/aws-load-balancer-name"                    = "${var.deployment_name}-ingress"
-              "service.beta.kubernetes.io/aws-load-balancer-alpn-policy"             = "HTTP2Preferred"
-            }
-          )
-        }
+        annotations = merge(local.aws_nlb_common_annotations, {
+          "service.beta.kubernetes.io/aws-load-balancer-backend-protocol"        = "tcp"
+          "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes" = "deregistration_delay.connection_termination.enabled=true,preserve_client_ip.enabled=true"
+          # IP targets register pod IPs, so the NLB can probe /ping on the admin port (8080).
+          "service.beta.kubernetes.io/aws-load-balancer-healthcheck-port"     = "8080"
+          "service.beta.kubernetes.io/aws-load-balancer-healthcheck-path"     = "/ping"
+          "service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol" = "HTTP"
+          "service.beta.kubernetes.io/aws-load-balancer-name"                 = "${var.deployment_name}-ingress"
+          "service.beta.kubernetes.io/aws-load-balancer-alpn-policy"          = "HTTP2Preferred"
+        })
       } : {},
-      var.cloud == "azure" ? {
-        service = {
-          type = "LoadBalancer"
-          annotations = {
-            "service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path" = "/healthz"
-          }
-        }
-      } : {},
-      var.enable_observability ? {
-        metrics = {
-          enabled = true
-          serviceMonitor = {
-            enabled = true
-          }
-        }
-      } : {}
+      # Azure and STACKIT probe a Service port over TCP. /ping is on the admin port,
+      # which the Service does not expose, so no probe-path annotation is set.
     )
+
+    metrics = var.enable_observability ? {
+      prometheus = {
+        service        = { enabled = true }
+        serviceMonitor = { enabled = true }
+      }
+    } : {}
   }
 }
 
 resource "kubernetes_namespace_v1" "ingress" {
-  count = local.use_ingress_nginx ? 1 : 0
+  count = local.use_traefik ? 1 : 0
 
   metadata {
-    name = "ingress-nginx"
+    name = local.traefik_namespace
   }
 }
 
-resource "helm_release" "ingress_nginx" {
-  count = local.use_ingress_nginx ? 1 : 0
+resource "helm_release" "traefik" {
+  count = local.use_traefik ? 1 : 0
 
-  name          = "ingress-nginx"
-  repository    = "https://kubernetes.github.io/ingress-nginx"
-  chart         = "ingress-nginx"
+  name          = "traefik"
+  repository    = "https://traefik.github.io/charts"
+  chart         = "traefik"
   namespace     = kubernetes_namespace_v1.ingress[count.index].metadata[0].name
-  version       = var.helm_ingress_nginx_version
+  version       = var.helm_traefik_version
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
 
-  values = [yamlencode(local.ingress_values)]
+  values = [yamlencode(local.traefik_values)]
 
   depends_on = [
     kubernetes_namespace_v1.ingress,
@@ -131,3 +155,20 @@ resource "helm_release" "ingress_nginx" {
   ]
 }
 
+# The chart installs the Middleware CRD, so these apply after the release. Until
+# they exist, websecure routers fail with a missing-middleware error.
+resource "kubectl_manifest" "traefik_middleware" {
+  for_each = local.use_traefik ? toset(keys(local.traefik_middlewares)) : []
+
+  yaml_body = yamlencode({
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "Middleware"
+    metadata = {
+      name      = each.key
+      namespace = kubernetes_namespace_v1.ingress[0].metadata[0].name
+    }
+    spec = local.traefik_middlewares[each.key]
+  })
+
+  depends_on = [helm_release.traefik]
+}
