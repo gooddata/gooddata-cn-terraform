@@ -141,7 +141,7 @@ resource "helm_release" "gooddata_cn" {
       auth_hostname           = local.auth_hostname
       db_hostname             = var.db_hostname
       db_username             = var.db_username
-      db_password             = var.db_password
+      db_admin_secret_name    = kubernetes_secret_v1.gdcn_db_admin["gdcn"].metadata[0].name
       storage_class           = var.gdcn_storage_class
       fast_storage_class      = local.fast_storage_class
       registry_dockerio       = var.registry_dockerio
@@ -225,6 +225,7 @@ resource "helm_release" "gooddata_cn" {
       mapbox_token_checksum = local.geo_mapbox_enabled ? nonsensitive(sha256(var.geo_mapbox_token)) : ""
     }) : null,
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
+    yamlencode(local.gdcn_db_user_values),
     local.use_internal_registry_auth ? yamlencode({
       imagePullSecrets = [{ name = kubernetes_secret_v1.internal_registry[0].metadata[0].name }]
     }) : null,
@@ -243,6 +244,7 @@ resource "helm_release" "gooddata_cn" {
   depends_on = [
     kubernetes_namespace_v1.gdcn,
     kubernetes_secret_v1.gdcn_mapbox_token,
+    kubernetes_job_v1.gdcn_db_bootstrap["gdcn"],
     kubernetes_secret_v1.langfuse_gdcn_keypair,
     helm_release.pulsar,
     helm_release.traefik,
