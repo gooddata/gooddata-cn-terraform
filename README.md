@@ -131,7 +131,7 @@ Ingresses that the GoodData.CN organization controller already created keep `ing
 kubectl get ingress -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,CLASS:.spec.ingressClassName
 ```
 
-If `gdcn_helm_extra_values` sets `ingress.ingressClassName: nginx`, remove that line before the upgrade. It overrides the Traefik class, so the organization controller would create new Ingresses with class `nginx` again.
+If `gdcn_helm_extra_values` sets `ingress.ingressClassName: nginx`, remove that setting before the upgrade. It overrides the Traefik class, so the organization controller would create new Ingresses with class `nginx` again. If `ingressClassName` is the only key under `ingress`, remove the `ingress:` key too: an empty `ingress:` is `null` and deletes the chart's ingress values.
 
 
 ### Tearing down
