@@ -82,7 +82,12 @@ locals {
           redirections = {
             entryPoint = var.ingress_behind_l7 ? null : { to = "websecure", scheme = "https", permanent = true }
           }
+          # Behind an L7 proxy that terminates TLS, all traffic arrives on web, so
+          # web needs the same headers and compression as websecure.
+          middlewares = var.ingress_behind_l7 ? local.traefik_entrypoint_middlewares : null
         }
+        # Same upload read timeout as websecure, for traffic that an L7 proxy forwards here.
+        transport = { respondingTimeouts = { readTimeout = "600s" } }
       }
       websecure = {
         forwardedHeaders = { insecure = var.ingress_behind_l7 }
