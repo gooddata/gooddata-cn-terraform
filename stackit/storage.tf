@@ -6,6 +6,7 @@
 # - quiver-datasource-fs:  data source files (e.g. uploaded CSVs)
 # - exports:               exported reports or data
 # - loki / tempo:          observability object storage
+# - geo-collections:       country/region boundaries for geo charts (only when enabled)
 #
 # STACKIT Object Storage authenticates with static S3 access keys, not workload
 # identity, so there is no counterpart to the other clouds' IRSA / UAMI wiring.
@@ -26,7 +27,10 @@ locals {
   bucket_prefix = "${substr(join("", regexall("[0-9a-z]", lower(var.deployment_name))), 0, 18)}${random_id.bucket_suffix.hex}"
 
   # exports is created on its own first; see stackit_objectstorage_bucket.exports.
-  buckets = ["quiver-cache", "quiver-datasource-fs", "loki", "tempo"]
+  buckets = concat(
+    ["quiver-cache", "quiver-datasource-fs", "loki", "tempo"],
+    var.geo_basemap_provider != "none" ? ["geo-collections"] : [],
+  )
 
   bucket_names = merge(
     { exports = stackit_objectstorage_bucket.exports.name },
