@@ -208,12 +208,14 @@ locals {
   ) }
 
   # Job names are immutable, so this hash in the name is what re-runs a
-  # bootstrap. It covers the credentials and the roles, not the script text;
-  # bump the version when the SQL above changes behaviour.
+  # bootstrap. It covers the credentials, the roles and the script text, so a
+  # change to files/*.sql re-runs the Job. Bump the version only to force a
+  # re-run by hand.
   pg_bootstrap_version = "v1"
 
   pg_bootstrap_hash = { for job, users in local.pg_users_by_job : job => substr(sha256(jsonencode([
     local.pg_bootstrap_version,
+    local.pg_sql_scripts,
     var.db_password,
     { for name, user in users : name => [
       user.role, user.database, user.revoke_public, random_password.gdcn_db_user[name].result
