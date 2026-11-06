@@ -1,8 +1,53 @@
 # Apply GoodData.CN "prod-small" size profile
-# last updated: 2026-06-05
+# last updated: 2026-10-21
 #
-# Smallest production-grade size profile. The global replicaCount below keeps
-# the services HA at 2 replicas.
+# Smallest production-grade size profile and the default recommendation for all
+# customers. HA: every service runs at least 2 replicas (global replicaCount below).
+#
+# Design: BALANCED. Every component on the request path reaches its knee at about the
+# same load, so no component is sized far beyond what metadata-api and api-gw can serve.
+#   - Target:   5 DRPS sustained, with autoscaling.
+#   - Knee:     planned ~6 DRPS; measured ~18 DRPS (see Measured below).
+#   - Floor:    ~2.5 DRPS at minimum replicas, below the KEDA CPU targets, so normal daily
+#               load needs no scale-up.
+# This covers the 15-minute max of the smaller and middle GoodData Cloud clusters
+# (0.1-5.5 executions/s). The busiest Cloud clusters (15-minute max ~10/s) need prod-large.
+#
+# Sizing rule per component (cores per DRPS = cost, see cn-dobra-data
+# docs/load-testing/spikes/balanced-prod-small.md section 1):
+#   knee DRPS  = maxReplicas x CPU request x KEDA target / cost  (HPA at max)
+#   floor DRPS = minReplicas x CPU request x KEDA target / cost  (no scale-up)
+# Planning costs: metadata-api 0.9 (measured 0.6-0.7 in Cloud production, 1.1-1.4 in the
+# throttled 2-CPU load test), result-cache 0.09, afm-exec-api 0.05, calcique 0.05,
+# api-gw 0.08, Quiver cache + xtab 0.15, sql-executor 0.015 (not CPU-bound).
+# The execution path (afm-exec-api, result-cache, calcique, Quiver, sql-executor) has its
+# HPA knee at ~6 DRPS; its CPU limits are burst room, not reserved capacity.
+#
+# Measured (2026-10-21, test cluster, internal 4.15.0 build with load-test fixes, realistic
+# 4.15 dashboard metadata calls, cn-dobra-data docs/load-testing/results/
+# 2026-10-21-prod-small-balanced.md):
+#   - 5 DRPS target: met at minimum replicas (no scale-up needed up to ~8 DRPS).
+#   - 14 DRPS: 98 % delivered, 0 errors, p95 1.2x base. 18 DRPS: 100 %, 0 errors.
+#   - Knee ~18 DRPS with HPAs at max. Above it, delivery collapses without errors (59 % at
+#     23 DRPS): quiver-cache (fixed 2 pods, 1 CPU limit) throttled 33 %.
+#   - Measured cost, cores per DRPS: metadata-api 0.22-0.27, api-gw 0.07, result-cache
+#     0.06, calcique 0.05, afm-exec-api 0.04, sql-executor 0.01.
+#   - Spike 2.5 -> 6 DRPS with a helm upgrade under load: 0 errors, no replica reset.
+# The planning costs above are higher than measured; the knee is ~3x the target because the
+# HA minimum (2 pods each) already covers the target. Memory is not soak-tested.
+#
+# Load unit: data requests per second (DRPS) = AFM executions per second, that is
+# POST /api/v1/actions/workspaces/{ws}/execution/afm/execute. Each execution is followed
+# by ~1 result read, so afm-exec-api serves ~2 HTTP requests per data request. One rendered
+# visualization is one data request, and an AI agent query is one data request too.
+# The other services scale with DRPS times the workload shape (GoodData Cloud production
+# averages, 2026-09/10, cn-dobra-data docs/load-testing/workload-profile.md):
+#   - metadata-api HTTP requests per data request: ~6 (BI dashboards; API and agent
+#     clients can differ a lot). metadata-api is the first bottleneck per data request.
+#   - result-cache hit ratio: ~0.35. Each miss runs one SQL query (sql-executor,
+#     calcique, the customer database). Label elements: ~0.33 per data request.
+#   - exports and AI chat are separate, low-volume dimensions (exports/hour, turns/hour).
+#
 
 replicaCount: 2
 
@@ -18,16 +63,29 @@ platform_limits:
   # take as much as a little over 6 minutes to complete (XLSX most often).
   export_result_timeout_seconds: 420
 afmExecApi:
+  # 0.05 core/DRPS: floor 2 x 150m x 70 % = 4.2 DRPS, HPA at max 3 = 6.3 DRPS.
   kedaAutoscaling:
     minReplicaCount: 2
-    maxReplicaCount: 8
-  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:MaxRAMPercentage=34
+    maxReplicaCount: 3
+    targetCPUUtilization: 70
+    behavior:
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        selectPolicy: Max
+        policies:
+          - type: Pods
+            value: 4
+            periodSeconds: 30
+          - type: Percent
+            value: 100
+            periodSeconds: 30
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:MaxRAMPercentage=34 -XX:ActiveProcessorCount=1
   resources:
     limits:
       cpu: 1000m
       memory: 1400Mi
     requests:
-      cpu: 200m
+      cpu: 150m
       memory: 1400Mi
 analyticalDesigner:
   resources:
@@ -44,6 +102,8 @@ apiDocs:
     requests:
       cpu: 20m
       memory: 15Mi
+# Legacy gateway. Charts up to 4.15 deploy it. The gdc-nas master chart has no api-gateway: api-gw routes to the
+# UI services itself, so this block is ignored there and its UI load moves to apiGw (see the apiGw block).
 apiGateway:
   jvmOptions: -Xmx225M -XX:MaxMetaspaceSize=100M -XX:MaxDirectMemorySize=512M
   resources:
@@ -53,26 +113,31 @@ apiGateway:
     requests:
       cpu: 100m
       memory: 1Gi
-authService:
-  jvmOptions: -XX:MaxMetaspaceSize=160M -XX:MaxDirectMemorySize=32M -XX:MaxRAMPercentage=30
-  resources:
-    limits:
-      cpu: 500m
-      memory: 716Mi
-    requests:
-      cpu: 100m
-      memory: 716Mi
 calcique:
+  # 0.05 core/DRPS: floor 2 x 150m x 70 % = 4.2 DRPS, HPA at max 3 = 6.3 DRPS.
+  # Load test p90 use was 0.14 core per pod.
   kedaAutoscaling:
     minReplicaCount: 2
-    maxReplicaCount: 8
-  jvmOptions: -XX:MaxMetaspaceSize=224M -XX:MaxDirectMemorySize=650M -XX:MaxRAMPercentage=42
+    maxReplicaCount: 3
+    targetCPUUtilization: 70
+    behavior:
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        selectPolicy: Max
+        policies:
+          - type: Pods
+            value: 4
+            periodSeconds: 30
+          - type: Percent
+            value: 100
+            periodSeconds: 30
+  jvmOptions: -XX:MaxMetaspaceSize=224M -XX:MaxDirectMemorySize=650M -XX:MaxRAMPercentage=42 -XX:ActiveProcessorCount=1
   resources:
     limits:
       cpu: 1000m
       memory: 2000Mi
     requests:
-      cpu: 200m
+      cpu: 150m
       memory: 1700Mi
 customEtcd:
   resources:
@@ -98,15 +163,18 @@ dashboards:
       cpu: 200m
       memory: 45Mi
     requests:
+      # Without a CPU request the 80 % CPU scaler fired on idle use; visual exports load this app.
+      cpu: 100m
       memory: 15Mi
 exportController:
-  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M
+  # Load test export burst: peak ~0.36 core, 19 % throttled at a 500m limit.
+  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -XX:ActiveProcessorCount=1
   resources:
     limits:
-      cpu: 500m
+      cpu: 1000m
       memory: 1280Mi
     requests:
-      cpu: 100m
+      cpu: 200m
       memory: 1280Mi
 homeUi:
   resources:
@@ -132,14 +200,43 @@ measureEditor:
       cpu: 20m
       memory: 15Mi
 metadataApi:
-  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:ActiveProcessorCount=6 -Dkotlinx.coroutines.io.parallelism=16 -XX:MaxRAMPercentage=69
+  # The largest cost per data request (~6 UI HTTP calls). Planning cost 0.9 core/DRPS:
+  #   floor 2 x 1.5 CPU x 75 % = 2.25 cores = 2.5 DRPS (no scale-up),
+  #   knee  5 x 1.5 CPU x 80 % = 6 cores    = 6.7 DRPS (6.0 at 1.0, 4.6 at 1.3 core/DRPS).
+  # Same order as the smaller Cloud clusters; 2 CPU x 3-10 pods was a medium profile.
+  replicaCount: 2
+  kedaAutoscaling:
+    minReplicaCount: 2
+    maxReplicaCount: 5
+    # 60 % of the request (0.9 core/pod). At 75 % with request = limit, the pods were CFS
+    # throttled (36 %) at 68 % average and the HPA never scaled (2026-10-21 steps run).
+    targetCPUUtilization: 60
+    # Fast scale-up: the chart default (300 s window, +2 pods/min) took 10 min to recover.
+    behavior:
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        selectPolicy: Max
+        policies:
+          - type: Pods
+            value: 4
+            periodSeconds: 30
+          - type: Percent
+            value: 100
+            periodSeconds: 30
+  # ActiveProcessorCount=2 matches the 1.5 CPU limit rounded up; MaxRAMPercentage=65 of
+  # 3600Mi = ~2.3 GiB heap (peak working set in the load test: 2.35 GiB per pod).
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:ActiveProcessorCount=2 -Dkotlinx.coroutines.io.parallelism=16 -XX:MaxRAMPercentage=65
   resources:
+    # Request = limit: no node overcommit (overcommitted scale-up pods ran at 4-18 s mean
+    # latency) and no CFS throttling below the limit. 1.5 CPU, not 1: small pods were less
+    # efficient per request.
+    # Limit above the request: JVM bursts (GC, request spikes) were throttled at 1.5 CPU.
     limits:
-      cpu: 2000m
+      cpu: 2500m
       memory: 3600Mi
     requests:
-      cpu: 400m
-      memory: 2600Mi
+      cpu: 1500m
+      memory: 3000Mi
 organizationController:
   resources:
     limits:
@@ -148,37 +245,31 @@ organizationController:
     requests:
       cpu: 50m
       memory: 170Mi
-pdfStaplerService:
-  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=128M -XX:MaxDirectMemorySize=32M
-  resources:
-    limits:
-      cpu: 500m
-      memory: 1500Mi
-    requests:
-      cpu: 100m
-      memory: 620Mi
 quiver:
   storage:
     cache:
       diskCacheSize: 25Gi
       diskSize: 30Gi
+  # Fixed 2 replicas (no autoscaler). Cache + xtab cost ~0.15 core/DRPS, mostly on cache
+  # misses: ~0.9 core at 6 DRPS over 4 pods.
   resources:
+    # Load test p90 use 0.38 core per pod, peak 126 % of the old 350m request.
     cache:
       limits:
         ephemeral-storage: 30Gi
-        cpu: 950m
-        memory: 1000Mi
+        cpu: 1000m
+        memory: 1536Mi
       requests:
         ephemeral-storage: 30Gi
-        cpu: 350m
-        memory: 1000Mi
-    # Memory tuned for low-traffic clusters.
+        cpu: 400m
+        memory: 1536Mi
+    # Load test p90 use 0.21 core per pod. Memory tuned for low-traffic clusters.
     xtab:
       limits:
         cpu: 1500m
         memory: 2100Mi
       requests:
-        cpu: 750m
+        cpu: 300m
         memory: 2100Mi
     # Memory tuned for low-traffic clusters.
     ml:
@@ -188,13 +279,21 @@ quiver:
       requests:
         cpu: 400m
         memory: 768Mi
+    # The Rust etcd extension (base template) keeps more state in memory: on prod-large
+    # (~100k flights) quiver-policy was OOMKilled at 768Mi and datasource peaked at 735Mi,
+    # cache at 1.4Gi. Smaller catalogs need less; the prod-small rerun must confirm.
     policy:
       limits:
         cpu: 950m
-        memory: 512Mi
+        memory: 1024Mi
       requests:
         cpu: 350m
-        memory: 512Mi
+        memory: 1024Mi
+    datasource:
+      limits:
+        memory: 1024Mi
+      requests:
+        memory: 1024Mi
 redis-ha:
   replicas: 3
   # Keep 2/3 sentinel quorum during voluntary disruptions (node drains, Karpenter consolidation)
@@ -243,13 +342,27 @@ redis-ha:
         memory: 64Mi
         cpu: 150m
 resultCache:
+  # 0.09 core/DRPS: floor 2 x 200m x 70 % = 3.1 DRPS, HPA at max 4 = 6.2 DRPS.
   kedaAutoscaling:
     minReplicaCount: 2
-    maxReplicaCount: 8
-  jvmOptions: -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M -XX:MaxRAMPercentage=74
+    maxReplicaCount: 4
+    targetCPUUtilization: 70
+    behavior:
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        selectPolicy: Max
+        policies:
+          - type: Pods
+            value: 4
+            periodSeconds: 30
+          - type: Percent
+            value: 100
+            periodSeconds: 30
+  jvmOptions: -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M -XX:MaxRAMPercentage=74 -XX:ActiveProcessorCount=1
   resources:
+    # 1000m limit: a 700m limit was 9 % throttled in the load test.
     limits:
-      cpu: 700m
+      cpu: 1000m
       memory: 2700Mi
     requests:
       cpu: 200m
@@ -264,6 +377,11 @@ scanModel:
       cpu: 100m
       memory: 600Mi
 sqlExecutor:
+  # Fixed 2 replicas (the released chart has no autoscaler for sql-executor). I/O-bound (~0.015 core/DRPS); the sql.select queue
+  # grew from ~8 DRPS with a fast test database. A slow customer database (5.9 s mean) needs
+  # ~23 parallel queries at 6 DRPS (not measured).
+  # ActiveProcessorCount=6 is kept on purpose (not the 500m limit): the work is waiting on
+  # the database, and the thread pools size from the processor count.
   jvmOptions: -Xmx1500M -XX:MaxMetaspaceSize=192M -XX:MaxDirectMemorySize=256M
     -XX:ActiveProcessorCount=6
   resources:
@@ -274,21 +392,26 @@ sqlExecutor:
       cpu: 100m
       memory: 2200Mi
 tabularExporter:
+  # Used ~0.13 core on average during the load-test export burst.
   resources:
     limits:
       cpu: 900m
       memory: 1500Mi
     requests:
-      cpu: 600m
+      cpu: 300m
       memory: 1500Mi
-visualExporterChromium:
+# Chart key for the Chromium sidecar of export-builder (the previous key, visualExporterChromium,
+# matched nothing, so the chart default 2-6 CPU / 4-6 GiB applied). Idle use is ~0.1 CPU; keep a
+# high limit so a render can burst, and reserve less.
+exportBuilderChromium:
   resources:
     limits:
-      cpu: 1000m
-      memory: 2Gi
+      # Rendering 4 dashboards at once peaks at ~2.2 cores per pod (load test 2026-10-20).
+      cpu: 4000m
+      memory: 6Gi
     requests:
-      cpu: 200m
-      memory: 2Gi
+      cpu: 500m
+      memory: 1536Mi
 visualExporterProxy:
   resources:
     limits:
@@ -320,6 +443,10 @@ webComponents:
       memory: 15Mi
 exportBuilder:
   replicaCount: 2
+  # 6 pods x 4 browsers = 24 parallel renders. Load test: 20 browsers failed 51 % of a
+  # 40-export burst, 40 browsers passed 96 %.
+  kedaAutoscaling:
+    maxReplicaCount: 6
   # Chromium in standalone container within export-builder pod
   # export-builder connects to Chromium using Chrome DevTools Protocol (CDP)
   playwright:
@@ -327,7 +454,7 @@ exportBuilder:
       type: "cdp"
   # These settings must be aligned with resource.limits.memory value
   # The minimum memory limit in MeBiBytes is (codecachesize+Xmx+metaspace+175)*1.024
-  jvmOptions: -XX:ReservedCodeCacheSize=60M -Xmx1500M -XX:MaxMetaspaceSize=210M -XX:MaxDirectMemorySize=128M
+  jvmOptions: -XX:ReservedCodeCacheSize=60M -Xmx1500M -XX:MaxMetaspaceSize=210M -XX:MaxDirectMemorySize=128M -XX:ActiveProcessorCount=2
   resources:
     limits:
       cpu: 2000m
@@ -336,13 +463,22 @@ exportBuilder:
       cpu: 200m
       memory: 550Mi
 apiGw:
+  # 0.08 core/DRPS: CPU is not the limit (floor 3 x 200m x 75 % = 5.6 DRPS). Its knee is the
+  # forward slots: the chart allows 100 concurrent calls per upstream per pod, and they
+  # fill only when metadata-api latency is high, so the api-gw knee follows metadata-api.
+  # Min 3 (~300 slots) because one pod can lose its slots (stuck pod, load test 2026-10-20).
+  replicaCount: 3
+  kedaAutoscaling:
+    minReplicaCount: 3
+    maxReplicaCount: 4
   resources:
     limits:
-      cpu: 1400m
-      memory: 2000Mi
+      cpu: 1000m
+      memory: 1Gi
     requests:
-      cpu: 280m
-      memory: 2000Mi
+      cpu: 200m
+      memory: 1Gi
   # -- Custom JVM options
   # These settings must be aligned with resource.limits.memory value
-  jvmOptions: "-XX:ActiveProcessorCount=2 -XX:MaxDirectMemorySize=256m -XX:MaxRAMPercentage=50"
+  # MaxRAMPercentage=35 of 1Gi = ~360 MiB heap (load test peak use 0.46 GiB per pod in total).
+  jvmOptions: "-XX:ActiveProcessorCount=1 -XX:MaxDirectMemorySize=256m -XX:MaxRAMPercentage=35"

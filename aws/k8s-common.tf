@@ -195,5 +195,6 @@ module "k8s_common" {
     null_resource.karpenter_nodeclaim_drain,
     kubectl_manifest.karpenter_node_pool,
     kubectl_manifest.karpenter_node_pool_starrocks,
+    kubectl_manifest.karpenter_node_pool_etcd,
   ]
 }

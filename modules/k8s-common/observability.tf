@@ -84,8 +84,9 @@ resource "helm_release" "kube_prometheus_stack" {
           }
           retention = var.prometheus_retention_period
           resources = {
-            requests = { cpu = "100m", memory = local.obs_mem.prometheus.request }
-            limits   = { cpu = "500m", memory = local.obs_mem.prometheus.limit }
+            # 500m CPU throttled queries until the liveness probe failed under load.
+            requests = { cpu = "500m", memory = local.obs_mem.prometheus.request }
+            limits   = { cpu = "2", memory = local.obs_mem.prometheus.limit }
           }
           storageSpec = {
             volumeClaimTemplate = {
