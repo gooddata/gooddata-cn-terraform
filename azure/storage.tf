@@ -7,6 +7,7 @@
 # - quiver-cache: Query acceleration cache
 # - quiver-datasource-fs: Data source files (e.g., uploaded CSVs)
 # - exports: Exported reports or data
+# - geo-collections: Country/region boundaries for geo charts (only when enabled)
 
 # Ensure the name is lower-case and contains no spaces or invalid chars
 resource "random_id" "storage_suffix" {
@@ -31,7 +32,7 @@ locals {
     "quiver-cache",
     "quiver-datasource-fs",
     "exports",
-  ], local.observability_storage_containers, var.enable_llm_observability ? ["langfuse"] : [])
+  ], local.observability_storage_containers, var.enable_llm_observability ? ["langfuse"] : [], var.geo_basemap_provider != "none" ? ["geo-collections"] : [])
 }
 
 resource "azurerm_storage_account" "main" {

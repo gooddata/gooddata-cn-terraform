@@ -1,0 +1,19 @@
+# Geo chart basemap provider. Credentials stay on api-gw, never in the browser.
+
+apiGw:
+%{ if provider == "awslocation" ~}
+  awsLocationRegion: "${aws_location_region}"
+  locationService:
+    plugin: "AwsLocation"
+%{ endif ~}
+%{ if provider == "mapbox" ~}
+  # api-gw reads MAPBOX_TOKEN only at pod start. A token change modifies this
+  # checksum, so the pods restart and use the new token.
+  podAnnotations:
+    checksum/mapbox-token: "${mapbox_token_checksum}"
+  locationService:
+    plugin: "MapboxLocation"
+    mapbox:
+      existingSecret: "${mapbox_secret_name}"
+      existingSecretKey: "token"
+%{ endif ~}

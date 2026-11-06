@@ -21,6 +21,12 @@ variable "azure_exports_container" {
   default = ""
 }
 
+variable "azure_geo_collections_container" {
+  description = "ABS container holding the geo collections used by geo charts."
+  type        = string
+  default     = ""
+}
+
 variable "azure_quiver_container" {
   type    = string
   default = ""
@@ -148,6 +154,25 @@ variable "gdcn_orgs" {
     id          = string
     name        = string
   }))
+}
+
+variable "geo_aws_location_region" {
+  description = "AWS region serving Amazon Location Service basemap tiles. Falls back to aws_region when empty."
+  type        = string
+  default     = ""
+}
+
+variable "geo_basemap_provider" {
+  description = "Basemap provider backing geo charts: \"none\", \"awslocation\" or \"mapbox\"."
+  type        = string
+  default     = "none"
+}
+
+variable "geo_mapbox_token" {
+  description = "Mapbox access token used when geo_basemap_provider is \"mapbox\"."
+  type        = string
+  sensitive   = true
+  default     = ""
 }
 
 variable "enable_gdcn_autoscaling" {
@@ -346,6 +371,12 @@ variable "local_s3_exports_bucket" {
   default     = ""
 }
 
+variable "local_s3_geo_collections_bucket" {
+  description = "Bucket holding the geo collections used by geo charts in local S3-compatible storage."
+  type        = string
+  default     = ""
+}
+
 variable "local_s3_quiver_cache_bucket" {
   description = "Bucket name used for Quiver durable cache in local S3-compatible storage."
   type        = string
@@ -402,6 +433,12 @@ variable "s3_datasource_fs_bucket_id" {
 variable "s3_exports_bucket_id" {
   type    = string
   default = ""
+}
+
+variable "s3_geo_collections_bucket_id" {
+  description = "S3 bucket holding the geo collections used by geo charts."
+  type        = string
+  default     = ""
 }
 
 variable "s3_quiver_cache_bucket_id" {

@@ -21,6 +21,12 @@ variable "db_username" {
   type        = string
 }
 
+variable "enable_geo_charts" {
+  description = "Create the geo collections bucket used by geo charts."
+  type        = bool
+  default     = false
+}
+
 variable "enable_istio_injection" {
   description = "Whether to label namespaces with istio-injection=enabled."
   type        = bool
@@ -102,6 +108,18 @@ variable "seaweedfs_bucket_exports" {
   validation {
     condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.seaweedfs_bucket_exports))
     error_message = "seaweedfs_bucket_exports must be a valid S3 bucket name: 3-63 chars, lowercase alphanumeric, dots and hyphens, starting and ending alphanumeric."
+  }
+}
+
+variable "seaweedfs_bucket_geo_collections" {
+  description = "Bucket holding the geo collections used by geo charts."
+  type        = string
+  default     = "gooddata-geo-collections"
+
+  # Interpolated into the bucket-creation shell script in seaweedfs.tf.
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.seaweedfs_bucket_geo_collections))
+    error_message = "seaweedfs_bucket_geo_collections must be a valid S3 bucket name: 3-63 chars, lowercase alphanumeric, dots and hyphens, starting and ending alphanumeric."
   }
 }
 

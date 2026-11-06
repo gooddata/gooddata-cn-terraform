@@ -53,6 +53,7 @@ module "k8s_local" {
     external   = external
   }
 
+  enable_geo_charts      = var.geo_basemap_provider != "none"
   enable_istio_injection = var.ingress_controller == "istio_gateway"
   enable_observability   = var.enable_observability
   helm_cnpg_version      = var.helm_cnpg_version
@@ -195,6 +196,10 @@ module "k8s_common" {
   local_s3_exports_bucket       = module.k8s_local.seaweedfs_bucket_exports
   local_s3_datasource_fs_bucket = module.k8s_local.seaweedfs_bucket_datasource_fs
   local_s3_quiver_cache_bucket  = module.k8s_local.seaweedfs_bucket_quiver_cache
+
+  local_s3_geo_collections_bucket = module.k8s_local.seaweedfs_bucket_geo_collections
+  geo_basemap_provider            = var.geo_basemap_provider
+  geo_mapbox_token                = var.geo_mapbox_token
 
   # Local DB provisioned in-cluster by modules/k8s-local
   db_hostname = local.local_db_hostname

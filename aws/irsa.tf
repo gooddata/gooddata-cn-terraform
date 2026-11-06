@@ -34,6 +34,44 @@ resource "aws_iam_role_policy_attachment" "gdcn_irsa_s3_access" {
   policy_arn = aws_iam_policy.gdcn_s3_access.arn
 }
 
+locals {
+  # Same fallback as the api-gw awsLocationRegion value in k8s-common.
+  geo_aws_location_region = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region
+}
+
+data "aws_iam_policy_document" "gdcn_geo_maps_access" {
+  count = local.enable_aws_location ? 1 : 0
+
+  # GetTile supports the regional provider resource, so limit it to the
+  # configured Location region.
+  statement {
+    sid       = "AllowLocationServiceTiles"
+    effect    = "Allow"
+    actions   = ["geo-maps:GetTile"]
+    resources = ["arn:aws:geo-maps:${local.geo_aws_location_region}::provider/default"]
+  }
+
+  # The IAM service reference defines no resource type for these actions.
+  statement {
+    sid    = "AllowLocationServiceStyleAssets"
+    effect = "Allow"
+    actions = [
+      "geo-maps:GetGlyphs",
+      "geo-maps:GetSprites",
+      "geo-maps:GetStyleDescriptor",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "gdcn_geo_maps_access" {
+  count = local.enable_aws_location ? 1 : 0
+
+  name   = "${var.deployment_name}-GeoMapsAccess"
+  role   = aws_iam_role.gdcn_irsa.id
+  policy = data.aws_iam_policy_document.gdcn_geo_maps_access[0].json
+}
+
 ###
 # IAM role for the EBS CSI driver (IRSA)
 ###

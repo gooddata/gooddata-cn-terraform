@@ -30,9 +30,27 @@ quiver:
     absContainer: "${azure_datasource_fs_container}"
     authType: "azure_default"
     absClientId: "${azure_uami_client_id}"
+%{ if geo_enabled ~}
+  geoCollections:
+    storageType: "ABS"
+  absGeoCollectionsStorage:
+    absAccountName: "${azure_storage_account_name}"
+    absContainer: "${azure_geo_collections_container}"
+    authType: "azure_default"
+    absClientId: "${azure_uami_client_id}"
+%{ endif ~}
   podLabels:
     azure.workload.identity/use: "true"
 
+%{ if geo_enabled ~}
+deployQuiverGeoCollections: true
+
+mapIngestionJob:
+  enabled: true
+  podLabels:
+    azure.workload.identity/use: "true"
+
+%{ endif ~}
 organizationController:
   podLabels:
     azure.workload.identity/use: "true"

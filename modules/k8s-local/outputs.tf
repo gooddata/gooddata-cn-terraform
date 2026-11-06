@@ -8,6 +8,11 @@ output "seaweedfs_bucket_exports" {
   value       = var.seaweedfs_bucket_exports
 }
 
+output "seaweedfs_bucket_geo_collections" {
+  description = "SeaweedFS bucket for the geo collections used by geo charts."
+  value       = var.seaweedfs_bucket_geo_collections
+}
+
 output "seaweedfs_bucket_langfuse" {
   description = "SeaweedFS bucket for Langfuse object storage (trace events, media, batch exports)."
   value       = var.seaweedfs_bucket_langfuse

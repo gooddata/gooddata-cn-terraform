@@ -18,3 +18,16 @@ quiver:
   s3DatasourceFsStorage:
     s3Region: "${aws_region}"
     s3Bucket: "${s3_datasource_fs_bucket_id}"
+%{ if geo_enabled ~}
+  geoCollections:
+    storageType: "S3"
+  s3GeoCollectionsStorage:
+    s3Region: "${aws_region}"
+    s3Bucket: "${s3_geo_collections_bucket_id}"
+    authType: "aws_default"
+
+deployQuiverGeoCollections: true
+
+mapIngestionJob:
+  enabled: true
+%{ endif ~}
