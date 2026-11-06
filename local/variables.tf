@@ -275,7 +275,7 @@ variable "ingress_controller" {
   default     = "traefik"
   validation {
     condition     = contains(["traefik", "istio_gateway"], var.ingress_controller)
-    error_message = "For local deployments, ingress_controller must be one of: \"traefik\", \"istio_gateway\"."
+    error_message = "For local deployments, ingress_controller must be one of: \"traefik\", \"istio_gateway\". ingress-nginx was removed: use \"traefik\", and rename ingress_nginx_behind_l7 -> ingress_behind_l7 and helm_ingress_nginx_version -> helm_traefik_version."
   }
 }
 

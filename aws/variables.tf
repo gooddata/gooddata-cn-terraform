@@ -469,7 +469,7 @@ variable "ingress_controller" {
     condition = (
       contains(["traefik", "alb", "istio_gateway"], var.ingress_controller)
     )
-    error_message = "ingress_controller must be one of: \"alb\", \"traefik\", \"istio_gateway\"."
+    error_message = "ingress_controller must be one of: \"alb\", \"traefik\", \"istio_gateway\". ingress-nginx was removed: use \"traefik\", and rename ingress_nginx_behind_l7 -> ingress_behind_l7 and helm_ingress_nginx_version -> helm_traefik_version."
   }
 }
 
