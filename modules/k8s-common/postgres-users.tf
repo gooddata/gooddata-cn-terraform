@@ -185,7 +185,11 @@ locals {
   }
 
   pg_role_lines = { for name, user in local.pg_users : name => compact(concat(
-    ["$PSQL -v role=${user.role} -v pw=\"$PG_PW_${upper(name)}\" -f /tmp/sql/role.sql"],
+    [
+      "$PSQL -v role=${user.role} -f /tmp/sql/role.sql",
+      # \password reads the new password from stdin when there is no TTY.
+      "printf '%s\\n%s\\n' \"$PG_PW_${upper(name)}\" \"$PG_PW_${upper(name)}\" | $PSQL -c '\\password ${user.role}'",
+    ],
     user.database == "" ? [] : [
       "$PSQL -v role=${user.role} -v db=${user.database} -f /tmp/sql/database.sql",
       user.revoke_public ? "$PSQL -c 'revoke all on database ${user.database} from public'" : "",
