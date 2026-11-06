@@ -119,6 +119,18 @@ To upgrade GoodData.CN to the [latest version](https://www.gooddata.com/docs/clo
 
 1. Run Terraform: `terraform apply -var-file=settings.tfvars`
 
+#### Upgrading from ingress-nginx to Traefik
+
+Traefik replaces ingress-nginx. Rename `ingress_nginx_behind_l7` to `ingress_behind_l7` and `helm_ingress_nginx_version` to `helm_traefik_version` in `settings.tfvars`. Set `ingress_controller = "traefik"` if you set it before.
+
+During `terraform apply`, Terraform removes the ingress-nginx namespace and its load balancer. It then creates Traefik with a new load balancer. Expect a short outage, and update your DNS record if it does not follow the load balancer automatically.
+
+Ingresses that the GoodData.CN organization controller already created keep `ingressClassName: nginx` until something changes them. A one-time Kubernetes Job (`ingress-class-migration` in the `traefik` namespace) changes only those Ingresses to `traefik`. It does nothing on a new installation. To check, run this command and confirm that no row shows `nginx`:
+
+```bash
+kubectl get ingress -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,CLASS:.spec.ingressClassName
+```
+
 
 ### Tearing down
 
