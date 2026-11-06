@@ -1,0 +1,140 @@
+###
+# STACKIT project & region
+###
+# Project that owns all resources. Find it in the STACKIT Portal.
+stackit_project_id = "00000000-0000-0000-0000-000000000000"
+
+# Region: eu01 (Germany) or eu02 (Austria).
+stackit_region = "eu01"
+
+# Availability zones for the node pools. They must be in stackit_region.
+stackit_availability_zones = ["eu01-1", "eu01-2", "eu01-3"]
+
+# Uncomment to add labels. Only STACKIT network resources accept labels.
+# stackit_additional_labels = {
+#   Environment = "dev"
+# }
+
+###
+# GoodData.CN deployment configuration
+###
+helm_gdcn_version = "4.15.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+deployment_name   = "gooddata-cn"
+
+# GoodData.CN license key
+gdcn_license_key = "key/asdf==" # provided by GoodData
+
+# Uncomment to append extra gooddata-cn Helm values
+# gdcn_helm_extra_values = <<-EOT
+#   service:
+#     someComponent:
+#       replicaCount: 3
+# EOT
+
+# Uncomment to disable AI features (GenAI service, semantic search, chat, metadata sync, Qdrant).
+# enable_ai_features = false
+
+# Uncomment to enable experimental features (unsupported and unstable; talk to GoodData first).
+# enable_experimental_features = true
+
+# Uncomment to enable geo charts via Mapbox (requires geo_mapbox_token).
+# geo_basemap_provider = "mapbox"
+# geo_mapbox_token     = "pk.ey..."
+
+# Size profile:
+# - dev: lowest footprint, not HA
+# - prod-small: HA (>= 2 replicas per service), increased resources
+# - prod-large: HA, sized for large/high-traffic deployments
+# It sets sensible defaults for the metadata DB flavor/storage, node pool machine
+# types and min/max counts, observability disk sizes, and GoodData.CN/subchart
+# sizing, so you don't set those individually. To override one default, add its
+# variable here yourself (e.g. postgresflex_flavor_id, ske_workload_max_nodes);
+# see variables.tf for the list.
+# NOTE: changing size_profile after deploying isn't a supported migration; PVCs
+# can't shrink, and growing them is a manual, storage-class-dependent step.
+size_profile = "prod-small"
+
+# Uncomment to enable KEDA autoscaling for GoodData.CN services (GoodData.CN 4.12.0+).
+# enable_gdcn_autoscaling = true
+
+###
+# Networking
+###
+# The project must be in a STACKIT Network Area that allows /22 networks and sets a public DNS server.
+# Sources that can reach the public Kubernetes API. Include the IP that Terraform runs from.
+ske_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
+
+###
+# DNS
+###
+# Terraform does not manage DNS. After apply, create the records from the manual_dns_records output.
+
+###
+# Ingress + TLS
+###
+# Option 1 — Ingress Controller (traefik) + Let's Encrypt certificates (letsencrypt)
+ingress_controller = "traefik"
+tls_mode           = "letsencrypt"
+letsencrypt_email  = "me@example.com"
+
+# Uncomment only if you put your own L7 proxy in front of the ingress controller.
+# ingress_behind_l7 = true
+
+# Option 2 — Istio Gateway + Let's Encrypt certificates (letsencrypt)
+# If you switch to or from Istio after the first deploy, restart all workloads in each injected namespace.
+# ingress_controller = "istio_gateway"
+# tls_mode           = "letsencrypt"
+# letsencrypt_email  = "me@example.com"
+
+###
+# Organization configuration
+###
+# Authentication endpoint hostname
+auth_hostname = "auth.gooddata.example.com"
+
+# Organizations that Terraform manages. Leave the list empty to create none.
+gdcn_orgs = [
+  {
+    id          = "main"
+    name        = "Main Organization"
+    admin_user  = "admin"
+    admin_group = "adminGroup"
+    hostname    = "gooddata.example.com"
+  }
+]
+
+###
+# Observability stack configuration (optional)
+###
+# Uncomment to enable the observability stack
+# enable_observability = true
+# observability_hostname = "observability.gooddata.example.com"
+
+# Uncomment to change data retention (defaults shown). Loki needs a multiple of 24h.
+# loki_retention_period       = "168h"
+# prometheus_retention_period = "168h"
+# tempo_retention_period      = "168h"
+
+###
+# LLM observability (Langfuse) configuration (optional)
+###
+# Not available on STACKIT yet.
+
+###
+# Container image caching (optional)
+###
+# Not available on STACKIT. Uncomment to pull images through your own mirror.
+# registry_dockerio = "my-mirror.example.com/dockerio"
+# registry_quayio   = "my-mirror.example.com/quayio"
+# registry_k8sio    = "my-mirror.example.com/k8sio"
+
+###
+# SKE & infrastructure (optional)
+###
+# Uncomment to set the minimum Kubernetes version. SKE can upgrade past it.
+# ske_version = "1.33"
+
+# Uncomment to override the workload node pool sizing from size_profile.
+# ske_workload_machine_type = "g2a.8d"
+# ske_workload_min_nodes    = 2
+# ske_workload_max_nodes    = 12
