@@ -81,6 +81,10 @@ module "k8s_common" {
   stackit_s3_quiver_cache_bucket  = local.bucket_names["quiver-cache"]
   stackit_s3_datasource_fs_bucket = local.bucket_names["quiver-datasource-fs"]
 
+  stackit_s3_geo_collections_bucket = try(local.bucket_names["geo-collections"], "")
+  geo_basemap_provider              = var.geo_basemap_provider
+  geo_mapbox_token                  = var.geo_mapbox_token
+
   # Observability object storage: Loki + Tempo write to Object Storage (no big
   # PVC) using their own credentials group. Their S3 clients want a bare host,
   # while the GoodData.CN chart above takes the full URL.
