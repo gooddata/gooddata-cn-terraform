@@ -85,7 +85,7 @@ Requirements:
     - For Azure: `az login`
     - Azure note: Terraform's Kubernetes authentication uses `kubelogin` with your Azure CLI session.
     - For STACKIT: create a service account key and export `STACKIT_SERVICE_ACCOUNT_KEY_PATH` (or save it to `~/.stackit/credentials.json`). See the [provider authentication docs](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs#authentication).
-    - STACKIT note: SKE issues a short-lived kubeconfig, so rerun `../scripts/configure-kubectl.sh` when it expires.
+    - STACKIT note: SKE issues a kubeconfig that expires after 24 hours. To renew it, run `terraform apply -var-file=settings.tfvars -target=stackit_ske_kubeconfig.main`, then rerun `../scripts/configure-kubectl.sh`. A full apply can fail first, because the Kubernetes and Helm providers still use the expired kubeconfig.
     - STACKIT note: STACKIT Object Storage refuses to delete a bucket that still holds objects, so empty the buckets before `terraform destroy`.
 
 1. Initialize Terraform: `terraform init`

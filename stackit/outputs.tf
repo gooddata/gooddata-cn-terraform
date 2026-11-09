@@ -6,7 +6,7 @@ output "gdcn_namespace" {
 # The SKE kubeconfig is short-lived, so configure-kubectl.sh re-reads this each
 # time rather than writing a long-lived context.
 output "kubeconfig" {
-  description = "Admin kubeconfig for the SKE cluster. Short-lived; re-run scripts/configure-kubectl.sh once it expires."
+  description = "Admin kubeconfig for the SKE cluster. Expires after 24 hours; see the README for how to renew it."
   value       = stackit_ske_kubeconfig.main.kube_config
   sensitive   = true
 }

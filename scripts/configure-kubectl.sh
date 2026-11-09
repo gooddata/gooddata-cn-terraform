@@ -79,7 +79,7 @@ case "${CURRENT_DIR}" in
     SKE_EXPIRES_AT=$(tf_output_value "kubeconfig_expires_at")
     if [[ -n "${SKE_EXPIRES_AT}" ]] && jq -en --arg t "${SKE_EXPIRES_AT}" \
       '($t | sub("\\.[0-9]+"; "") | fromdateiso8601) <= now' >/dev/null 2>&1; then
-      echo ">> ERROR: The SKE kubeconfig expired at ${SKE_EXPIRES_AT}. Run 'terraform apply' to renew it, then rerun this script." >&2
+      echo ">> ERROR: The SKE kubeconfig expired at ${SKE_EXPIRES_AT}. Renew it with 'terraform apply -var-file=settings.tfvars -target=stackit_ske_kubeconfig.main', then rerun this script." >&2
       exit 1
     fi
 
