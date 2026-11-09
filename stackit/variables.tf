@@ -8,13 +8,13 @@ variable "auth_hostname" {
 }
 
 variable "deployment_name" {
-  description = "Name prefix for all STACKIT resources."
+  description = "Name prefix for all STACKIT resources. It is also the SKE cluster name."
   type        = string
   default     = "gooddata-cn"
 
   validation {
-    condition     = can(regex("^[a-z0-9-]{1,50}$", var.deployment_name)) && length(join("", regexall("[0-9a-z]", lower(var.deployment_name)))) <= 18
-    error_message = "The deployment_name must contain only lowercase letters, numbers, and hyphens. After removing non-alphanumeric characters, it must be ≤18 characters to allow space for 6-character random suffix."
+    condition     = can(regex("^[a-z0-9]([a-z0-9-]{0,9}[a-z0-9])?$", var.deployment_name))
+    error_message = "deployment_name is also the SKE cluster name: 1-11 lowercase letters, numbers and hyphens, starting and ending with a letter or number."
   }
 }
 
