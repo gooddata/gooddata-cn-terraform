@@ -232,7 +232,7 @@ variable "helm_prometheus_operator_crds_version" {
   description = "Version of the prometheus-operator-crds Helm chart. Must match the prometheus-operator version bundled in helm_kube_prometheus_stack_version."
   type        = string
   # renovate: depName=prometheus-operator-crds registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "32.0.2"
+  default = "33.0.1"
 }
 
 variable "helm_promtail_version" {
