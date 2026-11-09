@@ -452,7 +452,7 @@ variable "helm_traefik_version" {
   description = "Version of the Traefik Helm chart to deploy. https://artifacthub.io/packages/helm/traefik/traefik"
   type        = string
   # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
-  default = "40.2.0"
+  default = "40.3.0"
 }
 
 variable "ingress_behind_l7" {
