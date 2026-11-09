@@ -182,14 +182,14 @@ variable "helm_istio_version" {
   description = "Version of the Istio Helm charts (base, istiod, gateway). https://istio.io/latest/docs/setup/install/helm/"
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
-  default = "1.30.7"
+  default = "1.30.8"
 }
 
 variable "helm_langfuse_version" {
   description = "Version of the langfuse Helm chart to deploy. https://artifacthub.io/packages/helm/langfuse/langfuse"
   type        = string
   # renovate: depName=langfuse registryUrl=https://langfuse.github.io/langfuse-k8s
-  default = "2.1.5"
+  default = "2.2.4"
 }
 
 variable "helm_loki_version" {
@@ -203,7 +203,7 @@ variable "helm_kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack"
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "92.17.0"
+  default = "92.22.0"
 }
 
 variable "helm_promtail_version" {
@@ -231,7 +231,7 @@ variable "helm_traefik_version" {
   description = "Version of the Traefik Helm chart to deploy. https://artifacthub.io/packages/helm/traefik/traefik"
   type        = string
   # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
-  default = "40.2.0"
+  default = "42.3.1"
 }
 
 variable "ingress_behind_l7" {
