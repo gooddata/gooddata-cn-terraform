@@ -211,7 +211,7 @@ variable "helm_langfuse_version" {
   description = "Version of the langfuse Helm chart to deploy."
   type        = string
   # renovate: depName=langfuse registryUrl=https://langfuse.github.io/langfuse-k8s
-  default = "2.2.0"
+  default = "2.2.4"
 }
 
 variable "helm_loki_version" {
