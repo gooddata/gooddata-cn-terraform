@@ -50,16 +50,16 @@ locals {
     }
     prod-large = {
       rds = {
-        instance_class    = "db.r6g.xlarge"
+        instance_class    = "db.r6g.4xlarge"
         allocated_storage = 100
       }
       system_node_type   = "m8a.xlarge"
       system_node_count  = 3
-      node_cpu_limit     = 320
+      node_cpu_limit     = 480
       node_cpu_max       = 16
       ingress_replicas   = 3
       storage_class      = "gp3-perf"
-      fast_storage_class = "gp3-perf"
+      fast_storage_class = "gp3-etcd"
       postgres = {
         work_mem_mb             = 32
         maintenance_work_mem_mb = 512

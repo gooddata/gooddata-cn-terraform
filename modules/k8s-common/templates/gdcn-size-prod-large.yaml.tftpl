@@ -31,18 +31,30 @@ afmExecApi:
   # Netty/WebFlux: blocking calls use Dispatchers.IO (64-thread default caps
   # ~50 req/pod). io.parallelism + ActiveProcessorCount raise per-pod concurrency.
   jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=200M -XX:ActiveProcessorCount=8 -Dkotlinx.coroutines.io.parallelism=128 -XX:MaxRAMPercentage=47
-  # Deploys at the autoscaling floor; the ceiling of 12 is peak-provisioned,
+  # Deploys at the autoscaling floor; the ceiling is peak-provisioned,
   # since fewer replicas regress execute latency sharply under high load.
-  replicaCount: 2
+  replicaCount: 6
   kedaAutoscaling:
-    minReplicaCount: 2
-    maxReplicaCount: 12
+    # Fast scale-up: the chart default (300 s window) recovers too slowly.
+    behavior: &fastScaleUp
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        selectPolicy: Max
+        policies:
+          - type: Pods
+            value: 4
+            periodSeconds: 30
+          - type: Percent
+            value: 100
+            periodSeconds: 30
+    minReplicaCount: 6
+    maxReplicaCount: 16
   resources:
     limits:
       cpu: 3000m
       memory: 3600Mi
     requests:
-      cpu: 1000m
+      cpu: 1500m
       memory: 3600Mi
 analyticalDesigner:
   resources:
@@ -61,10 +73,10 @@ apiDocs:
       memory: 15Mi
 apiGateway:
   jvmOptions: -Xmx225M -XX:MaxMetaspaceSize=128M -XX:MaxDirectMemorySize=512M
-  replicaCount: 2
+  replicaCount: 3
   resources:
     limits:
-      cpu: 500m
+      cpu: 1500m
       memory: 1Gi
     requests:
       cpu: 100m
@@ -86,13 +98,14 @@ automation:
       value: "false"
 calcique:
   jvmOptions: -XX:MaxMetaspaceSize=320M -XX:MaxDirectMemorySize=512M -XX:MaxRAMPercentage=36
-  replicaCount: 2
+  replicaCount: 8
   kedaAutoscaling:
-    minReplicaCount: 2
-    maxReplicaCount: 8
+    behavior: *fastScaleUp
+    minReplicaCount: 8
+    maxReplicaCount: 28
   resources:
     limits:
-      cpu: 3000m
+      cpu: 4000m
       memory: 2800Mi
     requests:
       cpu: 1500m
@@ -101,11 +114,21 @@ customEtcd:
   enabled: true
   resources:
     requests:
-      cpu: 500m
-      memory: 2048Mi
+      cpu: 3000m
+      memory: 13Gi
     limits:
-      cpu: 2000m
-      memory: 4096Mi
+      cpu: 3000m
+      memory: 13Gi
+%{ if cloud == "aws" ~}
+  # Dedicated nodes from the "etcd" Karpenter NodePool (aws/karpenter.tf).
+  nodeSelector:
+    workload: etcd
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: etcd
+      effect: NoSchedule
+%{ endif ~}
   # Down from 512Gi, which was far more than etcd can use. A StatefulSet
   # volumeClaimTemplate is immutable, so an existing prod-large install rejects
   # this on upgrade. Migrating means snapshotting etcd, deleting the
@@ -114,22 +137,35 @@ customEtcd:
   # lives on that disk.
   persistence:
     size: 30Gi
+  # Compact every 30 min (chart default 5m): frequent compaction slowed etcd and stalled Quiver reads.
+  autoCompaction:
+    mode: periodic
+    retention: 30m
 dashboards:
+  replicaCount: 3
+  kedaAutoscaling:
+    minReplicaCount: 3
+    maxReplicaCount: 16
   resources:
     limits:
-      cpu: 200m
-      memory: 45Mi
+      cpu: 1000m
+      memory: 128Mi
     requests:
-      memory: 15Mi
+      cpu: 200m
+      memory: 32Mi
 exportController:
   jvmOptions: -Xmx1024M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M
+  replicaCount: 4
+  # Pin: the chart default follows the export-builder maximum and would change the pod template.
+  builderRetry:
+    podsPerRetry: 10
   resources:
     limits:
-      cpu: 500m
-      memory: 1792Mi
+      cpu: 2000m
+      memory: 2560Mi
     requests:
-      cpu: 250m
-      memory: 1024Mi
+      cpu: 500m
+      memory: 1536Mi
 # GenAI services (only deployed when AI features are enabled).
 # Safe to leave in place when AI features are off.
 genAiService:
@@ -198,14 +234,16 @@ metadataApi:
     # throttles span export, dropping downstream spans from Tempo under load.
     - name: MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED
       value: "false"
-  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -Dkotlinx.coroutines.io.parallelism=48 -XX:MaxRAMPercentage=82
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -XX:ActiveProcessorCount=4 -Dkotlinx.coroutines.io.parallelism=48 -XX:MaxRAMPercentage=82
   pulsar:
     metadataSync:
       messageTTL: 3600
-  replicaCount: 2
+  replicaCount: 6
   kedaAutoscaling:
-    minReplicaCount: 2
-    maxReplicaCount: 5
+    behavior: *fastScaleUp
+    minReplicaCount: 6
+    maxReplicaCount: 20
+    targetCPUUtilization: 60
   resources:
     limits:
       # metadataApi is the busiest service (every AFM execute calls it via the
@@ -247,30 +285,33 @@ qdrant:
       cpu: 1000m
       memory: 3500Mi
 quiver:
-  limitFlightCount: 150000
-  cacheCountLimit: 150000
+  # Slow xtab boot with 12-16 workers failed the liveness probe, so delay it to 60 s.
+  service:
+    liveness:
+      initialDelaySeconds: 60
+  # Fewer flights mean fewer etcd keys, shorter compactions and smaller flight views.
+  limitFlightCount: 75000
+  # Per quiver-cache pod, 12 x 6000 stays below limitFlightCount.
+  cacheCountLimit: 6000
   concurrentPutRequests: 64
-  # Durable-write concurrency is per-backend: ABS on Azure, S3 on AWS and local (SeaweedFS).
-%{ if cloud == "azure" ~}
-  absDurableStorage:
-    durableABSWritesInProgress: 128
-%{ else ~}
-  s3DurableStorage:
-    durableS3WritesInProgress: 128
-%{ endif ~}
+  # Durable (S3/ABS) storage off: writes add etcd events and latency. Changing it on a live
+  # install needs an etcd wipe, which empties the result cache.
+  durableStorageType: ""
   storage:
-    # Holds the flight catalog (SQLite); must scale with limitFlightCount.
-    serverWorkDirSize: 1024Mi
+    # Holds the flight catalog (SQLite); must scale with limitFlightCount. 1Gi evicted pods.
+    serverWorkDirSize: 4096Mi
     cache:
       diskCacheSize: 25Gi
       diskSize: 30Gi
   replicaCount:
     # cache serves every DoGet + absorbs DoPut/S3 writes on cache miss; 2 pods
     # saturated the put pipeline under load.
-    cache: 8
+    cache: 12
     # xtab is I/O-bound (Flight reads from cache); 8 pods with capped worker
     # pools (extraEnvVarsXtab) keep the queue clear without swamping the cache.
-    xtab: 8
+    xtab: 16
+    datasource: 4
+    policy: 4
   resources:
     cache:
       # Needs real CPU headroom: the single-threaded etcd-view-apply loop needs a
@@ -278,11 +319,11 @@ quiver:
       # stall cross-tabs.
       limits:
         cpu: 4000m
-        memory: 2048Mi
+        memory: 4096Mi
         ephemeral-storage: 30Gi
       requests:
         cpu: 2000m
-        memory: 2048Mi
+        memory: 4096Mi
         ephemeral-storage: 30Gi
     xtab:
       # Bursty CPU (worker subprocesses run short polars ops); needs headroom
@@ -302,32 +343,67 @@ quiver:
       requests:
         cpu: 1000m
         memory: 2560Mi
+    datasource:
+      limits:
+        cpu: 4000m
+        memory: 2560Mi
+      requests:
+        cpu: 1500m
+        memory: 2560Mi
     policy:
       limits:
-        cpu: 2100m
-        memory: 768Mi
+        cpu: 4000m
+        memory: 6144Mi
       requests:
-        cpu: 600m
-        memory: 768Mi
+        cpu: 2000m
+        memory: 6144Mi
   extraEnvVarsCache:
-    - name: QUIVER_ETCD_NEW_EVENT_READER
+    # Rust etcd event apply; Helm replaces lists, so every list repeats it.
+    - name: QUIVER_USE_RUST_EXTENSION
       value: "1"
-    # S3 uploads drain via these threads (default 4/pod); at 40 iter/s 4 can't
-    # keep up and backpressure DoPut. S3 PUTs are cheap I/O, so widen the drain.
-    - name: QUIVER_STORAGE_DURABLE_SYNC_THREADS
-      value: "16"
+    # Wait up to 120 s (default 10 s) for etcd at start, or Quiver exits with "future revision".
+    - name: QUIVER_ETCD_INIT_MAX_DELAY
+      value: "120"
+    # Flight-catalog VACUUM threshold (default 50000): a higher value stalls the catalog less often.
+    - name: QUIVER_FCAT_VACUUM_DT
+      value: "250000"
   extraEnvVarsDatasource:
-    - name: QUIVER_ETCD_NEW_EVENT_READER
+    # Rust etcd event apply; Helm replaces lists, so every list repeats it.
+    - name: QUIVER_USE_RUST_EXTENSION
       value: "1"
+    # Wait up to 120 s (default 10 s) for etcd at start, or Quiver exits with "future revision".
+    - name: QUIVER_ETCD_INIT_MAX_DELAY
+      value: "120"
+    # Flight-catalog VACUUM threshold (default 50000): a higher value stalls the catalog less often.
+    - name: QUIVER_FCAT_VACUUM_DT
+      value: "250000"
   extraEnvVarsMl:
-    - name: QUIVER_ETCD_NEW_EVENT_READER
+    # Rust etcd event apply; Helm replaces lists, so every list repeats it.
+    - name: QUIVER_USE_RUST_EXTENSION
       value: "1"
+    # Wait up to 120 s (default 10 s) for etcd at start, or Quiver exits with "future revision".
+    - name: QUIVER_ETCD_INIT_MAX_DELAY
+      value: "120"
+    # Flight-catalog VACUUM threshold (default 50000): a higher value stalls the catalog less often.
+    - name: QUIVER_FCAT_VACUUM_DT
+      value: "250000"
   extraEnvVarsPolicy:
-    - name: QUIVER_ETCD_NEW_EVENT_READER
+    # Rust etcd event apply; Helm replaces lists, so every list repeats it.
+    - name: QUIVER_USE_RUST_EXTENSION
       value: "1"
+    # Wait up to 120 s (default 10 s) for etcd at start, or Quiver exits with "future revision".
+    - name: QUIVER_ETCD_INIT_MAX_DELAY
+      value: "120"
+    # Flight-catalog VACUUM threshold (default 50000): a higher value stalls the catalog less often.
+    - name: QUIVER_FCAT_VACUUM_DT
+      value: "250000"
   extraEnvVarsXtab:
-    - name: QUIVER_ETCD_NEW_EVENT_READER
+    - name: QUIVER_USE_RUST_EXTENSION
       value: "1"
+    - name: QUIVER_ETCD_INIT_MAX_DELAY
+      value: "120"
+    - name: QUIVER_FCAT_VACUUM_DT
+      value: "250000"
     # Cap the dataframe worker pool: xtab spawns TASK_WORKERS subprocesses
     # sequentially at boot (~2s each, importing polars), so a high count (was 24)
     # pushed startup past the liveness probe on slower/contended nodes and the pod
@@ -335,9 +411,10 @@ quiver:
     # enough concurrency for the I/O-bound cross-tab tasks. POLARS_MAX_THREADS caps
     # per-worker polars threads to avoid CPU oversubscription.
     - name: QUIVER_DATAFRAME_TASK_THREADS
-      value: "12"
+      value: "16"
+    # 16 workers per pod: 12 left a 3,400-request queue with idle CPU.
     - name: QUIVER_DATAFRAME_TASK_WORKERS
-      value: "8"
+      value: "16"
     - name: QUIVER_DATAFRAME_GATHER_THREADS
       value: "8"
     - name: POLARS_MAX_THREADS
@@ -347,6 +424,8 @@ quiver:
     etcd_disk_flight_catalog: true
 redis-ha:
   replicas: 3
+  persistentVolume:
+    size: 20Gi
   # Keep 2/3 sentinel quorum during voluntary disruptions (node drains, Karpenter consolidation)
   podDisruptionBudget:
     maxUnavailable: 1
@@ -372,10 +451,10 @@ redis-ha:
     resources:
       limits:
         cpu: 2000m
-        memory: 9125Mi
+        memory: 12Gi
       requests:
         cpu: 1500m
-        memory: 9125Mi
+        memory: 12Gi
   sentinel:
     resources:
       limits:
@@ -400,13 +479,14 @@ resultCache:
   # Deploys at the autoscaling floor; the ceiling of 16 at 4000m is
   # peak-provisioned, since fewer/smaller replicas regress execute latency
   # sharply under load.
-  replicaCount: 2
+  replicaCount: 8
   kedaAutoscaling:
-    minReplicaCount: 2
-    maxReplicaCount: 16
+    behavior: *fastScaleUp
+    minReplicaCount: 8
+    maxReplicaCount: 24
   resources:
     limits:
-      cpu: 4000m
+      cpu: 5000m
       memory: 3600Mi
     requests:
       cpu: 2000m
@@ -434,17 +514,16 @@ sqlExecutor:
   jvmOptions: -Xmx2048M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=512M -XX:ActiveProcessorCount=32
   extraEnvVars:
     - name: DS_POOL_MAXCONNECTIONS
-      value: "32"
-  # Pods idle at full load (gated by quiver-cache puts); 8 x receiverQueueSize 6
-  # = 48 in-flight SQL, above the sustained miss rate.
-  replicaCount: 8
+      value: "12"
+  # Pool per data source and pod: floor(0.8 x (max_connections - 10) / (16 pods x 4 data sources)) = 12.
+  replicaCount: 16
   pulsar:
     sqlSelect:
       # Match pre-fetch depth to the JDBC pool size to avoid connection exhaustion.
-      receiverQueueSize: 6
+      receiverQueueSize: 10
   resources:
     limits:
-      cpu: 1500m
+      cpu: 3000m
       memory: 4096Mi
     requests:
       # Lower CPU request packs more sqlExecutor replicas per node.
@@ -458,18 +537,20 @@ tabularExporter:
     requests:
       cpu: 1000m
       memory: 7500Mi
-visualExporterChromium:
+# The old key, visualExporterChromium, matched no chart value.
+exportBuilderChromium:
   resources:
     limits:
-      cpu: 1200m
-      memory: 4Gi
+      cpu: 6000m
+      memory: 8Gi
     requests:
-      cpu: 200m
+      cpu: 2500m
       memory: 4Gi
 visualExporterProxy:
+  # 1 core: the squid sidecar was throttled at 300m.
   resources:
     limits:
-      cpu: 300m
+      cpu: 1000m
       memory: 300Mi
     requests:
       cpu: 100m
@@ -497,15 +578,27 @@ webComponents:
     requests:
       memory: 15Mi
 exportBuilder:
-  replicaCount: 2
+  replicaCount: 8
   # Adjust maxReplicaCount to the expected export load: each replica carries a
   # Chromium container, so the ceiling drives both cost and node capacity.
   kedaAutoscaling:
-    minReplicaCount: 2
-    maxReplicaCount: 12
+    minReplicaCount: 8
+    maxReplicaCount: 24
+  export:
+    visual:
+      # 20 s timed out under load ("Timed out navigating to dashboard").
+      navigateTimeout: 40s
+      evaluateTimeout: 180s
+    slides:
+      navigateTimeout: 40s
+      evaluateTimeout: 180s
+      screenshotsMaxSize: 40MB
   # Chromium runs in a standalone container in the pod; export-builder connects
   # to it over the Chrome DevTools Protocol (CDP).
   playwright:
+    concurrency:
+      # Browser contexts per pod (default 4); the Chromium sidecar is sized for 8.
+      maxInstances: 8
     browser:
       type: "cdp"
   # These settings must be aligned with resource.limits.memory value
@@ -513,21 +606,21 @@ exportBuilder:
   jvmOptions: -XX:ReservedCodeCacheSize=60M -Xmx1500M -XX:MaxMetaspaceSize=210M -XX:MaxDirectMemorySize=128M
   resources:
     limits:
-      cpu: 2000m
+      cpu: 4000m
       # Additional 500Mi for Chromium
       memory: 2500Mi
     requests:
-      cpu: 200m
+      cpu: 1000m
       memory: 550Mi
 apiGw:
   # Ktor gateway. Each forward holds a CIO connection (~100/pod) for the full
-  # backend call, so forward concurrency = ~100 x replicas, the ceiling when
-  # backends are slow. The autoscaling ceiling of 6 (~600 slots) covers peak;
-  # raise it toward 16 if it backs up.
-  replicaCount: 2
+  # backend call, so forward concurrency = ~100 x replicas.
+  replicaCount: 4
   kedaAutoscaling:
-    minReplicaCount: 2
-    maxReplicaCount: 6
+    behavior: *fastScaleUp
+    minReplicaCount: 4
+    maxReplicaCount: 20
+    targetCPUUtilization: 60
   # Enable Quiver's modern etcd keyspace (removes the single-threaded flight-
   # catalog view-apply stall under load). Platform feature-value flag.
   extraEnvVars:
