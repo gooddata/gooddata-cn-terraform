@@ -26,9 +26,10 @@ locals {
 
   # FIPS-approved TLS for the public gateway (istio_gateway_fips_tls).
   # TLS 1.3 suites are not configurable in Envoy; a non-FIPS Envoy still
-  # offers TLS_CHACHA20_POLY1305_SHA256 for TLS 1.3.
+  # offers TLS_CHACHA20_POLY1305_SHA256 for TLS 1.3, so the profile caps TLS at 1.2.
   istio_gateway_fips_tls_options = {
     minProtocolVersion = "TLSV1_2"
+    maxProtocolVersion = "TLSV1_2"
     cipherSuites = [
       "ECDHE-ECDSA-AES128-GCM-SHA256",
       "ECDHE-RSA-AES128-GCM-SHA256",

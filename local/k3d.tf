@@ -27,7 +27,6 @@ resource "local_file" "k3d_config" {
 resource "null_resource" "k3d_cluster" {
   triggers = {
     cluster_name    = var.k3d_cluster_name
-    servers_memory  = var.k3d_servers_memory
     k3d_config_sha1 = local.k3d_config_sha1
     kubeconfig_path = local.kubeconfig_path
     kubeconfig_ctx  = local.kubeconfig_context
@@ -52,15 +51,6 @@ resource "null_resource" "k3d_cluster" {
       else
         echo ">> Creating k3d cluster '${var.k3d_cluster_name}'..."
         k3d cluster create -c "${path.module}/k3d-config.generated.yaml"
-      fi
-
-      # A memory limit through docker update: the k3d serversMemory option bind-mounts a file from
-      # ~/.config/k3d, which Docker Desktop refuses when Terraform runs in a dev container.
-      if [ -n "${var.k3d_servers_memory}" ]; then
-        for c in $(docker ps -q --filter "label=k3d.cluster=${var.k3d_cluster_name}" --filter "label=k3d.role=server"); do
-          docker update --memory "${var.k3d_servers_memory}" --memory-swap "${var.k3d_servers_memory}" "$c" >/dev/null
-          echo ">> Memory limit ${var.k3d_servers_memory} on server node $c"
-        done
       fi
 
       echo ">> Writing kubeconfig to '${local.kubeconfig_path}'..."
@@ -93,3 +83,27 @@ resource "null_resource" "k3d_cluster" {
   ]
 }
 
+# Memory limit of the server nodes through docker update (the k3d serversMemory option bind-mounts a
+# file from ~/.config/k3d, which Docker Desktop refuses when Terraform runs in a dev container).
+# Separate from null_resource.k3d_cluster: changing k3d_servers_memory updates the running containers
+# and never replaces (and deletes) the cluster. It runs again when the cluster is recreated.
+resource "null_resource" "k3d_servers_memory" {
+  triggers = {
+    cluster_id     = null_resource.k3d_cluster.id
+    cluster_name   = var.k3d_cluster_name
+    servers_memory = var.k3d_servers_memory
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      if [ -n "${var.k3d_servers_memory}" ]; then
+        for c in $(docker ps -q --filter "label=k3d.cluster=${var.k3d_cluster_name}" --filter "label=k3d.role=server"); do
+          docker update --memory "${var.k3d_servers_memory}" --memory-swap "${var.k3d_servers_memory}" "$c" >/dev/null
+          echo ">> Memory limit ${var.k3d_servers_memory} on server node $c"
+        done
+      fi
+    EOT
+  }
+}

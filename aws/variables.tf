@@ -32,6 +32,12 @@ variable "aws_profile_name" {
   type        = string
 }
 
+variable "aws_sso_region" {
+  description = "Region of the IAM Identity Center (SSO) portal of aws_profile_name (sso_region in ~/.aws/config). It can differ from aws_region. Used only when fips_enabled = true, to point the provider at the non-FIPS SSO portal. Empty uses aws_region."
+  type        = string
+  default     = ""
+}
+
 variable "aws_region" {
   description = "AWS region to deploy resources to."
   type        = string
@@ -156,7 +162,7 @@ variable "enable_gdcn_autoscaling" {
   default     = false
 
   validation {
-    condition = !var.enable_gdcn_autoscaling || try(
+    condition = !var.enable_gdcn_autoscaling || strcontains(var.helm_gdcn_version, "+") || try(
       tonumber(split(".", var.helm_gdcn_version)[0]) > 4 ||
       (tonumber(split(".", var.helm_gdcn_version)[0]) == 4 && tonumber(split(".", var.helm_gdcn_version)[1]) >= 12),
     false)
@@ -232,6 +238,10 @@ variable "fips_enabled" {
   validation {
     condition     = !var.fips_enabled || contains(["us-east-1", "us-east-2", "us-west-1", "us-west-2"], var.aws_region)
     error_message = "fips_enabled = true requires a region with AWS FIPS endpoints: us-east-1, us-east-2, us-west-1 or us-west-2."
+  }
+  validation {
+    condition     = !var.fips_enabled || !var.enable_image_cache
+    error_message = "fips_enabled = true cannot be combined with enable_image_cache = true: Amazon ECR does not support the first pull-through-cache pull of an image on the FIPS endpoint, so a new image fails to start. Set enable_image_cache = false."
   }
   validation {
     condition     = !var.fips_enabled || var.ingress_controller == "istio_gateway"

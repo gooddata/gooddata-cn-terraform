@@ -152,7 +152,7 @@ variable "enable_gdcn_autoscaling" {
   default     = false
 
   validation {
-    condition = !var.enable_gdcn_autoscaling || try(
+    condition = !var.enable_gdcn_autoscaling || strcontains(var.helm_gdcn_version, "+") || try(
       tonumber(split(".", var.helm_gdcn_version)[0]) > 4 ||
       (tonumber(split(".", var.helm_gdcn_version)[0]) == 4 && tonumber(split(".", var.helm_gdcn_version)[1]) >= 12),
     false)

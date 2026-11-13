@@ -7,6 +7,10 @@ aws_profile_name = "my-profile"
 # Region to deploy resources to
 aws_region = "eu-central-1"
 
+# Region of the IAM Identity Center (SSO) portal of the profile (sso_region in ~/.aws/config).
+# Only needed with fips_enabled = true when it differs from aws_region.
+# aws_sso_region = "us-east-1"
+
 # Uncomment to use an existing VPC instead of creating a new one
 # existing_vpc_id             = "vpc-0123456789abcdef0"
 # existing_private_subnet_ids = ["subnet-aaa", "subnet-bbb"]

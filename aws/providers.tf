@@ -49,7 +49,7 @@ provider "aws" {
   dynamic "endpoints" {
     for_each = var.fips_enabled ? [1] : []
     content {
-      sso = "https://portal.sso.${var.aws_region}.amazonaws.com"
+      sso = "https://portal.sso.${coalesce(var.aws_sso_region, var.aws_region)}.amazonaws.com"
     }
   }
   default_tags {
