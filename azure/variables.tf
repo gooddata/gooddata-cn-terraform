@@ -25,7 +25,7 @@ variable "aks_node_cpu_max" {
 variable "aks_version" {
   description = "Version of AKS to deploy."
   type        = string
-  default     = "1.36"
+  default     = "1.37"
 }
 
 variable "auth_hostname" {
