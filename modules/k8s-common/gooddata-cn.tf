@@ -149,6 +149,15 @@ resource "kubernetes_secret_v1" "gdcn_license" {
   ]
 }
 
+locals {
+  # renovate: datasource=docker depName=dhi.io/redis
+  gdcn_redis_tag = "8.8.4-debian13-compat"
+  # renovate: datasource=docker depName=dhi.io/redis-exporter
+  gdcn_redis_exporter_tag = "1.97.0"
+  # renovate: datasource=docker depName=dhi.io/socat
+  gdcn_socat_tag = "1.8.1-alpine"
+}
+
 # Install GoodData.CN
 resource "helm_release" "gooddata_cn" {
   name      = "gooddata-cn"
@@ -173,7 +182,6 @@ resource "helm_release" "gooddata_cn" {
       storage_class           = var.gdcn_storage_class
       fast_storage_class      = local.fast_storage_class
       registry_dockerio       = var.registry_dockerio
-      registry_quayio         = var.registry_quayio
       ingress_class_name      = local.resolved_ingress_class_name
       ingress_annotations     = local.ingress_annotations
       dex_ingress_annotations = local.dex_ingress_annotations
@@ -193,7 +201,6 @@ resource "helm_release" "gooddata_cn" {
     }) : null,
     var.enable_image_cache ? templatefile("${path.module}/templates/gdcn-image-cache.yaml.tftpl", {
       registry_dockerio = var.registry_dockerio,
-      registry_quayio   = var.registry_quayio
     }) : null,
     var.cloud == "azure" ? templatefile("${path.module}/templates/gdcn-azure.yaml.tftpl", {
       gdcn_service_account_name = local.gdcn_service_account_name
@@ -281,9 +288,19 @@ resource "helm_release" "gooddata_cn" {
         }
       } }
     }) : null,
-    local.use_internal_registry_auth ? yamlencode({
-      imagePullSecrets = [{ name = kubernetes_secret_v1.internal_registry[0].metadata[0].name }]
-    }) : null,
+    templatefile("${path.module}/templates/gdcn-dhi.yaml.tftpl", {
+      registry           = local.dhi_registry
+      pull_secret_name   = local.dhi_pull_secret_name
+      redis_tag          = local.gdcn_redis_tag
+      redis_exporter_tag = local.gdcn_redis_exporter_tag
+    }),
+    # The DHI pull secret also serves the socat sidecar added to export-builder.
+    yamlencode({
+      imagePullSecrets = concat(
+        local.use_internal_registry_auth ? [{ name = kubernetes_secret_v1.internal_registry[0].metadata[0].name }] : [],
+        [{ name = local.dhi_pull_secret_name }],
+      )
+    }),
     var.enable_gdcn_autoscaling ? templatefile("${path.module}/templates/gdcn-autoscaling.yaml.tftpl", {
       prometheus_enabled = var.enable_observability
       prometheus_address = var.enable_observability ? "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090" : ""
@@ -301,6 +318,7 @@ resource "helm_release" "gooddata_cn" {
 
   depends_on = [
     kubernetes_namespace_v1.gdcn,
+    module.dhi_pull,
     kubernetes_secret_v1.gdcn_mapbox_token,
     kubernetes_secret_v1.postgres_ca_cert,
     kubernetes_job_v1.gdcn_db_bootstrap["gdcn"],
@@ -415,16 +433,35 @@ resource "kubectl_manifest" "export_builder_localhost_forwarder" {
       template:
         spec:
           containers:
+            # The DHI socat image has no shell, so IPv4 and IPv6 run as two containers.
             - name: localhost-forwarder
-              image: ${var.registry_dockerio}/alpine/socat:1.8.0.3
+              image: ${local.dhi_registry}/socat:${local.gdcn_socat_tag}
               imagePullPolicy: IfNotPresent
-              command:
-                - /bin/sh
-                - -ec
-                - |
-                  socat TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork TCP4:${local.export_builder_forwarder_target} &
-                  socat TCP6-LISTEN:443,bind=[::1],reuseaddr,fork TCP4:${local.export_builder_forwarder_target} &
-                  wait
+              args:
+                - TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork
+                - TCP4:${local.export_builder_forwarder_target}
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                runAsUser: 65534
+                capabilities:
+                  drop:
+                    - ALL
+                  add:
+                    - NET_BIND_SERVICE
+              resources:
+                limits:
+                  cpu: 50m
+                  memory: 64Mi
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+            - name: localhost-forwarder-v6
+              image: ${local.dhi_registry}/socat:${local.gdcn_socat_tag}
+              imagePullPolicy: IfNotPresent
+              args:
+                - TCP6-LISTEN:443,bind=[::1],reuseaddr,fork
+                - TCP4:${local.export_builder_forwarder_target}
               securityContext:
                 allowPrivilegeEscalation: false
                 runAsNonRoot: true

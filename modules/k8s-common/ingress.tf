@@ -34,11 +34,7 @@ locals {
   }
 
   traefik_values = {
-    image = {
-      registry = var.registry_dockerio
-      # Official Docker Hub images live under library/; only docker.io adds it implicitly.
-      repository = "library/traefik"
-    }
+    imagePullSecrets = [{ name = local.dhi_pull_secret_name }]
 
     deployment = {
       replicas = var.ingress_replicas
@@ -139,18 +135,22 @@ resource "helm_release" "traefik" {
   count = local.use_traefik ? 1 : 0
 
   name          = "traefik"
-  repository    = "https://traefik.github.io/charts"
-  chart         = "traefik"
+  repository    = "oci://${local.dhi_registry}"
+  chart         = "traefik-chart"
   namespace     = kubernetes_namespace_v1.ingress[count.index].metadata[0].name
   version       = var.helm_traefik_version
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
 
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+
   values = [yamlencode(local.traefik_values)]
 
   depends_on = [
     kubernetes_namespace_v1.ingress,
+    module.dhi_pull,
     helm_release.kube_prometheus_stack,
   ]
 }

@@ -19,24 +19,24 @@ resource "helm_release" "cert-manager" {
 
   name          = "cert-manager"
   namespace     = kubernetes_namespace_v1.cert-manager[0].metadata[0].name
-  chart         = "cert-manager"
-  repository    = "https://charts.jetstack.io"
+  chart         = "cert-manager-chart"
+  repository    = "oci://${local.dhi_registry}"
   version       = var.helm_cert_manager_version
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
+
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+
   values = [yamlencode(merge(
     {
       installCRDs = true
+      global      = { imagePullSecrets = [{ name = local.dhi_pull_secret_name }] }
       serviceAccount = {
         create = true
         name   = "cert-manager"
       }
-      image           = { repository = "${var.registry_quayio}/jetstack/cert-manager-controller" }
-      webhook         = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-webhook" } }
-      cainjector      = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-cainjector" } }
-      acmesolver      = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-acmesolver" } }
-      startupapicheck = { image = { repository = "${var.registry_quayio}/jetstack/cert-manager-startupapicheck" } }
     },
     var.enable_observability ? {
       prometheus = {
@@ -47,6 +47,7 @@ resource "helm_release" "cert-manager" {
 
   depends_on = [
     kubernetes_namespace_v1.cert-manager,
+    module.dhi_pull,
     helm_release.kube_prometheus_stack,
   ]
 }
@@ -67,6 +68,9 @@ resource "kubectl_manifest" "letsencrypt_cluster_issuer" {
           http01 = {
             ingress = {
               ingressClassName = local.cert_manager_http01_ingress_class
+              podTemplate = {
+                spec = { imagePullSecrets = [{ name = local.dhi_pull_secret_name }] }
+              }
             }
           }
         }]

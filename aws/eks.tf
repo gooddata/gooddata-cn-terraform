@@ -98,6 +98,10 @@ module "eks" {
   # workload capacity just-in-time.
   eks_managed_node_groups = {
     system = {
+      # Names with the deployment prefix (module default: system-eks-node-group-*).
+      iam_role_name        = "${var.deployment_name}-system-node"
+      launch_template_name = "${var.deployment_name}-system"
+
       ami_type       = local.eks_ami_type
       instance_types = local.system_node_types
 

@@ -1,0 +1,11 @@
+# Redis HA and its exporter from Docker Hardened Images. The -compat Redis
+# variant keeps the shell and tools the redis-ha init and probe scripts need.
+redis-ha:
+  imagePullSecrets:
+    - name: ${pull_secret_name}
+  image:
+    repository: ${registry}/redis
+    tag: "${redis_tag}"
+  exporter:
+    image: ${registry}/redis-exporter
+    tag: "${redis_exporter_tag}"

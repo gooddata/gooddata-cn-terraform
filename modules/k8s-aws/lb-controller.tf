@@ -264,17 +264,22 @@ locals {
 
 resource "helm_release" "aws_load_balancer_controller" {
   name          = "aws-load-balancer-controller"
-  repository    = "https://aws.github.io/eks-charts"
-  chart         = "aws-load-balancer-controller"
+  repository    = "oci://${local.dhi_registry}"
+  chart         = "aws-load-balancer-controller-chart"
   namespace     = kubernetes_namespace_v1.alb.metadata[0].name
   version       = var.helm_aws_lb_controller_version
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
 
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+
   # Tolerate the system pool taint: this runs before Karpenter has provisioned
   # any untainted capacity, so the system nodes are the only place it can land.
   values = concat([<<EOF
+    imagePullSecrets:
+      - name: ${local.dhi_pull_secret_name}
     replicaCount: ${var.ingress_replicas}
     clusterName: ${var.deployment_name}
     region: ${var.aws_region}
@@ -292,5 +297,6 @@ EOF
 
   depends_on = [
     kubernetes_service_account_v1.lb_controller,
+    module.dhi_pull,
   ]
 }

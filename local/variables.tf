@@ -19,17 +19,25 @@ variable "deployment_name" {
 }
 
 variable "dockerhub_access_token" {
-  description = "Optional Docker Hub password/PAT used by k3d registry auth config."
+  description = "Docker Hub PAT. Required: pulls Istio from Docker Hardened Images (dhi.io) and configures k3d registry auth."
   type        = string
   default     = ""
   sensitive   = true
+  validation {
+    condition     = length(var.dockerhub_access_token) > 0
+    error_message = "dockerhub_access_token must be provided: it is always needed to pull Docker Hardened Images from dhi.io."
+  }
 }
 
 variable "dockerhub_username" {
-  description = "Optional Docker Hub username used by k3d registry auth config."
+  description = "Docker Hub username. Required: pulls Istio from Docker Hardened Images (dhi.io) and configures k3d registry auth."
   type        = string
   default     = ""
   sensitive   = true
+  validation {
+    condition     = length(var.dockerhub_username) > 0
+    error_message = "dockerhub_username must be provided: it is always needed to pull Docker Hardened Images from dhi.io."
+  }
 }
 
 variable "enable_ai_features" {
@@ -184,10 +192,10 @@ variable "geo_mapbox_token" {
 }
 
 variable "helm_cert_manager_version" {
-  description = "Version of the cert-manager Helm chart to deploy."
+  description = "Version of the cert-manager Helm chart from dhi.io (dhi.io/cert-manager-chart), for example 1.21.3."
   type        = string
-  # renovate: depName=cert-manager registryUrl=https://charts.jetstack.io
-  default = "v1.21.3"
+  # renovate: datasource=docker depName=dhi.io/cert-manager-chart
+  default = "1.21.3"
 }
 
 variable "helm_clickhouse_operator_version" {
@@ -198,9 +206,9 @@ variable "helm_clickhouse_operator_version" {
 }
 
 variable "helm_cnpg_version" {
-  description = "Version of the CloudNativePG Helm chart to deploy."
+  description = "Version of the CloudNativePG Helm chart from dhi.io (dhi.io/cloudnative-pg-chart), for example 0.29.1."
   type        = string
-  # renovate: depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
+  # renovate: datasource=docker depName=dhi.io/cloudnative-pg-chart
   default = "0.29.1"
 }
 
@@ -230,49 +238,56 @@ variable "helm_gdcn_version" {
 }
 
 variable "helm_grafana_version" {
-  description = "Version of the grafana Helm chart to deploy."
+  description = "Version of the Grafana Helm chart from dhi.io (dhi.io/grafana-chart), for example 14.4.0."
   type        = string
-  # renovate: depName=grafana registryUrl=https://grafana.github.io/helm-charts
-  default = "10.5.15"
+  # renovate: datasource=docker depName=dhi.io/grafana-chart
+  default = "14.4.0"
 }
 
 variable "helm_istio_version" {
-  description = "Version of the Istio Helm charts (base, istiod, gateway)."
+  description = "Version of the Istio Helm charts (base, discovery, gateway) from dhi.io, for example 1.30.8."
   type        = string
-  # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
+  # renovate: datasource=docker depName=dhi.io/istio-base-chart
   default = "1.30.8"
 }
 
 variable "helm_langfuse_version" {
-  description = "Version of the langfuse Helm chart to deploy."
+  description = "Version of the langfuse Helm chart to deploy. Web and worker images come from dhi.io (dhi.io/langfuse, dhi.io/langfuse-worker) at the chart appVersion, so pick a chart whose appVersion dhi.io publishes."
   type        = string
   # renovate: depName=langfuse registryUrl=https://langfuse.github.io/langfuse-k8s
   default = "2.2.4"
 }
 
 variable "helm_loki_version" {
-  description = "Version of the loki Helm chart to deploy."
+  description = "Version of the Loki Helm chart from dhi.io (dhi.io/loki-chart), for example 18.17.1."
   type        = string
-  # renovate: depName=loki registryUrl=https://grafana.github.io/helm-charts
-  default = "7.3.0"
+  # renovate: datasource=docker depName=dhi.io/loki-chart
+  default = "18.17.1"
 }
 
 variable "helm_kube_prometheus_stack_version" {
-  description = "Version of the kube-prometheus-stack Helm chart to deploy."
+  description = "Version of the kube-prometheus-stack Helm chart from dhi.io (dhi.io/kube-prometheus-stack-chart), for example 92.22.0."
   type        = string
-  # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "93.1.1"
+  # renovate: datasource=docker depName=dhi.io/kube-prometheus-stack-chart
+  default = "92.22.0"
+}
+
+variable "helm_metrics_server_version" {
+  description = "Version of the metrics-server Helm chart from dhi.io (dhi.io/metrics-server-chart), for example 3.14.0. Replaces the metrics-server bundled with k3s."
+  type        = string
+  # renovate: datasource=docker depName=dhi.io/metrics-server-chart
+  default = "3.14.0"
 }
 
 variable "helm_prometheus_operator_crds_version" {
-  description = "Version of the prometheus-operator-crds Helm chart. Must match the prometheus-operator version bundled in helm_kube_prometheus_stack_version."
+  description = "Version of the prometheus-operator-crds Helm chart. Must match the prometheus-operator version bundled in helm_kube_prometheus_stack_version (32.0.2 = v0.94.2, as in the DHI kube-prometheus-stack 92.22.0)."
   type        = string
   # renovate: depName=prometheus-operator-crds registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "33.0.1"
+  default = "32.0.2"
 }
 
 variable "helm_promtail_version" {
-  description = "Version of the promtail Helm chart to deploy."
+  description = "Version of the promtail Helm chart to deploy. Stays on the upstream chart and image: dhi.io/promtail is not pullable."
   type        = string
   # renovate: depName=promtail registryUrl=https://grafana.github.io/helm-charts
   default = "6.17.1"
@@ -286,16 +301,16 @@ variable "helm_pulsar_version" {
 }
 
 variable "helm_tempo_version" {
-  description = "Version of the tempo Helm chart to deploy."
+  description = "Version of the Tempo Helm chart from dhi.io (dhi.io/tempo-chart), for example 2.4.0. Keep the 2.x line: 3.x changes the Tempo architecture."
   type        = string
-  # renovate: depName=tempo registryUrl=https://grafana.github.io/helm-charts
-  default = "1.24.4"
+  # renovate: datasource=docker depName=dhi.io/tempo-chart
+  default = "2.4.0"
 }
 
 variable "helm_traefik_version" {
-  description = "Version of the Traefik Helm chart to deploy."
+  description = "Version of the Traefik Helm chart from dhi.io (dhi.io/traefik-chart), for example 42.3.1."
   type        = string
-  # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
+  # renovate: datasource=docker depName=dhi.io/traefik-chart
   default = "42.3.1"
 }
 
@@ -461,18 +476,6 @@ variable "registry_dockerio" {
   description = "Container registry hostname used for images normally pulled from docker.io."
   type        = string
   default     = "docker.io"
-}
-
-variable "registry_k8sio" {
-  description = "Container registry hostname used for images normally pulled from registry.k8s.io."
-  type        = string
-  default     = "registry.k8s.io"
-}
-
-variable "registry_quayio" {
-  description = "Container registry hostname used for images normally pulled from quay.io."
-  type        = string
-  default     = "quay.io"
 }
 
 variable "seaweedfs_storage_size" {

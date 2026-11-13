@@ -2,6 +2,13 @@ variable "aws_region" { type = string }
 
 variable "deployment_name" { type = string }
 
+variable "dhi_access_token" {
+  type      = string
+  sensitive = true
+}
+
+variable "dhi_username" { type = string }
+
 variable "dns_provider" { type = string }
 
 variable "eks_cluster_oidc_issuer_url" { type = string }
@@ -22,8 +29,6 @@ variable "helm_metrics_server_version" { type = string }
 variable "ingress_controller" { type = string }
 
 variable "ingress_replicas" { type = number }
-
-variable "registry_k8sio" { type = string }
 
 variable "route53_zone_id" { type = string }
 

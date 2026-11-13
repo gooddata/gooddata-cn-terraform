@@ -69,7 +69,9 @@ locals {
   }
 
   pg_password_key = local.pg_user_defaults.key
-  pg_client_image = "${var.registry_dockerio}/library/postgres:16-alpine"
+  # The DHI runtime image still ships sh, coreutils and psql.
+  # renovate: datasource=docker depName=dhi.io/postgres
+  pg_client_image = "${local.dhi_registry}/postgres:16.15-debian13"
 
   langfuse_postgres_username = local.pg_users.langfuse.role
   langfuse_postgres_password = one([for name, pw in random_password.gdcn_db_user : pw.result if name == "langfuse"])
@@ -250,6 +252,10 @@ resource "kubernetes_job_v1" "gdcn_db_bootstrap" {
       spec {
         restart_policy = "OnFailure"
 
+        image_pull_secrets {
+          name = local.dhi_pull_secret_name
+        }
+
         container {
           name  = "bootstrap"
           image = local.pg_client_image
@@ -311,6 +317,7 @@ resource "kubernetes_job_v1" "gdcn_db_bootstrap" {
   depends_on = [
     kubernetes_namespace_v1.gdcn,
     kubernetes_namespace_v1.langfuse,
+    module.dhi_pull,
     kubernetes_secret_v1.gdcn_db_admin,
     kubernetes_secret_v1.gdcn_db_user,
     kubernetes_secret_v1.langfuse_server_secrets,

@@ -62,9 +62,11 @@ extraObjects:
         spec:
           serviceAccountName: keda-uninstall-cleanup
           restartPolicy: Never
+          imagePullSecrets:
+            - name: ${pull_secret}
           containers:
             - name: kubectl
-              image: registry.k8s.io/kubectl:v1.33.4
+              image: ${registry}/kubectl:1.35.10-debian13
               command:
                 - kubectl
                 - delete
