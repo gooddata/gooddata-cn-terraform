@@ -7,6 +7,10 @@ locals {
 
   seaweedfs_s3_access_key = "gdcn"
 
+  # DHI tag: major.minor of the chart. "-compat" adds the /bin/sh the chart's
+  # start script needs; "-dev" adds awk/grep for the bucket Job.
+  seaweedfs_image_version = "${split(".", var.helm_seaweedfs_version)[0]}.${split(".", var.helm_seaweedfs_version)[1]}"
+
   seaweedfs_buckets = concat([
     var.seaweedfs_bucket_exports,
     var.seaweedfs_bucket_datasource_fs,
@@ -114,6 +118,15 @@ resource "helm_release" "seaweedfs" {
 
   values = [
     yamlencode({
+      global = {
+        imagePullSecrets = [local.dhi_pull_secret_name]
+      }
+      image = {
+        registry   = local.dhi_registry
+        repository = "seaweedfs"
+        tag        = "${local.seaweedfs_image_version}-compat"
+      }
+
       # Single pod running master + volume + filer + S3 gateway.
       allInOne = {
         enabled  = true
@@ -181,6 +194,7 @@ resource "helm_release" "seaweedfs" {
 
   depends_on = [
     kubernetes_secret_v1.seaweedfs_s3_config,
+    module.dhi_pull,
   ]
 }
 
@@ -205,9 +219,13 @@ resource "kubernetes_job_v1" "seaweedfs_create_buckets" {
       spec {
         restart_policy = "OnFailure"
 
+        image_pull_secrets {
+          name = local.dhi_pull_secret_name
+        }
+
         container {
           name  = "create-buckets"
-          image = "${var.registry_dockerio}/chrislusf/seaweedfs:${split(".", var.helm_seaweedfs_version)[0]}.${split(".", var.helm_seaweedfs_version)[1]}"
+          image = "${local.dhi_registry}/seaweedfs:${local.seaweedfs_image_version}-dev"
 
           env {
             name  = "WEED_CLUSTER_DEFAULT"
@@ -228,7 +246,7 @@ resource "kubernetes_job_v1" "seaweedfs_create_buckets" {
               "max=60; i=1",
               "echo 'Waiting for SeaweedFS filer...'",
               "while [ $i -le $max ]; do",
-              "  if wget -q --spider http://$WEED_CLUSTER_SW_FILER/ 2>/dev/null; then break; fi",
+              "  if bash -c 'exec 3<>/dev/tcp/$${WEED_CLUSTER_SW_FILER%:*}/$${WEED_CLUSTER_SW_FILER#*:}' 2>/dev/null; then break; fi",
               "  echo \"Attempt $i: not ready, retrying in 5s...\"",
               "  sleep 5; i=$((i+1))",
               "done",
@@ -257,5 +275,5 @@ resource "kubernetes_job_v1" "seaweedfs_create_buckets" {
     update = "10m"
   }
 
-  depends_on = [helm_release.seaweedfs]
+  depends_on = [helm_release.seaweedfs, module.dhi_pull]
 }

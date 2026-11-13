@@ -35,8 +35,11 @@ locals {
   protomaps_style = replace(replace(file("${path.module}/files/protomaps-light-style.json"),
   "__BASE__", local.protomaps_base_url), "\"maxzoom\":99999", "\"maxzoom\":${var.geo_protomaps_max_zoom}")
   # A changed source, area or zoom makes a new PVC and a new Job, which build a new archive.
-  # Same pull secret as the GoodData.CN chart (gooddata-cn.tf): the image comes from the gdc-nas build registry.
-  protomaps_pull_secrets = local.use_internal_registry_auth ? [kubernetes_secret_v1.internal_registry[0].metadata[0].name] : []
+  # Same pull secrets as the GoodData.CN chart (gooddata-cn.tf): the image comes from the gdc-nas build registry.
+  protomaps_pull_secrets = concat(
+    local.use_internal_registry_auth ? [kubernetes_secret_v1.internal_registry[0].metadata[0].name] : [],
+    [local.dhi_pull_secret_name],
+  )
   protomaps_extract_hash = substr(sha256(join("|", [var.geo_protomaps_source_url, var.geo_protomaps_bbox, var.geo_protomaps_max_zoom])), 0, 8)
   protomaps_run_extract  = local.protomaps_enabled && var.geo_protomaps_existing_claim == "" && var.geo_protomaps_source_url != ""
 
@@ -174,7 +177,7 @@ resource "kubernetes_job_v1" "protomaps_extract" {
     update = "60m"
   }
 
-  depends_on = [kubernetes_persistent_volume_claim_v1.protomaps, kubernetes_secret_v1.internal_registry]
+  depends_on = [kubernetes_persistent_volume_claim_v1.protomaps, module.dhi_pull, kubernetes_secret_v1.internal_registry]
 }
 
 resource "kubernetes_config_map_v1" "protomaps_style" {
@@ -318,7 +321,7 @@ resource "kubernetes_deployment_v1" "protomaps" {
     }
   }
 
-  depends_on = [kubernetes_job_v1.protomaps_extract, kubernetes_persistent_volume_claim_v1.protomaps, kubernetes_secret_v1.internal_registry]
+  depends_on = [kubernetes_job_v1.protomaps_extract, kubernetes_persistent_volume_claim_v1.protomaps, module.dhi_pull, kubernetes_secret_v1.internal_registry]
 }
 
 resource "kubernetes_service_v1" "protomaps" {

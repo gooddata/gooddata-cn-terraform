@@ -32,13 +32,22 @@ resource "helm_release" "kube_prometheus_stack" {
   count = var.enable_observability ? 1 : 0
 
   name       = "kube-prometheus-stack"
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
+  repository = "oci://${local.dhi_registry}"
+  chart      = "kube-prometheus-stack-chart"
   version    = var.helm_kube_prometheus_stack_version
   namespace  = kubernetes_namespace_v1.observability[0].metadata[0].name
 
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+
   values = [
     yamlencode({
+      # Keeps the upstream resource names (for example kube-prometheus-stack-prometheus).
+      fullnameOverride = "kube-prometheus-stack"
+      global = {
+        imagePullSecrets = [{ name = local.dhi_pull_secret_name }]
+      }
+
       # Disable components we manage separately
       grafana      = { enabled = false }
       alertmanager = { enabled = false }
@@ -49,27 +58,14 @@ resource "helm_release" "kube_prometheus_stack" {
 
       # Subchart overrides
       "kube-state-metrics" = {
-        image = { registry = var.registry_k8sio }
         # Opt node labels into kube_node_labels (VM size, zone/region, Karpenter
         # nodepool). Scoped rather than nodes=[*] to keep cardinality bounded.
         metricLabelsAllowlist = [
           "nodes=[node.kubernetes.io/instance-type,topology.kubernetes.io/zone,topology.kubernetes.io/region,karpenter.sh/nodepool]"
         ]
       }
-      "prometheus-node-exporter" = {
-        image = { registry = var.registry_quayio }
-      }
 
       prometheusOperator = {
-        image = { registry = var.registry_quayio }
-        prometheusConfigReloader = {
-          image = { registry = var.registry_quayio }
-        }
-        admissionWebhooks = {
-          deployment = {
-            image = { registry = var.registry_quayio }
-          }
-        }
         resources = {
           requests = { cpu = "100m", memory = "128Mi" }
           limits   = { cpu = "200m", memory = "256Mi" }
@@ -78,7 +74,6 @@ resource "helm_release" "kube_prometheus_stack" {
 
       prometheus = {
         prometheusSpec = {
-          image = { registry = var.registry_quayio }
           externalLabels = {
             cluster_name = var.deployment_name
           }
@@ -107,22 +102,29 @@ resource "helm_release" "kube_prometheus_stack" {
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
+
+  depends_on = [module.dhi_pull]
 }
 
 resource "helm_release" "loki" {
   count = var.enable_observability ? 1 : 0
 
   name       = "loki"
-  repository = "https://grafana.github.io/helm-charts"
-  chart      = "loki"
+  repository = "oci://${local.dhi_registry}"
+  chart      = "loki-chart"
   version    = var.helm_loki_version
   namespace  = kubernetes_namespace_v1.observability[0].metadata[0].name
 
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+
   values = [
     yamlencode({
-      deploymentMode = "SingleBinary"
+      # The chart name would otherwise rename the Service to loki-loki-chart.
+      fullnameOverride = "loki"
+      imagePullSecrets = [{ name = local.dhi_pull_secret_name }]
+      deploymentMode   = "SingleBinary"
       loki = {
-        image = { registry = var.registry_dockerio }
         commonConfig = {
           replication_factor = 1
         }
@@ -187,12 +189,6 @@ resource "helm_release" "loki" {
       resultsCache = { enabled = false }
       gateway      = { enabled = false }
       minio        = { enabled = false }
-      sidecar = {
-        image = { registry = var.registry_dockerio }
-      }
-      lokiCanary = {
-        image = { registry = var.registry_dockerio }
-      }
       monitoring = {
         selfMonitoring = { enabled = false }
         lokiCanary     = { enabled = false }
@@ -204,6 +200,8 @@ resource "helm_release" "loki" {
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
+
+  depends_on = [module.dhi_pull]
 }
 
 resource "helm_release" "promtail" {
@@ -256,16 +254,21 @@ resource "helm_release" "tempo" {
   count = var.enable_observability ? 1 : 0
 
   name       = "tempo"
-  repository = "https://grafana.github.io/helm-charts"
-  chart      = "tempo"
+  repository = "oci://${local.dhi_registry}"
+  chart      = "tempo-chart"
   version    = var.helm_tempo_version
   namespace  = kubernetes_namespace_v1.observability[0].metadata[0].name
 
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+
   values = [
     yamlencode({
+      # The chart name would otherwise rename the Service to tempo-tempo-chart.
+      fullnameOverride = "tempo"
       tempo = merge({
-        image    = { registry = var.registry_dockerio }
-        extraEnv = var.obs_extra_env
+        pullSecrets = [local.dhi_pull_secret_name]
+        extraEnv    = var.obs_extra_env
         receivers = {
           jaeger = {
             protocols = {
@@ -332,23 +335,28 @@ resource "helm_release" "tempo" {
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
+
+  depends_on = [module.dhi_pull]
 }
 
 resource "helm_release" "grafana" {
   count = var.enable_observability ? 1 : 0
 
   name       = "grafana"
-  repository = "https://grafana.github.io/helm-charts"
-  chart      = "grafana"
+  repository = "oci://${local.dhi_registry}"
+  chart      = "grafana-chart"
   version    = var.helm_grafana_version
   namespace  = kubernetes_namespace_v1.observability[0].metadata[0].name
 
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+
   values = [
     yamlencode({
-      image                   = { registry = var.registry_dockerio }
-      downloadDashboardsImage = { registry = var.registry_dockerio }
-      initChownData = {
-        image = { registry = var.registry_dockerio }
+      # The chart name would otherwise rename the Service to grafana-grafana-chart.
+      fullnameOverride = "grafana"
+      global = {
+        imagePullSecrets = [{ name = local.dhi_pull_secret_name }]
       }
       deploymentStrategy = {
         type = "Recreate"
@@ -376,10 +384,6 @@ resource "helm_release" "grafana" {
       imageRenderer = {
         enabled  = true
         replicas = 1
-        image = {
-          registry = var.registry_dockerio
-          tag      = "latest"
-        }
         env = {
           HTTP_HOST           = "0.0.0.0"
           XDG_CONFIG_HOME     = "/tmp/.chromium"
@@ -475,7 +479,6 @@ resource "helm_release" "grafana" {
         }
       }
       sidecar = {
-        image = { registry = var.registry_quayio }
         dashboards = {
           enabled          = true
           label            = "grafana_dashboard"
@@ -509,7 +512,7 @@ resource "helm_release" "grafana" {
   timeout       = 1800
 
   # Traefik and its Middlewares first, so Grafana's router resolves on creation.
-  depends_on = [helm_release.kube_prometheus_stack, helm_release.loki, helm_release.tempo, helm_release.traefik, kubectl_manifest.traefik_middleware]
+  depends_on = [helm_release.kube_prometheus_stack, helm_release.loki, helm_release.tempo, helm_release.traefik, kubectl_manifest.traefik_middleware, module.dhi_pull]
 }
 
 resource "kubectl_manifest" "peerauth_observability_strict" {

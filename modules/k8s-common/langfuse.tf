@@ -216,10 +216,11 @@ resource "helm_release" "langfuse" {
 
   values = concat(
     [templatefile("${path.module}/templates/langfuse-values.yaml.tftpl", {
-      hostname          = var.llm_observability_hostname
-      admin_email       = local.langfuse_admin_email
-      deployment_name   = var.deployment_name
-      registry_dockerio = var.registry_dockerio
+      hostname             = var.llm_observability_hostname
+      admin_email          = local.langfuse_admin_email
+      deployment_name      = var.deployment_name
+      dhi_registry         = local.dhi_registry
+      dhi_pull_secret_name = local.dhi_pull_secret_name
 
       service_account_name        = local.langfuse_service_account_name
       service_account_annotations = var.langfuse_service_account_annotations
@@ -276,6 +277,7 @@ resource "helm_release" "langfuse" {
     kubernetes_job_v1.gdcn_db_bootstrap["langfuse"],
     kubernetes_stateful_set_v1.langfuse_valkey,
     kubernetes_service_v1.langfuse_valkey,
+    module.dhi_pull,
     helm_release.clickhouse_operator,
     kubectl_manifest.langfuse_clickhouse_keeper,
     # The CR is only accepted here, not serving; the chart's own wait below is

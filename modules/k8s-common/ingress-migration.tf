@@ -74,9 +74,15 @@ resource "kubernetes_job_v1" "ingress_class_migration" {
         restart_policy       = "OnFailure"
         service_account_name = kubernetes_service_account_v1.ingress_class_migration[0].metadata[0].name
 
+        image_pull_secrets {
+          name = local.dhi_pull_secret_name
+        }
+
         container {
-          name  = "migrate"
-          image = "${var.registry_dockerio}/alpine/k8s:1.33.4"
+          name = "migrate"
+          # The -compat variant is the DHI kubectl image that ships /bin/sh.
+          # renovate: datasource=docker depName=dhi.io/kubectl
+          image = "${local.dhi_registry}/kubectl:1.35.10-compat"
 
           command = ["/bin/sh", "-ec", join("\n", [
             "ns='${var.gdcn_namespace}'",
@@ -102,5 +108,6 @@ resource "kubernetes_job_v1" "ingress_class_migration" {
   depends_on = [
     helm_release.gooddata_cn,
     kubernetes_role_binding_v1.ingress_class_migration,
+    module.dhi_pull,
   ]
 }

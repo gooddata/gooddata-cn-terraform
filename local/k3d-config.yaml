@@ -23,8 +23,15 @@ registries:
       "docker.io":
         endpoint:
           - "https://registry-1.docker.io"
+      "dhi.io":
+        endpoint:
+          - "https://dhi.io"
     configs:
       "registry-1.docker.io":
+        auth:
+          username: "${dockerhub_username}"
+          password: "${dockerhub_access_token}"
+      "dhi.io":
         auth:
           username: "${dockerhub_username}"
           password: "${dockerhub_access_token}"
@@ -36,6 +43,10 @@ options:
   k3s:
     extraArgs:
       - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+      # Replaced by metrics-server from Docker Hardened Images (metrics-server.tf).
+      - arg: --disable=metrics-server
         nodeFilters:
           - server:*
       # The node shares the host disk. Image GC (default at 85% use) and the imagefs/nodefs

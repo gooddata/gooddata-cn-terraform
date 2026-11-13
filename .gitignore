@@ -52,3 +52,6 @@ local/k3d-config.generated.yaml
 # Python bytecode from helper scripts
 __pycache__/
 *.py[cod]
+
+# Helm charts pulled from dhi.io at plan time (scripts/pull-dhi-chart.sh)
+.dhi-charts/

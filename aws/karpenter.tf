@@ -4,7 +4,7 @@
 # Karpenter provisions right-sized, on-demand EC2 capacity just-in-time in
 # response to pending pods. The supporting IAM roles, instance profile, SQS
 # interruption queue and EKS Pod Identity association are created by the
-# upstream eks/karpenter submodule; the controller is installed via Helm and
+# upstream eks/karpenter submodule; the controller is installed via Helm from Docker Hardened Images and
 # the provisioning policy is expressed as an EC2NodeClass + NodePool(s).
 ###
 
@@ -13,6 +13,10 @@ module "karpenter" {
   version = "~> 21.0"
 
   cluster_name = module.eks.cluster_name
+
+  # Names with the deployment prefix (module defaults: KarpenterController-*, Karpenter*).
+  iam_role_name    = "${var.deployment_name}-karpenter"
+  rule_name_prefix = "${var.deployment_name}-"
 
   # v21 defaults to EKS Pod Identity (the pod-identity agent add-on is enabled
   # on the cluster) and v1 (>= 1.0) controller permissions; we just create the
@@ -32,17 +36,40 @@ module "karpenter" {
 
 # Install the Karpenter controller into kube-system (runs on the fixed-size
 # system node group defined in eks.tf).
+module "karpenter_dhi_pull" {
+  source = "../modules/dhi-pull-secret"
+
+  username     = var.dockerhub_username
+  access_token = var.dockerhub_access_token
+  namespaces   = { karpenter = "kube-system" }
+  consumers    = "Karpenter is"
+
+  depends_on = [module.eks]
+}
+
+# The DHI Karpenter chart has Chart.yaml version 1.14.1 under the OCI tag 1.15.1, and the helm
+# provider rejects that ("Planned version is different"). Pull it to a local path instead.
+data "external" "karpenter_chart" {
+  program = ["${path.module}/../scripts/pull-dhi-chart.sh"]
+  query = {
+    chart    = "karpenter-chart"
+    version  = var.helm_karpenter_version
+    dest     = "${path.module}/.dhi-charts"
+    username = var.dockerhub_username
+    password = var.dockerhub_access_token
+  }
+}
+
 resource "helm_release" "karpenter" {
-  name       = "karpenter"
-  repository = "oci://public.ecr.aws/karpenter"
-  chart      = "karpenter"
-  version    = var.helm_karpenter_version
-  namespace  = "kube-system"
+  name      = "karpenter"
+  chart     = data.external.karpenter_chart.result.path
+  namespace = "kube-system"
 
   wait    = true
   timeout = 1800
 
   values = [yamlencode({
+    imagePullSecrets = [{ name = module.karpenter_dhi_pull.secret_name }]
     serviceAccount = {
       name = "karpenter"
     }
@@ -64,7 +91,7 @@ resource "helm_release" "karpenter" {
     tolerations = [{ key = "CriticalAddonsOnly", operator = "Exists" }]
   })]
 
-  depends_on = [module.eks, module.karpenter]
+  depends_on = [module.eks, module.karpenter, module.karpenter_dhi_pull]
 }
 
 # EC2NodeClass: how Karpenter builds nodes (Bottlerocket AMI, node IAM role,
