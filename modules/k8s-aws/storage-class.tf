@@ -28,6 +28,25 @@ resource "kubernetes_storage_class_v1" "gp3_perf" {
   }
 }
 
+# etcd class for prod-large: 10000 IOPS needs a volume of at least 20 GiB (gp3 caps IOPS at 500/GiB).
+resource "kubernetes_storage_class_v1" "gp3_etcd" {
+  metadata {
+    name = "gp3-etcd"
+  }
+
+  storage_provisioner    = "ebs.csi.aws.com"
+  reclaim_policy         = "Delete"
+  volume_binding_mode    = "WaitForFirstConsumer"
+  allow_volume_expansion = true
+
+  parameters = {
+    type       = "gp3"
+    iops       = "10000"
+    throughput = "500"
+    encrypted  = "true"
+  }
+}
+
 resource "kubernetes_storage_class_v1" "gp3" {
   metadata {
     name = "gp3"

@@ -19,15 +19,28 @@ platform_limits:
   export_result_timeout_seconds: 420
 afmExecApi:
   kedaAutoscaling:
+    # Fast scale-up: the chart default (300 s window) recovers too slowly.
+    behavior: &fastScaleUp
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        selectPolicy: Max
+        policies:
+          - type: Pods
+            value: 4
+            periodSeconds: 30
+          - type: Percent
+            value: 100
+            periodSeconds: 30
     minReplicaCount: 2
-    maxReplicaCount: 8
-  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:MaxRAMPercentage=34
+    maxReplicaCount: 3
+    targetCPUUtilization: 70
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:MaxRAMPercentage=34 -XX:ActiveProcessorCount=1
   resources:
     limits:
       cpu: 1000m
       memory: 1400Mi
     requests:
-      cpu: 200m
+      cpu: 150m
       memory: 1400Mi
 analyticalDesigner:
   resources:
@@ -64,15 +77,17 @@ authService:
       memory: 716Mi
 calcique:
   kedaAutoscaling:
+    behavior: *fastScaleUp
     minReplicaCount: 2
-    maxReplicaCount: 8
-  jvmOptions: -XX:MaxMetaspaceSize=224M -XX:MaxDirectMemorySize=650M -XX:MaxRAMPercentage=42
+    maxReplicaCount: 3
+    targetCPUUtilization: 70
+  jvmOptions: -XX:MaxMetaspaceSize=224M -XX:MaxDirectMemorySize=650M -XX:MaxRAMPercentage=42 -XX:ActiveProcessorCount=1
   resources:
     limits:
       cpu: 1000m
       memory: 2000Mi
     requests:
-      cpu: 200m
+      cpu: 150m
       memory: 1700Mi
 customEtcd:
   resources:
@@ -98,15 +113,16 @@ dashboards:
       cpu: 200m
       memory: 45Mi
     requests:
+      cpu: 100m
       memory: 15Mi
 exportController:
-  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M
+  jvmOptions: -Xmx800M -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=128M -XX:ActiveProcessorCount=1
   resources:
     limits:
-      cpu: 500m
+      cpu: 1000m
       memory: 1280Mi
     requests:
-      cpu: 100m
+      cpu: 200m
       memory: 1280Mi
 homeUi:
   resources:
@@ -132,14 +148,21 @@ measureEditor:
       cpu: 20m
       memory: 15Mi
 metadataApi:
-  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:ActiveProcessorCount=6 -Dkotlinx.coroutines.io.parallelism=16 -XX:MaxRAMPercentage=69
+  replicaCount: 2
+  kedaAutoscaling:
+    behavior: *fastScaleUp
+    minReplicaCount: 2
+    maxReplicaCount: 5
+    # 75 % of an equal request and limit throttled the pods before the HPA scaled.
+    targetCPUUtilization: 60
+  jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:ActiveProcessorCount=2 -Dkotlinx.coroutines.io.parallelism=16 -XX:MaxRAMPercentage=65
   resources:
     limits:
-      cpu: 2000m
+      cpu: 2500m
       memory: 3600Mi
     requests:
-      cpu: 400m
-      memory: 2600Mi
+      cpu: 1500m
+      memory: 3000Mi
 organizationController:
   resources:
     limits:
@@ -166,19 +189,19 @@ quiver:
     cache:
       limits:
         ephemeral-storage: 30Gi
-        cpu: 950m
-        memory: 1000Mi
+        cpu: 1000m
+        memory: 1536Mi
       requests:
         ephemeral-storage: 30Gi
-        cpu: 350m
-        memory: 1000Mi
+        cpu: 400m
+        memory: 1536Mi
     # Memory tuned for low-traffic clusters.
     xtab:
       limits:
         cpu: 1500m
         memory: 2100Mi
       requests:
-        cpu: 750m
+        cpu: 300m
         memory: 2100Mi
     # Memory tuned for low-traffic clusters.
     ml:
@@ -188,13 +211,19 @@ quiver:
       requests:
         cpu: 400m
         memory: 768Mi
+    # The Rust etcd extension keeps more state in memory, so policy and datasource need 1024Mi.
     policy:
       limits:
         cpu: 950m
-        memory: 512Mi
+        memory: 1024Mi
       requests:
         cpu: 350m
-        memory: 512Mi
+        memory: 1024Mi
+    datasource:
+      limits:
+        memory: 1024Mi
+      requests:
+        memory: 1024Mi
 redis-ha:
   replicas: 3
   # Keep 2/3 sentinel quorum during voluntary disruptions (node drains, Karpenter consolidation)
@@ -244,12 +273,14 @@ redis-ha:
         cpu: 150m
 resultCache:
   kedaAutoscaling:
+    behavior: *fastScaleUp
     minReplicaCount: 2
-    maxReplicaCount: 8
-  jvmOptions: -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M -XX:MaxRAMPercentage=74
+    maxReplicaCount: 4
+    targetCPUUtilization: 70
+  jvmOptions: -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M -XX:MaxRAMPercentage=74 -XX:ActiveProcessorCount=1
   resources:
     limits:
-      cpu: 700m
+      cpu: 1000m
       memory: 2700Mi
     requests:
       cpu: 200m
@@ -279,16 +310,17 @@ tabularExporter:
       cpu: 900m
       memory: 1500Mi
     requests:
-      cpu: 600m
+      cpu: 300m
       memory: 1500Mi
-visualExporterChromium:
+# The old key, visualExporterChromium, matched no chart value.
+exportBuilderChromium:
   resources:
     limits:
-      cpu: 1000m
-      memory: 2Gi
+      cpu: 4000m
+      memory: 6Gi
     requests:
-      cpu: 200m
-      memory: 2Gi
+      cpu: 500m
+      memory: 1536Mi
 visualExporterProxy:
   resources:
     limits:
@@ -320,6 +352,8 @@ webComponents:
       memory: 15Mi
 exportBuilder:
   replicaCount: 2
+  kedaAutoscaling:
+    maxReplicaCount: 6
   # Chromium in standalone container within export-builder pod
   # export-builder connects to Chromium using Chrome DevTools Protocol (CDP)
   playwright:
@@ -327,7 +361,7 @@ exportBuilder:
       type: "cdp"
   # These settings must be aligned with resource.limits.memory value
   # The minimum memory limit in MeBiBytes is (codecachesize+Xmx+metaspace+175)*1.024
-  jvmOptions: -XX:ReservedCodeCacheSize=60M -Xmx1500M -XX:MaxMetaspaceSize=210M -XX:MaxDirectMemorySize=128M
+  jvmOptions: -XX:ReservedCodeCacheSize=60M -Xmx1500M -XX:MaxMetaspaceSize=210M -XX:MaxDirectMemorySize=128M -XX:ActiveProcessorCount=2
   resources:
     limits:
       cpu: 2000m
@@ -336,13 +370,17 @@ exportBuilder:
       cpu: 200m
       memory: 550Mi
 apiGw:
+  replicaCount: 3
+  kedaAutoscaling:
+    minReplicaCount: 3
+    maxReplicaCount: 4
   resources:
     limits:
-      cpu: 1400m
-      memory: 2000Mi
+      cpu: 1000m
+      memory: 1Gi
     requests:
-      cpu: 280m
-      memory: 2000Mi
+      cpu: 200m
+      memory: 1Gi
   # -- Custom JVM options
   # These settings must be aligned with resource.limits.memory value
-  jvmOptions: "-XX:ActiveProcessorCount=2 -XX:MaxDirectMemorySize=256m -XX:MaxRAMPercentage=50"
+  jvmOptions: "-XX:ActiveProcessorCount=1 -XX:MaxDirectMemorySize=256m -XX:MaxRAMPercentage=35"
