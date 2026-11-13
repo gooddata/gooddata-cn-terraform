@@ -19,6 +19,20 @@ locals {
   db_password = random_password.db_password.result
 }
 
+# Regional RDS CA bundle (public, no secret). Used by FIPS runs to verify the server certificate.
+data "http" "rds_ca_bundle" {
+  count = var.fips_enabled ? 1 : 0
+
+  url = "https://truststore.pki.rds.amazonaws.com/${var.aws_region}/${var.aws_region}-bundle.pem"
+
+  lifecycle {
+    postcondition {
+      condition     = self.status_code == 200 && strcontains(self.response_body, "BEGIN CERTIFICATE")
+      error_message = "Could not download the RDS CA bundle for ${var.aws_region}."
+    }
+  }
+}
+
 # Security group for RDS PostgreSQL
 resource "aws_security_group" "rds" {
   name        = "${var.deployment_name}-rds"
@@ -64,7 +78,7 @@ module "rds_postgresql" {
   # dynamic (apply_method = immediate, no reboot). shared_buffers/effective_cache_size
   # are intentionally left to the RDS instance-class defaults, which already scale
   # with instance memory. Values are in kB.
-  parameters = [
+  parameters = concat([
     {
       name         = "work_mem"
       value        = tostring(local.profile.postgres.work_mem_mb * 1024)
@@ -75,7 +89,12 @@ module "rds_postgresql" {
       value        = tostring(local.profile.postgres.maintenance_work_mem_mb * 1024)
       apply_method = "immediate"
     },
-  ]
+    ], var.fips_enabled ? [{
+      # TLS-only client connections; clients must verify the RDS CA.
+      name         = "rds.force_ssl"
+      value        = "1"
+      apply_method = "immediate"
+  }] : [])
 
   # Database name & credentials
   username                    = local.db_username

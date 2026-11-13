@@ -142,3 +142,27 @@ data "external" "wait_postgres_ready" {
     kubectl_manifest.postgres_cluster,
   ]
 }
+
+# CloudNativePG CA certificate (ca.crt only; the CA key is never read), for clients that check the
+# server certificate (gen-ai sslMode verify-full). Read with kubectl so the key does not reach the state.
+data "external" "postgres_ca_cert" {
+  program = [
+    "bash",
+    "-c",
+    <<-EOT
+      set -euo pipefail
+      crt=$(KUBECONFIG="${var.kubeconfig_path}" kubectl --context "${var.kubeconfig_context}" \
+        -n "${kubernetes_namespace_v1.postgres.metadata[0].name}" \
+        get secret postgres-ca -o jsonpath='{.data.ca\.crt}')
+      if [ -z "$crt" ]; then
+        echo "Secret postgres-ca has no ca.crt." >&2
+        exit 1
+      fi
+      printf '{"ca_crt_b64":"%s"}' "$crt"
+    EOT
+  ]
+
+  depends_on = [
+    data.external.wait_postgres_ready,
+  ]
+}

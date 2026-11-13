@@ -225,10 +225,128 @@ variable "existing_vpc_id" {
   default     = ""
 }
 
+variable "fips_enabled" {
+  description = "Prepare the AWS infrastructure for a FIPS 140 validation run: Bottlerocket FIPS AMIs, AWS FIPS service endpoints (provider, ECR registry host, in-cluster AWS clients), TLS-only RDS connections, Istio as the only allowed ingress (ingress_controller = \\\"istio_gateway\\\") and the FIPS Istio gateway TLS profile (istio_gateway_fips_tls). Requires a region with FIPS endpoints. The chart value global.aws.useFipsEndpoint is set too, so the GoodData.CN containers, Loki and Tempo call the AWS FIPS endpoints (S3, STS). This does not make the GoodData.CN containers FIPS-capable."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.fips_enabled || contains(["us-east-1", "us-east-2", "us-west-1", "us-west-2"], var.aws_region)
+    error_message = "fips_enabled = true requires a region with AWS FIPS endpoints: us-east-1, us-east-2, us-west-1 or us-west-2."
+  }
+  validation {
+    condition     = !var.fips_enabled || var.ingress_controller == "istio_gateway"
+    error_message = "fips_enabled = true requires ingress_controller = \"istio_gateway\" (also set tls_mode = \"letsencrypt\"). No other ingress controller is allowed."
+  }
+  validation {
+    condition     = !var.fips_enabled || var.tls_mode == "letsencrypt"
+    error_message = "fips_enabled = true requires tls_mode = \"letsencrypt\" (ACM with the ALB is not allowed under FIPS)."
+  }
+}
+
+variable "s3_endpoint" {
+  description = "Explicit S3 endpoint for every in-cluster S3 client: the GoodData.CN storage (exports, Quiver cache, data source files, geo collections), Loki, Tempo, Langfuse and StarRocks. A host (s3-fips.us-east-1.amazonaws.com) or a URL (https://host[:port]). Empty (default) keeps the AWS default endpoint; under fips_enabled the AWS SDKs then select the FIPS endpoints through AWS_USE_FIPS_ENDPOINT. Rule: a set endpoint is used as it is and AWS_USE_FIPS_ENDPOINT is not set for these clients (the AWS SDKs refuse both together), so give the FIPS host yourself when you need FIPS. Use it for a VPC endpoint, an S3-compatible store or another partition."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.s3_endpoint == "" || can(regex("^(https?://)?[A-Za-z0-9.-]+(:[0-9]+)?/?$", var.s3_endpoint))
+    error_message = "s3_endpoint must be empty, a host[:port] or http(s)://host[:port]."
+  }
+}
+
+variable "eks_node_arch" {
+  description = "CPU architecture of all EKS nodes: \"amd64\" (AMD m-series) or \"arm64\" (Graviton m8g). With arm64, set eks_ai_lake_node_types to arm64 instance types when enable_ai_lake = true."
+  type        = string
+  default     = "amd64"
+  validation {
+    condition     = contains(["amd64", "arm64"], var.eks_node_arch)
+    error_message = "eks_node_arch must be \"amd64\" or \"arm64\"."
+  }
+  validation {
+    condition     = var.eks_node_arch != "arm64" || !var.enable_ai_lake || var.eks_ai_lake_node_types != null
+    error_message = "eks_node_arch = \"arm64\" with enable_ai_lake = true requires eks_ai_lake_node_types to be set to arm64 instance types: the presets are x86 only."
+  }
+}
+
+variable "karpenter_fips_ami_id" {
+  description = "Pin the Bottlerocket FIPS AMI ID used by Karpenter nodes when fips_enabled = true. Empty reads the latest AMI from SSM at every plan, and a new ID rolls all Karpenter workload nodes."
+  type        = string
+  default     = ""
+}
+
+variable "istio_gateway_fips_tls" {
+  description = "Restrict the Istio ingress gateway TLS to FIPS-approved settings: TLS 1.2 minimum, ECDHE AES-GCM cipher suites for TLS 1.2, and ECDH curves P-256 and P-384. Only used when ingress_controller = \"istio_gateway\". This does not make Envoy FIPS-validated."
+  type        = bool
+  default     = false
+}
+
+variable "gdcn_chart_path" {
+  description = "Path to a local gooddata-cn chart directory. When set, it replaces the chart repository and version (set helm_gdcn_version to a value containing \"+\", such as 0.0.0+local, to skip the version checks)."
+  type        = string
+  default     = ""
+}
+
 variable "gdcn_helm_extra_values" {
   description = "Additional Helm values YAML string appended to the gooddata-cn chart values. Use to override sub-chart settings not exposed as Terraform variables."
   type        = string
   default     = ""
+}
+
+variable "gdcn_helm_extra_values_files" {
+  description = "Paths to Helm values files applied to the gooddata-cn chart after gdcn_helm_extra_values, in list order. The file contents become part of the Terraform plan and state (the Helm release values): do not put secrets in them."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for f in var.gdcn_helm_extra_values_files : fileexists(f)])
+    error_message = "Every path in gdcn_helm_extra_values_files must be an existing file (paths are relative to the directory where Terraform runs)."
+  }
+}
+
+# Hardening: see the README section "Hardening".
+variable "gdcn_hardened" {
+  description = "Turn on the hardened GoodData.CN profile: restricted pod security (non-root, read-only root filesystem) for the chart and its redis-ha and qdrant subcharts. Restarts all pods; the first start after the change re-owns existing volumes (fsGroup)."
+  type        = bool
+  default     = false
+}
+
+variable "gdcn_deploy_dex" {
+  description = "Deploy the bundled Dex IdP (deployDexIdP). Set false only after every organization uses an external OIDC IdP."
+  type        = bool
+  default     = true
+}
+
+variable "gdcn_embedding_origins" {
+  description = "Origins allowed to exchange postMessages with embedded dashboards (settings.embeddingOrigins). null keeps the chart default ['*']; [] allows none. Ignored by charts that do not know the key (4.15.1 and older)."
+  type        = list(string)
+  default     = null
+}
+
+# Values for GoodData.CN releases after 4.15.1. Each attribute is null by
+# default and is then not rendered, so the current chart is unaffected.
+variable "gdcn_hardening_next_release" {
+  description = "Hardening values that need a GoodData.CN release after 4.15.1 (needs CN next release). Null attributes are not rendered."
+  type = object({
+    db_ssl_mode = optional(string)
+    db_ssl_root_cert = optional(object({
+      secret_name = string
+      key         = optional(string, "ca.crt")
+    }))
+    fips_mode                   = optional(string)
+    fips_allow_non_fips_host    = optional(bool)
+    aws_use_fips_endpoint       = optional(bool)
+    export_egress_mode          = optional(string)
+    export_egress_allowed_hosts = optional(list(string))
+  })
+  default = {}
+
+  validation {
+    condition = (
+      contains(["disable", "allow", "prefer", "require", "verify-ca", "verify-full"], coalesce(var.gdcn_hardening_next_release.db_ssl_mode, "verify-full")) &&
+      contains(["compatible", "strict"], coalesce(var.gdcn_hardening_next_release.fips_mode, "strict")) &&
+      contains(["open", "allowlist"], coalesce(var.gdcn_hardening_next_release.export_egress_mode, "allowlist"))
+    )
+    error_message = "db_ssl_mode must be a libpq sslmode, fips_mode must be compatible or strict, export_egress_mode must be open or allowlist."
+  }
 }
 
 variable "gdcn_license_key" {
@@ -283,14 +401,50 @@ variable "geo_aws_location_region" {
 }
 
 variable "geo_basemap_provider" {
-  description = "Basemap provider backing geo charts: \"none\" disables them, \"awslocation\" uses Amazon Location Service via IRSA, \"mapbox\" uses Mapbox with geo_mapbox_token."
+  description = "Basemap provider backing geo charts: \"awslocation\" uses Amazon Location Service via IRSA (no FIPS endpoint outside us-gov-west-1), \"mapbox\" uses Mapbox with geo_mapbox_token, \"protomaps\" is SELF-CONTAINED: an in-cluster OpenStreetMap basemap with no external service at runtime, works air-gapped, tile traffic stays in the cluster/mesh; \"none\" turns geo charts off."
   type        = string
   default     = "none"
 
   validation {
-    condition     = contains(["none", "awslocation", "mapbox"], var.geo_basemap_provider)
-    error_message = "geo_basemap_provider must be one of: none, awslocation, mapbox."
+    condition     = contains(["none", "awslocation", "mapbox", "protomaps"], var.geo_basemap_provider)
+    error_message = "geo_basemap_provider must be one of: none, awslocation, mapbox, protomaps."
   }
+}
+
+variable "geo_protomaps_image" {
+  description = "Image of the in-cluster basemap server (gdc-nas tools/basemap-image), repository:tag[@digest]. Required when geo_basemap_provider is \"protomaps\"."
+  type        = string
+  default     = ""
+}
+
+variable "geo_protomaps_source_url" {
+  description = "PMTiles archive cut by the extract Job: a Protomaps daily build (https://build.protomaps.com/YYYYMMDD.pmtiles, removed after some days) or an internal http(s):// or s3:// mirror (air-gapped). No default: daily builds expire, so set a current build or a mirror. Required, unless geo_protomaps_existing_claim is set, when geo_basemap_provider is \"protomaps\". Empty: no Job; geo_protomaps_existing_claim must hold basemap.pmtiles."
+  type        = string
+  default     = ""
+}
+
+variable "geo_protomaps_bbox" {
+  description = "Area of the extract, \"min_lon,min_lat,max_lon,max_lat\". Default: the contiguous United States. Empty: the whole source."
+  type        = string
+  default     = "-125.0,24.0,-66.5,49.5"
+}
+
+variable "geo_protomaps_max_zoom" {
+  description = "Highest zoom level of the extract (0-15)."
+  type        = number
+  default     = 10
+}
+
+variable "geo_protomaps_storage_size" {
+  description = "Size of the basemap PVC; it must hold the extract."
+  type        = string
+  default     = "10Gi"
+}
+
+variable "geo_protomaps_existing_claim" {
+  description = "Existing PVC in the GoodData.CN namespace with basemap.pmtiles (customer-provided file). Set it to skip the PVC and the extract Job."
+  type        = string
+  default     = ""
 }
 
 variable "geo_mapbox_token" {

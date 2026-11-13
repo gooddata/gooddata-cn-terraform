@@ -257,6 +257,11 @@ resource "kubernetes_service_account_v1" "lb_controller" {
   ]
 }
 
+locals {
+  # Makes in-cluster AWS SDK clients use FIPS endpoints.
+  fips_env = { AWS_USE_FIPS_ENDPOINT = "true" }
+}
+
 resource "helm_release" "aws_load_balancer_controller" {
   name          = "aws-load-balancer-controller"
   repository    = "https://aws.github.io/eks-charts"
@@ -269,7 +274,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   # Tolerate the system pool taint: this runs before Karpenter has provisioned
   # any untainted capacity, so the system nodes are the only place it can land.
-  values = [<<EOF
+  values = concat([<<EOF
     replicaCount: ${var.ingress_replicas}
     clusterName: ${var.deployment_name}
     region: ${var.aws_region}
@@ -281,7 +286,9 @@ resource "helm_release" "aws_load_balancer_controller" {
       - key: CriticalAddonsOnly
         operator: Exists
 EOF
-  ]
+    ], var.fips_enabled ? [yamlencode({
+      env = local.fips_env
+  })] : [])
 
   depends_on = [
     kubernetes_service_account_v1.lb_controller,

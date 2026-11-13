@@ -11,6 +11,7 @@ locals {
   k3d_config_content = templatefile("${path.module}/k3d-config.yaml", {
     k3d_cluster_name       = var.k3d_cluster_name
     kubeapi_host           = var.k3d_kubeapi_host
+    k3d_agents             = var.k3d_agents
     dockerhub_username     = var.dockerhub_username
     dockerhub_access_token = var.dockerhub_access_token
   })
@@ -26,6 +27,7 @@ resource "local_file" "k3d_config" {
 resource "null_resource" "k3d_cluster" {
   triggers = {
     cluster_name    = var.k3d_cluster_name
+    servers_memory  = var.k3d_servers_memory
     k3d_config_sha1 = local.k3d_config_sha1
     kubeconfig_path = local.kubeconfig_path
     kubeconfig_ctx  = local.kubeconfig_context
@@ -50,6 +52,15 @@ resource "null_resource" "k3d_cluster" {
       else
         echo ">> Creating k3d cluster '${var.k3d_cluster_name}'..."
         k3d cluster create -c "${path.module}/k3d-config.generated.yaml"
+      fi
+
+      # A memory limit through docker update: the k3d serversMemory option bind-mounts a file from
+      # ~/.config/k3d, which Docker Desktop refuses when Terraform runs in a dev container.
+      if [ -n "${var.k3d_servers_memory}" ]; then
+        for c in $(docker ps -q --filter "label=k3d.cluster=${var.k3d_cluster_name}" --filter "label=k3d.role=server"); do
+          docker update --memory "${var.k3d_servers_memory}" --memory-swap "${var.k3d_servers_memory}" "$c" >/dev/null
+          echo ">> Memory limit ${var.k3d_servers_memory} on server node $c"
+        done
       fi
 
       echo ">> Writing kubeconfig to '${local.kubeconfig_path}'..."

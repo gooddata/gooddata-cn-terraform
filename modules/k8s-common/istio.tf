@@ -24,6 +24,20 @@ locals {
     var.enable_llm_observability ? [trimspace(var.llm_observability_hostname)] : []
   )))
 
+  # FIPS-approved TLS for the public gateway (istio_gateway_fips_tls).
+  # TLS 1.3 suites are not configurable in Envoy; a non-FIPS Envoy still
+  # offers TLS_CHACHA20_POLY1305_SHA256 for TLS 1.3.
+  istio_gateway_fips_tls_options = {
+    minProtocolVersion = "TLSV1_2"
+    cipherSuites = [
+      "ECDHE-ECDSA-AES128-GCM-SHA256",
+      "ECDHE-RSA-AES128-GCM-SHA256",
+      "ECDHE-ECDSA-AES256-GCM-SHA384",
+      "ECDHE-RSA-AES256-GCM-SHA384",
+    ]
+  }
+  istio_gateway_fips_ecdh_curves = ["P-256", "P-384"]
+
   # Deterministic AWS NLB name for the public Istio gateway Service.
   # Used by AWS outputs to look up the NLB DNS name when dns_provider=self-managed.
   aws_istio_nlb_base_name          = "${var.deployment_name}-istio"
@@ -71,7 +85,11 @@ resource "helm_release" "istiod" {
     global = merge(
       # Native sidecars start the Envoy proxy before init containers, so
       # init containers participate in mTLS and the mesh from the start.
-      { proxy = { nativeSidecar = true } },
+      # Local single-node clusters: a 100m CPU request per sidecar (about 40 pods) leaves too
+      # little CPU to schedule GoodData.CN on one node.
+      { proxy = merge({ nativeSidecar = true }, var.cloud == "local" ? {
+        resources = { requests = { cpu = "10m", memory = "64Mi" } }
+      } : {}) },
       # Route Istio images through the pull-through cache when enabled
       var.enable_image_cache ? { hub = "${var.registry_dockerio}/istio" } : {}
     )
@@ -204,7 +222,10 @@ resource "kubectl_manifest" "istio_public_gateway" {
         {
           port  = { name = "https", number = 443, protocol = "HTTPS" }
           hosts = local.istio_gateway_hosts
-          tls   = { credentialName = local.istio_public_tls_secret_name, mode = "SIMPLE" }
+          tls = merge(
+            { credentialName = local.istio_public_tls_secret_name, mode = "SIMPLE" },
+            [for o in [local.istio_gateway_fips_tls_options] : o if var.istio_gateway_fips_tls]...
+          )
         },
         # Plain HTTP. Redirect to HTTPS happens per-route in the VirtualServices,
         # so the ACME HTTP-01 challenge path stays reachable over HTTP.
@@ -226,4 +247,49 @@ resource "kubectl_manifest" "istio_public_gateway" {
       error_message = "istio_gateway_hosts must not be empty. Set auth_hostname and/or gdcn_orgs[*].hostname."
     }
   }
+}
+
+# The Gateway API has no field for ECDH curves, so restrict them on the
+# gateway's HTTPS filter chains with an EnvoyFilter (istio_gateway_fips_tls).
+resource "kubectl_manifest" "istio_gateway_fips_ecdh_curves" {
+  count = local.use_istio_gateway && var.istio_gateway_fips_tls ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "networking.istio.io/v1alpha3"
+    kind       = "EnvoyFilter"
+    metadata = {
+      name      = "istio-gateway-fips-ecdh-curves"
+      namespace = local.istio_ingress_ns
+    }
+    spec = {
+      workloadSelector = { labels = { istio = local.istio_ingress_label } }
+      configPatches = [
+        {
+          applyTo = "FILTER_CHAIN"
+          match = {
+            context  = "GATEWAY"
+            listener = { portNumber = 8443 } # gateway container port (Service 443 targets 8443)
+          }
+          patch = {
+            operation = "MERGE"
+            value = {
+              transport_socket = {
+                name = "envoy.transport_sockets.tls"
+                typed_config = {
+                  "@type" = "type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext"
+                  common_tls_context = {
+                    tls_params = { ecdh_curves = local.istio_gateway_fips_ecdh_curves }
+                  }
+                }
+              }
+            }
+          }
+        },
+      ]
+    }
+  })
+
+  depends_on = [
+    kubectl_manifest.istio_public_gateway,
+  ]
 }

@@ -162,6 +162,7 @@ resource "helm_release" "loki" {
       singleBinary = {
         replicas  = 1
         podLabels = var.obs_pod_labels
+        extraEnv  = var.obs_extra_env
         # On object storage this PVC holds only the WAL + index cache, so it is
         # a small fixed size (obs_wal_disk), not retention-sized.
         persistence = merge(
@@ -264,6 +265,7 @@ resource "helm_release" "tempo" {
     yamlencode({
       tempo = merge({
         image = { registry = var.registry_dockerio }
+        extraEnv = var.obs_extra_env
         receivers = {
           jaeger = {
             protocols = {

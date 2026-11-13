@@ -13,6 +13,9 @@ exportController:
     absAccountName: "${azure_storage_account_name}"
     absContainer: "${azure_exports_container}"
     absClientId: "${azure_uami_client_id}"
+%{ if azure_blob_authority != "" ~}
+    absAuthority: "${azure_blob_authority}"
+%{ endif ~}
   podLabels:
     azure.workload.identity/use: "true"
 
@@ -23,6 +26,11 @@ quiver:
     absContainer: "${azure_quiver_container}"
     authType: "azure_default"
     absClientId: "${azure_uami_client_id}"
+%{ if azure_blob_authority != "" ~}
+    absBlobStorageAuthority: "${azure_blob_authority}"
+    absDfsStorageAuthority: "${azure_dfs_authority}"
+    absAuthority: "${azure_blob_authority}"
+%{ endif ~}
   datasourceFs:
     storageType: "ABS"
   absDatasourceFsStorage:
@@ -30,6 +38,11 @@ quiver:
     absContainer: "${azure_datasource_fs_container}"
     authType: "azure_default"
     absClientId: "${azure_uami_client_id}"
+%{ if azure_blob_authority != "" ~}
+    absBlobStorageAuthority: "${azure_blob_authority}"
+    absDfsStorageAuthority: "${azure_dfs_authority}"
+    absAuthority: "${azure_blob_authority}"
+%{ endif ~}
 %{ if geo_enabled ~}
   geoCollections:
     storageType: "ABS"
@@ -38,6 +51,11 @@ quiver:
     absContainer: "${azure_geo_collections_container}"
     authType: "azure_default"
     absClientId: "${azure_uami_client_id}"
+%{ if azure_blob_authority != "" ~}
+    absBlobStorageAuthority: "${azure_blob_authority}"
+    absDfsStorageAuthority: "${azure_dfs_authority}"
+    absAuthority: "${azure_blob_authority}"
+%{ endif ~}
 %{ endif ~}
   podLabels:
     azure.workload.identity/use: "true"

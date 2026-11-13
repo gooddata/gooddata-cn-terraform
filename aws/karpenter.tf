@@ -54,12 +54,12 @@ resource "helm_release" "karpenter" {
       clusterEndpoint   = module.eks.cluster_endpoint
       interruptionQueue = module.karpenter.queue_name
     }
-    controller = {
+    controller = merge({
       resources = {
         requests = { cpu = "1", memory = "1Gi" }
         limits   = { memory = "1Gi" }
       }
-    }
+    }, var.fips_enabled ? { env = local.aws_fips_env } : {})
     # Run on the isolated system node group (CriticalAddonsOnly taint, eks.tf).
     tolerations = [{ key = "CriticalAddonsOnly", operator = "Exists" }]
   })]
@@ -79,7 +79,7 @@ resource "kubectl_manifest" "karpenter_node_class" {
     spec = {
       amiFamily        = "Bottlerocket"
       role             = module.karpenter.node_iam_role_name
-      amiSelectorTerms = [{ alias = "bottlerocket@latest" }]
+      amiSelectorTerms = local.karpenter_ami_selector_terms
       subnetSelectorTerms = [{
         tags = { "karpenter.sh/discovery" = var.deployment_name }
       }]
@@ -127,15 +127,18 @@ resource "kubectl_manifest" "karpenter_node_pool" {
     spec = {
       template = {
         spec = {
-          requirements = [
-            { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
+          requirements = concat([
+            { key = "kubernetes.io/arch", operator = "In", values = [var.eks_node_arch] },
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
             { key = "karpenter.k8s.aws/instance-category", operator = "In", values = ["m"] },
-            { key = "karpenter.k8s.aws/instance-cpu-manufacturer", operator = "In", values = ["amd"] },
+            { key = "karpenter.k8s.aws/instance-cpu-manufacturer", operator = "In", values = [var.eks_node_arch == "arm64" ? "aws" : "amd"] },
             { key = "karpenter.k8s.aws/instance-generation", operator = "Gt", values = ["5"] },
             { key = "karpenter.k8s.aws/instance-cpu", operator = "Lt", values = [tostring(local.eks_node_cpu_max + 1)] },
-          ]
+            # Graviton m-series has 1-vCPU .medium types.
+            ], var.eks_node_arch == "arm64" ? [
+            { key = "karpenter.k8s.aws/instance-cpu", operator = "Gt", values = ["1"] },
+          ] : [])
           nodeClassRef = {
             group = "karpenter.k8s.aws"
             kind  = "EC2NodeClass"
@@ -186,7 +189,7 @@ resource "kubectl_manifest" "karpenter_node_pool_starrocks" {
             effect = "NoSchedule"
           }]
           requirements = [
-            { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
+            { key = "kubernetes.io/arch", operator = "In", values = [var.eks_node_arch] },
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
             { key = "node.kubernetes.io/instance-type", operator = "In", values = local.eks_ai_lake_node_types },

@@ -16,6 +16,15 @@ locals {
   # One flag gates the api-gw basemap plugin and the geo collections storage.
   geo_enabled        = var.geo_basemap_provider != "none"
   geo_mapbox_enabled = var.geo_basemap_provider == "mapbox"
+  # The chart value apiGw.locationService.plugin "none" (no map service, geo
+  # feature flags off) exists in charts newer than 4.16; an older api-gw refuses
+  # an unknown plugin name at start. Build-metadata charts (1.2.3+abc) are
+  # pre-release builds and pass, as in the other helm_gdcn_version checks.
+  geo_plugin_none_supported = strcontains(var.helm_gdcn_version, "+") ? true : (
+    can(tonumber(split(".", var.helm_gdcn_version)[0])) && can(tonumber(split(".", var.helm_gdcn_version)[1])) ? (
+      tonumber(split(".", var.helm_gdcn_version)[0]) * 1000 + tonumber(split(".", var.helm_gdcn_version)[1]) >= 4017
+    ) : false
+  )
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
@@ -63,6 +72,24 @@ data "external" "tinkey_keyset" {
 
       printf '{"keyset_b64":"%s"}' "$(printf '%s' "$key_json" | base64 | tr -d '\n')"
     EOT
+  ]
+}
+
+# PostgreSQL CA certificate (cert only) for gen-ai sslMode verify-ca/verify-full; used in both FIPS modes.
+resource "kubernetes_secret_v1" "postgres_ca_cert" {
+  count = var.db_ca_cert_enabled ? 1 : 0
+
+  metadata {
+    name      = "postgres-ca-cert"
+    namespace = var.gdcn_namespace
+  }
+
+  data = {
+    "ca.crt" = var.db_ca_cert
+  }
+
+  depends_on = [
+    kubernetes_namespace_v1.gdcn,
   ]
 }
 
@@ -125,15 +152,16 @@ resource "kubernetes_secret_v1" "gdcn_license" {
 # Install GoodData.CN
 resource "helm_release" "gooddata_cn" {
   name      = "gooddata-cn"
-  chart     = "gooddata-cn"
-  version   = var.helm_gdcn_version
+  chart     = var.gdcn_chart_path != "" ? var.gdcn_chart_path : "gooddata-cn"
+  version   = var.gdcn_chart_path != "" ? null : var.helm_gdcn_version
   namespace = var.gdcn_namespace
 
-  repository          = var.internal_chart_repository
-  repository_username = local.internal_chart_repo_is_private ? local.internal_registry_username : null
-  repository_password = local.internal_chart_repo_is_private ? local.internal_registry_password : null
+  dependency_update   = var.gdcn_chart_path != ""
+  repository          = var.gdcn_chart_path != "" ? null : var.internal_chart_repository
+  repository_username = var.gdcn_chart_path == "" && local.internal_chart_repo_is_private ? local.internal_registry_username : null
+  repository_password = var.gdcn_chart_path == "" && local.internal_chart_repo_is_private ? local.internal_registry_password : null
 
-  values = compact([
+  values = concat(compact(concat([
     templatefile("${path.module}/templates/gdcn-base.yaml.tftpl", {
       encryption_secret_name  = kubernetes_secret_v1.gdcn_encryption.metadata[0].name
       license_secret_name     = kubernetes_secret_v1.gdcn_license.metadata[0].name
@@ -168,8 +196,11 @@ resource "helm_release" "gooddata_cn" {
       registry_quayio   = var.registry_quayio
     }) : null,
     var.cloud == "azure" ? templatefile("${path.module}/templates/gdcn-azure.yaml.tftpl", {
-      gdcn_service_account_name     = local.gdcn_service_account_name
-      azure_uami_client_id          = var.azure_uami_client_id
+      gdcn_service_account_name = local.gdcn_service_account_name
+      azure_uami_client_id      = var.azure_uami_client_id
+      # Authorities only for a non-public cloud, so that the default render does not change.
+      azure_blob_authority          = var.azure_storage_endpoint_suffix == "core.windows.net" ? "" : ".blob.${var.azure_storage_endpoint_suffix}"
+      azure_dfs_authority           = var.azure_storage_endpoint_suffix == "core.windows.net" ? "" : ".dfs.${var.azure_storage_endpoint_suffix}"
       azure_storage_account_name    = var.azure_storage_account_name
       azure_exports_container       = var.azure_exports_container
       azure_quiver_container        = var.azure_quiver_container
@@ -180,6 +211,9 @@ resource "helm_release" "gooddata_cn" {
     }) : null,
     var.cloud == "aws" ? templatefile("${path.module}/templates/gdcn-aws.yaml.tftpl", {
       aws_region                 = var.aws_region
+      aws_fips_endpoints         = var.aws_fips_endpoints
+      aws_s3_endpoint            = var.aws_s3_endpoint
+      s3_host                    = var.aws_fips_endpoints ? "s3-fips.${var.aws_region}.amazonaws.com" : "s3.${var.aws_region}.amazonaws.com"
       s3_exports_bucket_id       = var.s3_exports_bucket_id
       s3_quiver_cache_bucket_id  = var.s3_quiver_cache_bucket_id
       s3_datasource_fs_bucket_id = var.s3_datasource_fs_bucket_id
@@ -217,15 +251,34 @@ resource "helm_release" "gooddata_cn" {
       geo_enabled               = local.geo_enabled
       s3_geo_collections_bucket = var.local_s3_geo_collections_bucket
     }) : null,
-    local.geo_enabled ? templatefile("${path.module}/templates/gdcn-geo.yaml.tftpl", {
-      provider            = var.geo_basemap_provider
-      aws_location_region = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region
-      mapbox_secret_name  = local.geo_mapbox_enabled ? kubernetes_secret_v1.gdcn_mapbox_token[0].metadata[0].name : ""
+    templatefile("${path.module}/templates/gdcn-geo.yaml.tftpl", {
+      provider              = var.geo_basemap_provider
+      plugin_none_supported = local.geo_plugin_none_supported
+      protomaps_style_url   = local.protomaps_style_url
+      aws_location_region   = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region
+      mapbox_secret_name    = local.geo_mapbox_enabled ? kubernetes_secret_v1.gdcn_mapbox_token[0].metadata[0].name : ""
       # Hash only, so the plan diff of the values stays readable.
       mapbox_token_checksum = local.geo_mapbox_enabled ? nonsensitive(sha256(var.geo_mapbox_token)) : ""
-    }) : null,
+    }),
     templatefile("${path.module}/templates/gdcn-size-${var.gdcn_size}.yaml.tftpl", { cloud = var.cloud }),
     yamlencode(local.gdcn_db_user_values),
+    var.enable_ai_features && var.db_ca_cert_enabled ? yamlencode({
+      genAi = { database = { sslRootCert = {
+        secretName = kubernetes_secret_v1.postgres_ca_cert[0].metadata[0].name
+        key        = "ca.crt"
+      } } }
+    }) : null,
+    # With the CA, the services' own PostgreSQL connections check the certificate and the host name
+    # (JDBC/R2DBC sslmode, PGSSLMODE). FIPS strict mode requires both values.
+    var.db_ca_cert_enabled ? yamlencode({
+      service = { postgres = {
+        sslMode = "verify-full"
+        sslRootCert = {
+          secretName = kubernetes_secret_v1.postgres_ca_cert[0].metadata[0].name
+          key        = "ca.crt"
+        }
+      } }
+    }) : null,
     local.use_internal_registry_auth ? yamlencode({
       imagePullSecrets = [{ name = kubernetes_secret_v1.internal_registry[0].metadata[0].name }]
     }) : null,
@@ -233,8 +286,11 @@ resource "helm_release" "gooddata_cn" {
       prometheus_enabled = var.enable_observability
       prometheus_address = var.enable_observability ? "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090" : ""
     }) : null,
-    var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null,
-  ])
+    ],
+    # Hardening sits right before the user's extra values, so those win.
+    local.gdcn_hardening_values,
+    [var.gdcn_helm_extra_values != "" ? var.gdcn_helm_extra_values : null],
+  )), [for f in var.gdcn_helm_extra_values_files : file(f)])
 
   # Wait until all resources are ready before Terraform continues
   wait          = true
@@ -244,6 +300,7 @@ resource "helm_release" "gooddata_cn" {
   depends_on = [
     kubernetes_namespace_v1.gdcn,
     kubernetes_secret_v1.gdcn_mapbox_token,
+    kubernetes_secret_v1.postgres_ca_cert,
     kubernetes_job_v1.gdcn_db_bootstrap["gdcn"],
     kubernetes_secret_v1.langfuse_gdcn_keypair,
     helm_release.pulsar,
@@ -267,6 +324,17 @@ resource "helm_release" "gooddata_cn" {
         ) : false
       ))
       error_message = "Geo charts need helm_gdcn_version >= 4.0.0 (awslocation) or >= 4.9.0 (mapbox, for locationService.mapbox.existingSecret). Upgrade the chart, or set geo_basemap_provider = \"none\"."
+    }
+
+    precondition {
+      # restrictedPodSecurity is silently ignored by older charts, which would
+      # leave the deployment unhardened without an error.
+      condition = !var.gdcn_hardened ? true : (strcontains(var.helm_gdcn_version, "+") ? true : (
+        can(tonumber(split(".", var.helm_gdcn_version)[0])) && can(tonumber(split(".", var.helm_gdcn_version)[1])) ? (
+          tonumber(split(".", var.helm_gdcn_version)[0]) * 1000 + tonumber(split(".", var.helm_gdcn_version)[1]) >= 4015
+        ) : false
+      ))
+      error_message = "gdcn_hardened needs helm_gdcn_version >= 4.15.0 (restrictedPodSecurity). Upgrade the chart, or set gdcn_hardened = false."
     }
   }
 }
@@ -320,8 +388,16 @@ resource "kubectl_manifest" "redis_ha_podmonitor" {
 # created by the GoodData.CN Helm chart. Injects a socat sidecar that
 # forwards localhost:443 to the ingress controller, so export-builder
 # can reach the ingress endpoint via 127.0.0.1:443 inside k3d.
+# *.localhost org hosts resolve to 127.0.0.1, so the visual exporter proxy
+# sends Chromium's CONNECT to this forwarder. With Istio, the forwarder dials
+# the in-mesh istio-ingress gateway Service; the call leaves the pod through
+# the Envoy sidecar and stays inside the cluster.
+locals {
+  export_builder_forwarder_target = local.use_istio_gateway ? "${local.istio_ingress_name}.${local.istio_ingress_ns}.svc.cluster.local:443" : "traefik.${local.traefik_namespace}.svc.cluster.local:443"
+}
+
 resource "kubectl_manifest" "export_builder_localhost_forwarder" {
-  count = var.cloud == "local" && local.use_traefik ? 1 : 0
+  count = var.cloud == "local" && (local.use_traefik || local.use_istio_gateway) ? 1 : 0
 
   server_side_apply = true
   force_conflicts   = true
@@ -343,8 +419,8 @@ resource "kubectl_manifest" "export_builder_localhost_forwarder" {
                 - /bin/sh
                 - -ec
                 - |
-                  socat TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork TCP4:traefik.traefik.svc.cluster.local:443 &
-                  socat TCP6-LISTEN:443,bind=[::1],reuseaddr,fork TCP4:traefik.traefik.svc.cluster.local:443 &
+                  socat TCP4-LISTEN:443,bind=127.0.0.1,reuseaddr,fork TCP4:${local.export_builder_forwarder_target} &
+                  socat TCP6-LISTEN:443,bind=[::1],reuseaddr,fork TCP4:${local.export_builder_forwarder_target} &
                   wait
               securityContext:
                 allowPrivilegeEscalation: false

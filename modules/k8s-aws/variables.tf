@@ -8,6 +8,11 @@ variable "eks_cluster_oidc_issuer_url" { type = string }
 
 variable "eks_cluster_oidc_provider_arn" { type = string }
 
+variable "fips_enabled" {
+  type    = bool
+  default = false
+}
+
 variable "helm_aws_lb_controller_version" { type = string }
 
 variable "helm_external_dns_version" { type = string }
