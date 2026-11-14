@@ -69,6 +69,16 @@ variable "azure_location" {
   default     = "East US"
 }
 
+variable "azure_storage_endpoint_suffix" {
+  description = "Storage endpoint suffix of the Azure cloud: core.windows.net (public, default), core.usgovcloudapi.net (Azure Government) or core.chinacloudapi.cn (Azure China). Every Blob client in the cluster uses <account>.blob.<suffix> (DFS: <account>.dfs.<suffix>): GoodData.CN, Loki, Tempo and Langfuse. Object-storage endpoint rule: the endpoint is always explicit on Azure; for FIPS, use a cloud whose endpoints are FIPS validated (Azure Government)."
+  type        = string
+  default     = "core.windows.net"
+  validation {
+    condition     = can(regex("^[a-z0-9-]+(\\.[a-z0-9-]+)+$", var.azure_storage_endpoint_suffix))
+    error_message = "azure_storage_endpoint_suffix must be a domain without a leading dot, for example core.usgovcloudapi.net."
+  }
+}
+
 variable "azure_storage_class" {
   description = "Kubernetes StorageClass for GoodData.CN chart PVCs. If null, chosen by size_profile (standard for dev, premium for prod)."
   type        = string
@@ -142,7 +152,7 @@ variable "enable_gdcn_autoscaling" {
   default     = false
 
   validation {
-    condition = !var.enable_gdcn_autoscaling || try(
+    condition = !var.enable_gdcn_autoscaling || strcontains(var.helm_gdcn_version, "+") || try(
       tonumber(split(".", var.helm_gdcn_version)[0]) > 4 ||
       (tonumber(split(".", var.helm_gdcn_version)[0]) == 4 && tonumber(split(".", var.helm_gdcn_version)[1]) >= 12),
     false)
@@ -179,10 +189,69 @@ variable "enable_observability" {
   default     = false
 }
 
+variable "istio_gateway_fips_tls" {
+  description = "Restrict the Istio ingress gateway TLS to FIPS-approved settings: TLS 1.2 minimum, ECDHE AES-GCM cipher suites for TLS 1.2, and ECDH curves P-256 and P-384. Only used when ingress_controller = \"istio_gateway\". This does not make Envoy FIPS-validated."
+  type        = bool
+  default     = false
+}
+
+variable "gdcn_chart_path" {
+  description = "Path to a local gooddata-cn chart directory. When set, it replaces the chart repository and version (set helm_gdcn_version to a value containing \"+\", such as 0.0.0+local, to skip the version checks)."
+  type        = string
+  default     = ""
+}
+
 variable "gdcn_helm_extra_values" {
   description = "Additional Helm values YAML string appended to the gooddata-cn chart values. Use to override sub-chart settings not exposed as Terraform variables."
   type        = string
   default     = ""
+}
+
+# Hardening: see the README section "Hardening".
+variable "gdcn_hardened" {
+  description = "Turn on the hardened GoodData.CN profile: restricted pod security (non-root, read-only root filesystem) for the chart and its redis-ha and qdrant subcharts. Restarts all pods; the first start after the change re-owns existing volumes (fsGroup)."
+  type        = bool
+  default     = false
+}
+
+variable "gdcn_deploy_dex" {
+  description = "Deploy the bundled Dex IdP (deployDexIdP). Set false only after every organization uses an external OIDC IdP."
+  type        = bool
+  default     = true
+}
+
+variable "gdcn_embedding_origins" {
+  description = "Origins allowed to exchange postMessages with embedded dashboards (settings.embeddingOrigins). null keeps the chart default ['*']; [] allows none. Ignored by charts that do not know the key (4.15.1 and older)."
+  type        = list(string)
+  default     = null
+}
+
+# Values for GoodData.CN releases after 4.15.1. Each attribute is null by
+# default and is then not rendered, so the current chart is unaffected.
+variable "gdcn_hardening_next_release" {
+  description = "Hardening values that need a GoodData.CN release after 4.15.1 (needs CN next release). Null attributes are not rendered."
+  type = object({
+    db_ssl_mode = optional(string)
+    db_ssl_root_cert = optional(object({
+      secret_name = string
+      key         = optional(string, "ca.crt")
+    }))
+    fips_mode                   = optional(string)
+    fips_allow_non_fips_host    = optional(bool)
+    aws_use_fips_endpoint       = optional(bool)
+    export_egress_mode          = optional(string)
+    export_egress_allowed_hosts = optional(list(string))
+  })
+  default = {}
+
+  validation {
+    condition = (
+      contains(["disable", "allow", "prefer", "require", "verify-ca", "verify-full"], coalesce(var.gdcn_hardening_next_release.db_ssl_mode, "verify-full")) &&
+      contains(["compatible", "strict"], coalesce(var.gdcn_hardening_next_release.fips_mode, "strict")) &&
+      contains(["open", "allowlist"], coalesce(var.gdcn_hardening_next_release.export_egress_mode, "allowlist"))
+    )
+    error_message = "db_ssl_mode must be a libpq sslmode, fips_mode must be compatible or strict, export_egress_mode must be open or allowlist."
+  }
 }
 
 variable "gdcn_license_key" {
@@ -231,14 +300,50 @@ variable "gdcn_orgs" {
 }
 
 variable "geo_basemap_provider" {
-  description = "Basemap provider backing geo charts: \"none\" disables them, \"mapbox\" uses Mapbox with geo_mapbox_token."
+  description = "Basemap provider backing geo charts: \"mapbox\" uses Mapbox with geo_mapbox_token, \"protomaps\" is SELF-CONTAINED: an in-cluster OpenStreetMap basemap with no external service at runtime, works air-gapped, tile traffic stays in the cluster/mesh; \"none\" turns geo charts off."
   type        = string
   default     = "none"
 
   validation {
-    condition     = contains(["none", "mapbox"], var.geo_basemap_provider)
-    error_message = "geo_basemap_provider must be one of: none, mapbox."
+    condition     = contains(["none", "mapbox", "protomaps"], var.geo_basemap_provider)
+    error_message = "geo_basemap_provider must be one of: none, mapbox, protomaps."
   }
+}
+
+variable "geo_protomaps_image" {
+  description = "Image of the in-cluster basemap server (gdc-nas tools/basemap-image), repository:tag[@digest]. Required when geo_basemap_provider is \"protomaps\"."
+  type        = string
+  default     = ""
+}
+
+variable "geo_protomaps_source_url" {
+  description = "PMTiles archive cut by the extract Job: a Protomaps daily build (https://build.protomaps.com/YYYYMMDD.pmtiles, removed after some days) or an internal http(s):// or s3:// mirror (air-gapped). No default: daily builds expire, so set a current build or a mirror. Required, unless geo_protomaps_existing_claim is set, when geo_basemap_provider is \"protomaps\". Empty: no Job; geo_protomaps_existing_claim must hold basemap.pmtiles."
+  type        = string
+  default     = ""
+}
+
+variable "geo_protomaps_bbox" {
+  description = "Area of the extract, \"min_lon,min_lat,max_lon,max_lat\". Default: the contiguous United States. Empty: the whole source."
+  type        = string
+  default     = "-125.0,24.0,-66.5,49.5"
+}
+
+variable "geo_protomaps_max_zoom" {
+  description = "Highest zoom level of the extract (0-15)."
+  type        = number
+  default     = 10
+}
+
+variable "geo_protomaps_storage_size" {
+  description = "Size of the basemap PVC; it must hold the extract."
+  type        = string
+  default     = "10Gi"
+}
+
+variable "geo_protomaps_existing_claim" {
+  description = "Existing PVC in the GoodData.CN namespace with basemap.pmtiles (customer-provided file). Set it to skip the PVC and the extract Job."
+  type        = string
+  default     = ""
 }
 
 variable "geo_mapbox_token" {

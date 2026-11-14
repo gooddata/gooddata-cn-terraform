@@ -29,6 +29,10 @@ terraform {
       source  = "hashicorp/external"
       version = ">= 2.0"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = ">= 3.4"
+    }
     time = {
       source  = "hashicorp/time"
       version = ">= 0.9"
@@ -37,8 +41,17 @@ terraform {
 }
 
 provider "aws" {
-  region  = var.aws_region
-  profile = var.aws_profile_name
+  region            = var.aws_region
+  profile           = var.aws_profile_name
+  use_fips_endpoint = var.fips_enabled
+  # The IAM Identity Center (SSO) portal has no FIPS endpoint: with use_fips_endpoint the credential
+  # lookup of an SSO profile fails on portal.sso-fips.<region>.amazonaws.com (no such host).
+  dynamic "endpoints" {
+    for_each = var.fips_enabled ? [1] : []
+    content {
+      sso = "https://portal.sso.${coalesce(var.aws_sso_region, var.aws_region)}.amazonaws.com"
+    }
+  }
   default_tags {
     tags = local.common_tags
   }

@@ -141,9 +141,98 @@ To delete all resources associated with the GoodData POC, follow these steps:
 1. Run Terraform: `terraform destroy -var-file=settings.tfvars`
 
 
+## FIPS mode (AWS)
+
+Set `fips_enabled = true` to prepare the AWS infrastructure for a FIPS validation run. This covers infrastructure and the AWS endpoints of the applications. It does not make the GoodData.CN containers FIPS-capable. Use `gdcn_helm_extra_values` for the application FIPS values.
+
+What the switch does:
+
+- Uses Bottlerocket FIPS AMIs for the system node group and for Karpenter nodes. The Karpenter AMI ID is read from the public SSM parameter `/aws/service/bottlerocket/aws-k8s-<eks_version>-fips/<arch>/latest/image_id` at every plan. A new AMI ID changes the EC2NodeClass and causes Karpenter drift: all workload nodes are replaced in a rolling way. To avoid this, set `karpenter_fips_ami_id` to a fixed AMI ID.
+- Sets the AWS provider to `use_fips_endpoint` (the IAM Identity Center portal has no FIPS endpoint, so the provider keeps the normal SSO portal endpoint for SSO profiles: in the region `aws_sso_region`, default `aws_region`) and sets `AWS_USE_FIPS_ENDPOINT=true` in Karpenter, the AWS Load Balancer Controller, external-dns and the EBS CSI driver.
+- Rejects `enable_image_cache = true`: Amazon ECR does not support the first pull-through-cache pull on the FIPS endpoint.
+- Without `s3_endpoint`: sets the chart value `global.aws.useFipsEndpoint: true`, so every GoodData.CN container calls the AWS FIPS endpoints (S3, STS for IRSA). The exports URL uses the S3 FIPS host `s3-fips.<region>.amazonaws.com`. Loki gets no S3 endpoint and `AWS_USE_FIPS_ENDPOINT=true`, so its SDK selects the FIPS host. Tempo (minio-go does not read the variable) gets the S3 FIPS host. Both get `AWS_STS_REGIONAL_ENDPOINTS=regional`. This needs a chart with the value (an older chart ignores it). Langfuse and the AI Lake StarRocks have their own S3 settings and are not changed. With `s3_endpoint`, see "Object-storage endpoints".
+- Requires TLS for RDS (`rds.force_ssl=1`). Terraform downloads the regional RDS CA bundle (`https://truststore.pki.rds.amazonaws.com/<region>/<region>-bundle.pem`), creates the Secret `postgres-ca-cert` from it and points `genAi.database.sslRootCert` at it. To get `verify-full`, set `genAi.database.sslMode: verify-full` (and, with AI Lake, `aiLake.database.sslMode` and `aiLake.database.sslRootCert`) with `gdcn_helm_extra_values` or `gdcn_helm_extra_values_files`. The other connections (the GoodData.CN base values for the Java services, Dex, Langfuse and the bootstrap Jobs) use `sslmode=require` (encrypted, server certificate not verified).
+- Requires `ingress_controller = "istio_gateway"` (and `tls_mode = "letsencrypt"`). No other ingress controller is allowed. This module always installs Istio in sidecar mode with STRICT mTLS for the GoodData.CN namespaces, so no extra toggle exists.
+- Enables `istio_gateway_fips_tls`.
+- Fails the plan in a region without FIPS endpoints (only the US commercial regions us-east-1, us-east-2, us-west-1 and us-west-2 are allowed).
+
+`rds.force_ssl=1` is explicit for clarity. PostgreSQL 15 and later already default to 1.
+
+Verify in the AWS run: the Karpenter pricing refresh and the AWS Load Balancer Controller Shield and WAF calls under FIPS endpoints. Some of these APIs may have no FIPS endpoint.
+
+Not covered: the S3 gateway VPC endpoint (it has no FIPS variant), the EKS API endpoint used by `aws eks get-token`, the EKS pod identity agent, and the Route 53 and Elastic Load Balancing calls of in-cluster controllers where the SDK or chart does not honor `AWS_USE_FIPS_ENDPOINT`.
+
+### Object-storage endpoints
+
+Every object-storage client in the cluster has an explicit endpoint setting. One rule applies to all of them:
+
+- An explicit endpoint is used as it is. The client then gets no `AWS_USE_FIPS_ENDPOINT`, because the AWS SDKs refuse a custom endpoint together with it ("A custom endpoint cannot be combined with FIPS"). If you need FIPS, give the FIPS host yourself.
+- Without an explicit endpoint on AWS with `fips_enabled = true`, the SDKs select the FIPS endpoints through `AWS_USE_FIPS_ENDPOINT`.
+
+| Cloud | Variable | Default | Clients |
+|---|---|---|---|
+| AWS | `s3_endpoint` (host or `https://host[:port]`) | empty: AWS default endpoint, FIPS through the SDK under `fips_enabled` | GoodData.CN storage (exports, Quiver cache, data source files, geo collections, map ingestion job), Loki, Tempo, Langfuse, StarRocks |
+| Azure | `azure_storage_endpoint_suffix` | `core.windows.net` | GoodData.CN storage (`<account>.blob.<suffix>`, `<account>.dfs.<suffix>`), Loki, Tempo, Langfuse |
+| local | `local_s3_endpoint_override` (SeaweedFS) | in-cluster SeaweedFS | all |
+
+With `s3_endpoint` set on AWS, `global.aws.useFipsEndpoint` stays `false` for the whole GoodData.CN chart (the chart fails on an explicit endpoint together with it), and Loki gets only `AWS_STS_REGIONAL_ENDPOINTS=regional`. Example for FIPS with an explicit host: `s3_endpoint = "s3-fips.us-east-1.amazonaws.com"`. STS (IRSA) then uses the regional non-FIPS STS host unless you set it some other way. For Azure Government, set `azure_storage_endpoint_suffix = "core.usgovcloudapi.net"`; the azurerm provider environment and the other Azure hosts are not changed by this variable.
+
+For arm64 (Graviton) nodes, set `eks_node_arch = "arm64"`. The system node group uses the Graviton `m8g` type of the size profile (fallback `m7g`) and Karpenter selects Graviton `m` instances. All nodes use one architecture. With `enable_ai_lake = true`, also set `eks_ai_lake_node_types` to arm64 instance types.
+
+## Geo charts (basemap)
+
+`geo_basemap_provider` selects the map behind pushpin and area charts:
+
+| Value | Map service | Notes |
+|---|---|---|
+| `awslocation` | Amazon Location Service (AWS only), signed by api-gw through IRSA | The Terraform adds the `geo-maps` IAM policy. Amazon Location has no FIPS endpoint outside `us-gov-west-1`: do not use it in FIPS mode. |
+| `mapbox` | Mapbox (SaaS), token in `geo_mapbox_token` | Needs internet access from api-gw. |
+| `protomaps` | **Self-contained.** An in-cluster OpenStreetMap basemap (Protomaps PMTiles). | No external service at runtime, works air-gapped, tile traffic stays in the cluster/mesh. |
+| `none` (default) | None | Geo charts are off (chart value `apiGw.locationService.plugin: none`, charts newer than 4.16). |
+
+### `protomaps`
+
+The module deploys `gdcn-basemap` in the GoodData.CN namespace: a Deployment and Service (image `geo_protomaps_image`,
+built from gdc-nas `tools/basemap-image`), a PVC with the tile archive, and a ConfigMap with the MapLibre style
+(Protomaps "light", OpenStreetMap/ODbL attribution). The chart's `CustomLocation` plugin points at the style;
+api-gw proxies every tile, glyph and sprite. Glyphs and sprites are in the image.
+
+The tile archive comes from one of two sources:
+
+- Download (default): a Job cuts `geo_protomaps_source_url` to `geo_protomaps_bbox` and `geo_protomaps_max_zoom`.
+  The default is the public Protomaps daily build, contiguous United States, zoom 0-10. Daily builds are removed
+  after some days, so pin a current one (`https://build.protomaps.com/YYYYMMDD.pmtiles`, list:
+  `https://build-metadata.protomaps.dev/builds.json`) or mirror the file. The Job needs internet access only once.
+- Air-gapped: copy a `.pmtiles` file to an internal http(s):// or s3:// URL and set `geo_protomaps_source_url` to it
+  (the Job cuts it the same way), or put `basemap.pmtiles` on your own PVC and set `geo_protomaps_existing_claim`
+  (no Job runs; make the extract on a connected machine with `pmtiles extract <source> basemap.pmtiles --bbox=... --maxzoom=...`).
+
+A changed source, area or zoom creates a new PVC (`gdcn-basemap-<hash>`) and a new Job. The Job fills the new PVC while the old server keeps running, then the server switches to the new PVC (a short restart), and Terraform deletes the old PVC. The volume is ReadWriteOnce, so the Job never needs the volume of the running server and can run on any node. Both PVCs exist during the change. Measured sizes (build 20261111):
+contiguous US z0-10 386 MB, US z0-12 1.9 GB (68 s); Czechia z0-12 255 MB. The download of a US z10 extract takes about 20 s.
+Size `geo_protomaps_storage_size` (default 10Gi) to fit.
+
 ## Autoscaling
 
 Set `enable_gdcn_autoscaling = true` (requires chart >= 4.12.0) to horizontally autoscale the GoodData.CN services. See [Configure Autoscaling in GoodData.CN](https://www.gooddata.com/docs/cloud-native/latest/install/installation-configuration/autoscaling/) for prerequisites, which services scale, and how to tune or disable it.
+
+## Hardening
+
+The module always applies these settings: the license key and the encryption keyset are in Secrets, each service has its own PostgreSQL user, telemetry is off and the tools pod is not deployed. With `ingress_controller = "istio_gateway"`, the module also sets STRICT mTLS in the GoodData.CN and Pulsar namespaces, without PERMISSIVE ports (see "Prometheus scraping" under Observability).
+
+Use these variables for more hardening. Each variable is off or empty by default. Values in `gdcn_helm_extra_values` override the values from these variables.
+
+| Variable | Default | What it sets |
+|---|---|---|
+| `gdcn_hardened` | `false` | `restrictedPodSecurity.enabled: true` and the restricted security contexts for the `redis-ha` and `qdrant` subcharts. All pods run as non-root with a read-only root filesystem. Needs chart 4.15.0 or later. |
+| `gdcn_deploy_dex` | `true` | `deployDexIdP`. Set `false` only after each organization uses your own OIDC identity provider. |
+| `gdcn_embedding_origins` | `null` | `settings.embeddingOrigins`. Set the origins of the pages that embed dashboards, or `[]` for none. |
+| `gdcn_hardening_next_release` | `{}` | Values for a GoodData.CN release after 4.15.1: `db_ssl_mode` and `db_ssl_root_cert` (`service.postgres.sslMode`, `sslRootCert`), `fips_mode` and `fips_allow_non_fips_host` (`global.fips.*`), `aws_use_fips_endpoint` (`global.aws.useFipsEndpoint`), `export_egress_mode` and `export_egress_allowed_hosts` (`exportBuilder.egress.*`). The module does not set an attribute that is `null`. |
+
+Before you set `gdcn_hardened = true` on a deployment that has data, read this: all pods restart, and the first start changes the group owner of the files on each volume. On large etcd or Quiver volumes, this can take long enough to fail the startup probes. Test on a copy first.
+
+The module does not turn on network policies. To use them, set `networkPolicy.*` in `gdcn_helm_extra_values` on a CNI that enforces them.
+
+For all hardening steps, refer to [Harden the Deployment](https://www.gooddata.com/docs/cloud-native/latest/install/installation-configuration/security-hardening/).
 
 ## Observability
 
@@ -152,6 +241,18 @@ Set `enable_observability = true` and `observability_hostname` in your `settings
 After `terraform apply`, Grafana is available at `https://<observability_hostname>`. A GoodData-CN health dashboard is automatically provisioned and can be found under the **GoodData-CN** folder in Grafana.
 
 To import the dashboard into a standalone Grafana instance, upload `modules/k8s-common/dashboards/gooddata-cn-overall-health.json` via **Dashboards → Import** and replace the datasource UIDs (`prometheus` → your Prometheus UID, `loki` → your Loki UID).
+
+### Prometheus scraping with `ingress_controller = "istio_gateway"`
+
+The GoodData.CN, Pulsar and Langfuse namespaces enforce STRICT mTLS, and no port has a PERMISSIVE exemption. Prometheus does not scrape the application metrics ports. It scrapes the merged metrics endpoint of the Istio sidecar (port 15020, path `/stats/prometheus`). The sidecar serves its own Envoy metrics and the application metrics on this endpoint. The sidecar does not intercept port 15020, so mTLS does not apply to it.
+
+- The module sets `meshConfig.enablePrometheusMerge: true` for Istio.
+- The sidecar reads the application metrics endpoint from the pod annotations `prometheus.io/scrape`, `prometheus.io/port` and `prometheus.io/path`. The Helm charts set them, or the module sets them with Helm values (for example on the GoodData.CN components `apiGw`, `genAi`, `genAiMetadataSync`, `mcpServer`, `organizationController`, `tabularExporter` and `customEtcd`, and on the Langfuse ClickHouse).
+- The module turns off the PodMonitors of the charts (they scrape the application port directly). It creates the PodMonitors `istio-merged-*` in the namespaces `gdcn` (GoodData.CN and redis-ha), `pulsar` and `langfuse` (ClickHouse). The labels `container`, `pod` and `namespace` of the metrics stay the same, so the dashboards and the KEDA triggers work. The `job` label of the GoodData.CN metrics is now the component name.
+- The metrics of a scrape also contain the Envoy (`istio_*`, `envoy_*`) metrics of the pod.
+- The first `terraform apply` after this change restarts the GoodData.CN and Pulsar pods (new pod annotations).
+- If you turn on NetworkPolicies in a chart, allow port 15020 from the `observability` namespace.
+- The TEI components of the chart have no pod annotation value. Their application metrics are not merged.
 
 ## LLM observability
 
@@ -199,6 +300,20 @@ Invitations are not wired up (Langfuse blocks sign-up before it checks them), so
     ```
 
 1. Run `terraform apply -var-file=settings.tfvars`
+
+### Use a local chart directory
+
+To test a chart that you build on your machine, set `gdcn_chart_path` to the chart directory
+(for example a checkout of the `gooddata-cn` chart). Terraform then ignores `internal_chart_repository`
+and the chart version. Set `helm_gdcn_version` to a value that contains `+` (for example `0.0.0+local`)
+to skip the version checks.
+
+```hcl
+gdcn_chart_path   = "/path/to/gdc-nas/helm/gooddata-cn"
+helm_gdcn_version = "0.0.0+local"
+```
+
+For local images, use `k3d image import` and set the image prefix and tag in `gdcn_helm_extra_values`.
 
 ## Need help?
 

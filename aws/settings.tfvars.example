@@ -7,6 +7,10 @@ aws_profile_name = "my-profile"
 # Region to deploy resources to
 aws_region = "eu-central-1"
 
+# Region of the IAM Identity Center (SSO) portal of the profile (sso_region in ~/.aws/config).
+# Only needed with fips_enabled = true when it differs from aws_region.
+# aws_sso_region = "us-east-1"
+
 # Uncomment to use an existing VPC instead of creating a new one
 # existing_vpc_id             = "vpc-0123456789abcdef0"
 # existing_private_subnet_ids = ["subnet-aaa", "subnet-bbb"]
@@ -193,3 +197,12 @@ gdcn_orgs = [
 # rds_backup_retention_period = 14
 # rds_deletion_protection     = true
 # rds_skip_final_snapshot     = false
+
+# Uncomment to prepare the infrastructure for a FIPS validation run (infrastructure
+# only, see README "FIPS mode (AWS)"). Requires aws_region us-east-1, us-east-2,
+# us-west-1 or us-west-2, ingress_controller = "istio_gateway" and tls_mode = "letsencrypt".
+# fips_enabled  = true
+# Explicit S3 endpoint for every in-cluster S3 client (README "Object-storage endpoints").
+# A set endpoint disables AWS_USE_FIPS_ENDPOINT for these clients: give the FIPS host yourself.
+# s3_endpoint = "s3-fips.us-east-1.amazonaws.com"
+# eks_node_arch = "arm64" # optional: Graviton nodes

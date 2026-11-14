@@ -8,6 +8,9 @@
 
 # Region to deploy resources to
 azure_location = "East US"
+# Storage endpoint suffix of a sovereign cloud (README "Object-storage endpoints"), for example
+# Azure Government. Default: core.windows.net.
+# azure_storage_endpoint_suffix = "core.usgovcloudapi.net"
 
 # Uncomment to apply additional tags to all Azure resources
 # azure_additional_tags = {

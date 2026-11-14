@@ -3,7 +3,7 @@ kind: Simple
 metadata:
   name: ${k3d_cluster_name}
 servers: 1
-agents: 2
+agents: ${k3d_agents}
 kubeAPI:
   host: "${kubeapi_host}"
   hostIP: "0.0.0.0"
@@ -38,6 +38,17 @@ options:
       - arg: --disable=traefik
         nodeFilters:
           - server:*
+      # The node shares the host disk. Image GC (default at 85% use) and the imagefs/nodefs
+      # eviction thresholds delete imported local images and evict pods on busy laptop disks.
+      - arg: --kubelet-arg=image-gc-high-threshold=100
+        nodeFilters:
+          - all
+      - arg: --kubelet-arg=image-gc-low-threshold=99
+        nodeFilters:
+          - all
+      - arg: --kubelet-arg=eviction-hard=memory.available<100Mi,nodefs.available<2%,imagefs.available<2%
+        nodeFilters:
+          - all
   kubeconfig:
     updateDefaultKubeconfig: false
     switchCurrentContext: false
