@@ -22,21 +22,28 @@ resource "kubernetes_namespace_v1" "cnpg" {
 
 resource "helm_release" "cnpg" {
   name             = "cnpg"
-  repository       = "https://cloudnative-pg.github.io/charts"
-  chart            = "cloudnative-pg"
+  repository       = "oci://${local.dhi_registry}"
+  chart            = "cloudnative-pg-chart"
   namespace        = kubernetes_namespace_v1.cnpg.metadata[0].name
   create_namespace = false
   version          = var.helm_cnpg_version
-  wait             = true
-  wait_for_jobs    = true
-  timeout          = 600
 
-  values = var.enable_observability && var.prometheus_crds_ready != "" ? [yamlencode({
-    monitoring = { podMonitorEnabled = true }
-  })] : []
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+  wait                = true
+  wait_for_jobs       = true
+  timeout             = 600
+
+  values = [yamlencode(merge(
+    { imagePullSecrets = [{ name = local.dhi_pull_secret_name }] },
+    var.enable_observability && var.prometheus_crds_ready != "" ? {
+      monitoring = { podMonitorEnabled = true }
+    } : {},
+  ))]
 
   depends_on = [
     kubernetes_namespace_v1.cnpg,
+    module.dhi_pull,
   ]
 }
 
@@ -66,8 +73,12 @@ resource "kubectl_manifest" "postgres_cluster" {
       namespace = kubernetes_namespace_v1.postgres.metadata[0].name
     }
     spec = {
-      instances             = var.cnpg.instances
-      imageName             = var.postgres_image
+      instances        = var.cnpg.instances
+      imageName        = var.postgres_image
+      imagePullSecrets = [{ name = local.dhi_pull_secret_name }]
+      # DHI postgres runs as UID/GID 70; the CNPG images use the default 26 (existing PVCs keep their owner).
+      postgresUID           = startswith(var.postgres_image, "dhi.io/") ? 70 : 26
+      postgresGID           = startswith(var.postgres_image, "dhi.io/") ? 70 : 26
       primaryUpdateStrategy = "unsupervised"
       enableSuperuserAccess = true
       superuserSecret = {
@@ -115,6 +126,7 @@ resource "kubectl_manifest" "postgres_cluster" {
 
   depends_on = [
     helm_release.cnpg,
+    module.dhi_pull,
     kubernetes_secret_v1.postgres_superuser,
   ]
 }

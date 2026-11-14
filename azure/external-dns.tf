@@ -129,29 +129,40 @@ resource "kubernetes_secret_v1" "external_dns_azure" {
   depends_on = [azurerm_role_assignment.aks_creator_cluster_admin]
 }
 
+module "external_dns_dhi_pull" {
+  source = "../modules/dhi-pull-secret"
+  count  = local.external_dns_enabled ? 1 : 0
+
+  username     = var.dockerhub_username
+  access_token = var.dockerhub_access_token
+  namespaces   = { external_dns = kubernetes_namespace_v1.external_dns[0].metadata[0].name }
+  consumers    = "external-dns is"
+}
+
 resource "helm_release" "external_dns" {
   count = local.external_dns_enabled ? 1 : 0
 
   name          = "external-dns"
-  repository    = "https://kubernetes-sigs.github.io/external-dns/"
-  chart         = "external-dns"
+  repository    = "oci://dhi.io"
+  chart         = "external-dns-chart"
   version       = var.helm_external_dns_version
   namespace     = kubernetes_namespace_v1.external_dns[0].metadata[0].name
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
 
+  repository_username = var.dockerhub_username
+  repository_password = var.dockerhub_access_token
+
   values = [yamlencode({
-    image = {
-      repository = "${local.registry_k8sio}/external-dns/external-dns"
-    }
-    provider      = "azure"
-    policy        = "sync"
-    registry      = "txt"
-    txtOwnerId    = local.external_dns_txt_owner_id
-    txtPrefix     = "gdcn-"
-    domainFilters = [local.external_dns_zone_name]
-    sources       = var.ingress_controller == "istio_gateway" ? ["service"] : ["ingress"]
+    imagePullSecrets = [{ name = module.external_dns_dhi_pull[0].secret_name }]
+    provider         = "azure"
+    policy           = "sync"
+    registry         = "txt"
+    txtOwnerId       = local.external_dns_txt_owner_id
+    txtPrefix        = "gdcn-"
+    domainFilters    = [local.external_dns_zone_name]
+    sources          = var.ingress_controller == "istio_gateway" ? ["service"] : ["ingress"]
 
     serviceAccount = {
       create = true
@@ -188,9 +199,7 @@ resource "helm_release" "external_dns" {
     azurerm_role_assignment.external_dns_zone_rg_reader,
     azurerm_federated_identity_credential.external_dns,
     terraform_data.validate_azure_dns_hostnames,
-    # Image comes from the k8sio cache rule when enable_image_cache is set.
-    azurerm_container_registry_cache_rule.k8sio,
-    azurerm_role_assignment.aks_acr_pull,
+    module.external_dns_dhi_pull,
   ]
 }
 

@@ -241,13 +241,22 @@ variable "helm_clickhouse_operator_version" { type = string }
 variable "helm_gdcn_version" { type = string }
 
 variable "helm_keda_version" {
-  description = "Version of the KEDA Helm chart to deploy."
+  description = "Version of the KEDA Helm chart from dhi.io (dhi.io/keda-chart), for example 2.21.0."
   type        = string
-  # renovate: depName=keda registryUrl=https://kedacore.github.io/charts
+  # renovate: datasource=docker depName=dhi.io/keda-chart
   default = "2.21.0"
 }
 
 variable "helm_grafana_version" { type = string }
+
+variable "dhi_access_token" {
+  type      = string
+  sensitive = true
+}
+
+variable "dhi_username" {
+  type = string
+}
 
 variable "helm_istio_version" { type = string }
 
@@ -480,10 +489,6 @@ variable "prometheus_retention_period" {
 }
 
 variable "registry_dockerio" { type = string }
-
-variable "registry_k8sio" { type = string }
-
-variable "registry_quayio" { type = string }
 
 variable "s3_datasource_fs_bucket_id" {
   type    = string

@@ -17,8 +17,12 @@ locals {
     "app.kubernetes.io/component" = "cache"
   }
 
+  # renovate: datasource=docker depName=dhi.io/valkey
+  langfuse_valkey_image = "${local.dhi_registry}/valkey:8.1.11"
+
   # Authenticated valkey-cli ping; the password stays in the env, never in argv.
-  langfuse_valkey_probe = ["sh", "-c", "valkey-cli --no-auth-warning -a \"$VALKEY_PASSWORD\" ping | grep -q PONG"]
+  # Plain sh only: the DHI image has no grep.
+  langfuse_valkey_probe = ["sh", "-c", "[ \"$(valkey-cli --no-auth-warning -a \"$VALKEY_PASSWORD\" ping)\" = PONG ]"]
 }
 
 resource "kubernetes_stateful_set_v1" "langfuse_valkey" {
@@ -44,18 +48,22 @@ resource "kubernetes_stateful_set_v1" "langfuse_valkey" {
       }
 
       spec {
-        # uid 999 / gid 1000 are the valkey user in the upstream image; fs_group
-        # makes the PVC writable so the entrypoint never needs root.
+        # 65532 is the nonroot user of the DHI image; fs_group makes the PVC
+        # writable so the entrypoint never needs root.
         security_context {
           run_as_non_root = true
-          run_as_user     = 999
-          run_as_group    = 1000
-          fs_group        = 1000
+          run_as_user     = 65532
+          run_as_group    = 65532
+          fs_group        = 65532
+        }
+
+        image_pull_secrets {
+          name = local.dhi_pull_secret_name
         }
 
         container {
           name  = "valkey"
-          image = "${var.registry_dockerio}/valkey/valkey:8.1.9-alpine"
+          image = local.langfuse_valkey_image
 
           # Image entrypoint is kept, so args start with the server binary.
           # noeviction is required by Langfuse: evicting drops queued events.
@@ -150,6 +158,7 @@ resource "kubernetes_stateful_set_v1" "langfuse_valkey" {
 
   depends_on = [
     kubernetes_secret_v1.langfuse_server_secrets,
+    module.dhi_pull,
   ]
 }
 

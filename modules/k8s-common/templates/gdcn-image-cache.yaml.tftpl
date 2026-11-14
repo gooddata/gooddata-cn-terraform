@@ -10,13 +10,6 @@ global:
   security:
     allowInsecureImages: true
 
-# Configure Redis HA images to use the cache
-redis-ha:
-  image:
-    repository: ${registry_dockerio}/library/redis
-  exporter:
-    image: ${registry_quayio}/oliver006/redis_exporter
-
 # Configure Qdrant images to use the cache
 qdrant:
   image:

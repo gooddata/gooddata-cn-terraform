@@ -152,7 +152,7 @@ What the switch does:
 - Rejects `enable_image_cache = true`: Amazon ECR does not support the first pull-through-cache pull on the FIPS endpoint.
 - Without `s3_endpoint`: sets the chart value `global.aws.useFipsEndpoint: true`, so every GoodData.CN container calls the AWS FIPS endpoints (S3, STS for IRSA). The exports URL uses the S3 FIPS host `s3-fips.<region>.amazonaws.com`. Loki gets no S3 endpoint and `AWS_USE_FIPS_ENDPOINT=true`, so its SDK selects the FIPS host. Tempo (minio-go does not read the variable) gets the S3 FIPS host. Both get `AWS_STS_REGIONAL_ENDPOINTS=regional`. This needs a chart with the value (an older chart ignores it). Langfuse and the AI Lake StarRocks have their own S3 settings and are not changed. With `s3_endpoint`, see "Object-storage endpoints".
 - Requires TLS for RDS (`rds.force_ssl=1`). Terraform downloads the regional RDS CA bundle (`https://truststore.pki.rds.amazonaws.com/<region>/<region>-bundle.pem`), creates the Secret `postgres-ca-cert` from it and points `genAi.database.sslRootCert` at it. To get `verify-full`, set `genAi.database.sslMode: verify-full` (and, with AI Lake, `aiLake.database.sslMode` and `aiLake.database.sslRootCert`) with `gdcn_helm_extra_values` or `gdcn_helm_extra_values_files`. The other connections (the GoodData.CN base values for the Java services, Dex, Langfuse and the bootstrap Jobs) use `sslmode=require` (encrypted, server certificate not verified).
-- Requires `ingress_controller = "istio_gateway"` (and `tls_mode = "letsencrypt"`). No other ingress controller is allowed. This module always installs Istio in sidecar mode with STRICT mTLS for the GoodData.CN namespaces, so no extra toggle exists.
+- Requires `ingress_controller = "istio_gateway"` (and `tls_mode = "letsencrypt"`). No other ingress controller is allowed. This module always installs Istio in sidecar mode with STRICT mTLS for the GoodData.CN namespaces, so no extra toggle exists. Istio comes from Docker Hardened Images: the Helm charts `istio-base-chart`, `istio-discovery-chart` and `istio-gateway-chart` from `oci://dhi.io` (chart version = `helm_istio_version`, which also selects the image versions). This needs a Docker Hub login: set `dockerhub_username` and `dockerhub_access_token` (a free account is enough). The module creates a `dhi-pull-secret` in every namespace that runs DHI images.
 - Enables `istio_gateway_fips_tls`.
 - Fails the plan in a region without FIPS endpoints (only the US commercial regions us-east-1, us-east-2, us-west-1 and us-west-2 are allowed).
 
@@ -177,7 +177,37 @@ Every object-storage client in the cluster has an explicit endpoint setting. One
 
 With `s3_endpoint` set on AWS, `global.aws.useFipsEndpoint` stays `false` for the whole GoodData.CN chart (the chart fails on an explicit endpoint together with it), and Loki gets only `AWS_STS_REGIONAL_ENDPOINTS=regional`. Example for FIPS with an explicit host: `s3_endpoint = "s3-fips.us-east-1.amazonaws.com"`. STS (IRSA) then uses the regional non-FIPS STS host unless you set it some other way. For Azure Government, set `azure_storage_endpoint_suffix = "core.usgovcloudapi.net"`; the azurerm provider environment and the other Azure hosts are not changed by this variable.
 
-For arm64 (Graviton) nodes, set `eks_node_arch = "arm64"`. The system node group uses the Graviton `m8g` type of the size profile (fallback `m7g`) and Karpenter selects Graviton `m` instances. All nodes use one architecture. With `enable_ai_lake = true`, also set `eks_ai_lake_node_types` to arm64 instance types.
+For arm64 (Graviton) nodes, set `eks_node_arch = "arm64"`. The system node group uses `m8g.xlarge` (fallback `m7g.xlarge`) and Karpenter selects Graviton `m` instances. All nodes use one architecture. With `enable_ai_lake = true`, also set `eks_ai_lake_node_types` to arm64 instance types.
+
+### Upgrade note: `istio-ingress` namespace
+
+The `istio-ingress` namespace is now a Terraform resource (`kubernetes_namespace_v1.istio_ingress`). On an existing deployment that already has this namespace (created earlier by the Helm release), `terraform apply` fails with "namespaces istio-ingress already exists". Before the apply, import it:
+
+```bash
+terraform import 'module.k8s_common.kubernetes_namespace_v1.istio_ingress[0]' istio-ingress
+```
+
+Adjust the module address to match your root module (`terraform state list | grep istio_ingress`). Alternatively, destroy and recreate the Istio gateway.
+
+## Verify hardened images
+
+After `terraform apply`, scan all images in the cluster. Run `scripts/configure-kubectl.sh` first. Then run this command from the environment directory:
+
+```bash
+../scripts/scan-images.sh
+```
+
+The script needs `kubectl`, `trivy` and `jq`. It lists every image in every namespace, including init containers. It scans each image with trivy for known CVEs. It prints one row for each image.
+
+Columns:
+
+- `HARDENED`: `yes` when the image comes from a hardened registry (for example `dhi.io`). The list is at the top of the script. Edit it for your setup.
+- `VEX`: `yes` when the DHI VEX was applied to the scan.
+- `CRITICAL`, `HIGH`, `TOTAL`: number of CVEs after the VEX. Use `--severity` to change what `TOTAL` counts.
+
+For `dhi.io` images, the script fetches the DHI OpenVEX statement with `crane`. Trivy then hides the CVEs that DHI marks as not affected. Set `DHI_USERNAME` and `DHI_TOKEN`, or run `docker login dhi.io` first. If the VEX is not available, the script prints a warning and scans without it.
+
+Expect some images that are not hardened. They are listed with `HARDENED` set to `no`. Useful options: `--ignore-unfixed`, `--json`, `--csv`, `--context <name>`, and `--fail-on-non-hardened` (exit code 2). Run `--help` for all options.
 
 ## Geo charts (basemap)
 

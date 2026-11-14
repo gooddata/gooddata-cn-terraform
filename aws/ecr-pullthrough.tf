@@ -14,15 +14,7 @@ locals {
     "${local.ecr_registry_base}/${aws_ecr_pull_through_cache_rule.dockerio[0].ecr_repository_prefix}"
   ) : local.upstream_registry_dockerio
 
-  upstream_registry_quayio = "quay.io"
-  registry_quayio = var.enable_image_cache ? (
-    "${local.ecr_registry_base}/${aws_ecr_pull_through_cache_rule.quayio[0].ecr_repository_prefix}"
-  ) : local.upstream_registry_quayio
 
-  upstream_registry_k8sio = "registry.k8s.io"
-  registry_k8sio = var.enable_image_cache ? (
-    "${local.ecr_registry_base}/${aws_ecr_pull_through_cache_rule.k8sio[0].ecr_repository_prefix}"
-  ) : local.upstream_registry_k8sio
 }
 
 # Anything you pull via:
@@ -67,22 +59,17 @@ resource "time_sleep" "dockerio_secret_propagation" {
 resource "aws_ecr_pull_through_cache_rule" "dockerio" {
   count = var.enable_image_cache ? 1 : 0
 
-  ecr_repository_prefix = "dockerio"
+  # Per deployment, so the cache repositories show the owner (ECR limit: 30 characters).
+  ecr_repository_prefix = "${var.deployment_name}-dockerio"
   upstream_registry_url = local.upstream_registry_dockerio
   credential_arn        = aws_secretsmanager_secret.dockerio[0].arn
 
   depends_on = [time_sleep.dockerio_secret_propagation]
-}
-resource "aws_ecr_pull_through_cache_rule" "quayio" {
-  count = var.enable_image_cache ? 1 : 0
 
-  ecr_repository_prefix = "quayio"
-  upstream_registry_url = local.upstream_registry_quayio
-}
-
-resource "aws_ecr_pull_through_cache_rule" "k8sio" {
-  count = var.enable_image_cache ? 1 : 0
-
-  ecr_repository_prefix = "k8sio"
-  upstream_registry_url = local.upstream_registry_k8sio
+  lifecycle {
+    precondition {
+      condition     = length("${var.deployment_name}-dockerio") <= 30
+      error_message = "enable_image_cache needs the ECR pull-through prefix \"<deployment_name>-dockerio\" to be at most 30 characters, so deployment_name can have at most 21 characters (now ${length(var.deployment_name)})."
+    }
+  }
 }

@@ -68,13 +68,16 @@ langfuse:
           name: "${keypair_secret_name}"
           key: "langfuse_secret_key"
 
+  # Web and worker run Docker Hardened Images (dhi.io) at the chart appVersion tag.
   image:
     pullPolicy: IfNotPresent
+    pullSecrets:
+      - name: "${dhi_pull_secret_name}"
 
   web:
     replicas: ${web_replicas}
     image:
-      repository: "${registry_dockerio}/langfuse/langfuse"
+      repository: "${dhi_registry}/langfuse"
     resources:
       requests:
         cpu: 100m
@@ -86,7 +89,7 @@ langfuse:
   worker:
     replicas: ${worker_replicas}
     image:
-      repository: "${registry_dockerio}/langfuse/langfuse-worker"
+      repository: "${dhi_registry}/langfuse-worker"
     resources:
       requests:
         cpu: 100m

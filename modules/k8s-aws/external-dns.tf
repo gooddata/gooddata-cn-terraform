@@ -105,20 +105,21 @@ resource "kubernetes_service_account_v1" "external_dns" {
 resource "helm_release" "external_dns" {
   count         = local.external_dns_enabled ? 1 : 0
   name          = "external-dns"
-  repository    = "https://kubernetes-sigs.github.io/external-dns/"
-  chart         = "external-dns"
+  repository    = "oci://${local.dhi_registry}"
+  chart         = "external-dns-chart"
   version       = var.helm_external_dns_version
   namespace     = kubernetes_namespace_v1.external_dns[0].metadata[0].name
   wait          = true
   wait_for_jobs = true
   timeout       = 1800
 
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
+
   # Tolerate the system pool taint: this runs before Karpenter has provisioned
   # any untainted capacity, so the system nodes are the only place it can land.
   values = [yamlencode(merge({
-    image = {
-      repository = "${var.registry_k8sio}/external-dns/external-dns"
-    }
+    imagePullSecrets = [{ name = local.dhi_pull_secret_name }]
     tolerations = [{
       key      = "CriticalAddonsOnly"
       operator = "Exists"
@@ -141,5 +142,7 @@ resource "helm_release" "external_dns" {
     }, var.fips_enabled ? {
     env = [for k, v in local.fips_env : { name = k, value = v }]
   } : {}))]
+
+  depends_on = [module.dhi_pull]
 }
 
