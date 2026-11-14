@@ -119,6 +119,10 @@ To upgrade GoodData.CN to the [latest version](https://www.gooddata.com/docs/clo
 
 1. Run Terraform: `terraform apply -var-file=settings.tfvars`
 
+#### Upgrading a local (k3d) deployment
+
+This version changes the k3d cluster configuration (agent count variable, kubelet image GC and eviction settings). These settings apply only when the cluster is created, so the first `terraform apply` after the upgrade replaces `null_resource.k3d_cluster`: Terraform deletes the k3d cluster and creates a new one. All data in the cluster (databases, uploaded files, workspaces) is lost. Back up the data that you need before you apply, and run `terraform plan -var-file=settings.tfvars` first: the line `null_resource.k3d_cluster must be replaced` shows this case. A change to `k3d_servers_memory` alone does not replace the cluster.
+
 #### Upgrading from ingress-nginx to Traefik
 
 Traefik replaces ingress-nginx. Rename `ingress_nginx_behind_l7` to `ingress_behind_l7` and `helm_ingress_nginx_version` to `helm_traefik_version` in `settings.tfvars`. Set `ingress_controller = "traefik"` if you set it before.
