@@ -42,9 +42,11 @@ resource "helm_release" "pulsar" {
 
   values = compact([
     templatefile("${path.module}/templates/pulsar-base.yaml.tftpl", {
-      registry_dockerio    = var.registry_dockerio
-      enable_observability = var.enable_observability
-      storage_class        = var.gdcn_storage_class
+      registry_dockerio = var.registry_dockerio
+      # With Istio metrics merging the chart PodMonitors are off. The chart then sets the
+      # prometheus.io annotations on the pods, and prometheus-metrics-merge.tf scrapes them.
+      podmonitor_enabled = var.enable_observability && !local.metrics_merge_enabled
+      storage_class      = var.gdcn_storage_class
     }),
     local.use_istio_gateway ? templatefile("${path.module}/templates/pulsar-istio.tftpl", {}) : null,
     templatefile("${path.module}/templates/pulsar-size-${var.pulsar_size}.yaml.tftpl", {})

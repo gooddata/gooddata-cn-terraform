@@ -239,6 +239,8 @@ resource "helm_release" "gooddata_cn" {
     var.enable_observability ? templatefile("${path.module}/templates/gdcn-observability.yaml.tftpl", {
       observability_namespace = kubernetes_namespace_v1.observability[0].metadata[0].name
     }) : null,
+    # After gdcn-observability: it turns the chart PodMonitors off and sets the prometheus.io annotations.
+    local.metrics_merge_enabled ? templatefile("${path.module}/templates/gdcn-metrics-merge.yaml.tftpl", {}) : null,
     var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local.yaml.tftpl", {
       s3_endpoint_override    = var.local_s3_endpoint_override
       s3_region               = var.local_s3_region
@@ -342,8 +344,9 @@ resource "helm_release" "gooddata_cn" {
 # PodMonitor for Redis HA exporter sidecar.
 # The redis-ha subchart does not create a PodMonitor, so we add one
 # to scrape the redis_exporter metrics (port 9121) into Prometheus.
+# With Istio, prometheus-metrics-merge.tf scrapes the exporter through the sidecar instead.
 resource "kubectl_manifest" "redis_ha_podmonitor" {
-  count = var.enable_observability ? 1 : 0
+  count = var.enable_observability && !local.metrics_merge_enabled ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "monitoring.coreos.com/v1"

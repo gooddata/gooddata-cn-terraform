@@ -207,7 +207,7 @@ The tile archive comes from one of two sources:
   (the Job cuts it the same way), or put `basemap.pmtiles` on your own PVC and set `geo_protomaps_existing_claim`
   (no Job runs; make the extract on a connected machine with `pmtiles extract <source> basemap.pmtiles --bbox=... --maxzoom=...`).
 
-A changed source, area or zoom creates a new Job, which replaces the archive. Measured sizes (build 20261111):
+A changed source, area or zoom creates a new PVC (`gdcn-basemap-<hash>`) and a new Job. The Job fills the new PVC while the old server keeps running, then the server switches to the new PVC (a short restart), and Terraform deletes the old PVC. The volume is ReadWriteOnce, so the Job never needs the volume of the running server and can run on any node. Both PVCs exist during the change. Measured sizes (build 20261111):
 contiguous US z0-10 386 MB, US z0-12 1.9 GB (68 s); Czechia z0-12 255 MB. The download of a US z10 extract takes about 20 s.
 Size `geo_protomaps_storage_size` (default 10Gi) to fit.
 
@@ -217,7 +217,7 @@ Set `enable_gdcn_autoscaling = true` (requires chart >= 4.12.0) to horizontally 
 
 ## Hardening
 
-The module always applies these settings: the license key and the encryption keyset are in Secrets, each service has its own PostgreSQL user, telemetry is off and the tools pod is not deployed. With `ingress_controller = "istio_gateway"`, the module also sets STRICT mTLS in the GoodData.CN and Pulsar namespaces.
+The module always applies these settings: the license key and the encryption keyset are in Secrets, each service has its own PostgreSQL user, telemetry is off and the tools pod is not deployed. With `ingress_controller = "istio_gateway"`, the module also sets STRICT mTLS in the GoodData.CN and Pulsar namespaces, without PERMISSIVE ports (see "Prometheus scraping" under Observability).
 
 Use these variables for more hardening. Each variable is off or empty by default. Values in `gdcn_helm_extra_values` override the values from these variables.
 
@@ -241,6 +241,18 @@ Set `enable_observability = true` and `observability_hostname` in your `settings
 After `terraform apply`, Grafana is available at `https://<observability_hostname>`. A GoodData-CN health dashboard is automatically provisioned and can be found under the **GoodData-CN** folder in Grafana.
 
 To import the dashboard into a standalone Grafana instance, upload `modules/k8s-common/dashboards/gooddata-cn-overall-health.json` via **Dashboards → Import** and replace the datasource UIDs (`prometheus` → your Prometheus UID, `loki` → your Loki UID).
+
+### Prometheus scraping with `ingress_controller = "istio_gateway"`
+
+The GoodData.CN, Pulsar and Langfuse namespaces enforce STRICT mTLS, and no port has a PERMISSIVE exemption. Prometheus does not scrape the application metrics ports. It scrapes the merged metrics endpoint of the Istio sidecar (port 15020, path `/stats/prometheus`). The sidecar serves its own Envoy metrics and the application metrics on this endpoint. The sidecar does not intercept port 15020, so mTLS does not apply to it.
+
+- The module sets `meshConfig.enablePrometheusMerge: true` for Istio.
+- The sidecar reads the application metrics endpoint from the pod annotations `prometheus.io/scrape`, `prometheus.io/port` and `prometheus.io/path`. The Helm charts set them, or the module sets them with Helm values (for example on the GoodData.CN components `apiGw`, `genAi`, `genAiMetadataSync`, `mcpServer`, `organizationController`, `tabularExporter` and `customEtcd`, and on the Langfuse ClickHouse).
+- The module turns off the PodMonitors of the charts (they scrape the application port directly). It creates the PodMonitors `istio-merged-*` in the namespaces `gdcn` (GoodData.CN and redis-ha), `pulsar` and `langfuse` (ClickHouse). The labels `container`, `pod` and `namespace` of the metrics stay the same, so the dashboards and the KEDA triggers work. The `job` label of the GoodData.CN metrics is now the component name.
+- The metrics of a scrape also contain the Envoy (`istio_*`, `envoy_*`) metrics of the pod.
+- The first `terraform apply` after this change restarts the GoodData.CN and Pulsar pods (new pod annotations).
+- If you turn on NetworkPolicies in a chart, allow port 15020 from the `observability` namespace.
+- The TEI components of the chart have no pod annotation value. Their application metrics are not merged.
 
 ## LLM observability
 

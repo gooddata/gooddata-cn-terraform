@@ -11,6 +11,10 @@
 # - geo_protomaps_source_url: a Job cuts it to geo_protomaps_bbox and
 #   geo_protomaps_max_zoom (default: the public Protomaps daily build; for an
 #   air-gapped install, a mirror on an internal http(s):// or s3:// URL).
+#   Each extract (source, area and zoom) has its own PVC, named with the extract hash. The
+#   volume is ReadWriteOnce and the running server holds the previous one, so a replacement
+#   Job must not need that volume: it fills a new PVC and can run on any node. The server
+#   (strategy Recreate) then switches to the new PVC, and Terraform deletes the old PVC.
 # - geo_protomaps_existing_claim: a PVC that already holds basemap.pmtiles
 #   (customer-provided file); no Job runs.
 ###
@@ -20,9 +24,9 @@ locals {
   protomaps_name      = "gdcn-basemap"
   protomaps_base_url  = "http://${local.protomaps_name}.${var.gdcn_namespace}.svc.cluster.local:8080"
   protomaps_style_url = "${local.protomaps_base_url}/style/style.json"
-  protomaps_claim     = var.geo_protomaps_existing_claim != "" ? var.geo_protomaps_existing_claim : local.protomaps_name
+  protomaps_claim     = var.geo_protomaps_existing_claim != "" ? var.geo_protomaps_existing_claim : "${local.protomaps_name}-${local.protomaps_extract_hash}"
   protomaps_labels    = { "app.kubernetes.io/name" = local.protomaps_name, "app.kubernetes.io/part-of" = "gooddata-cn" }
-  # The Service and the Job's affinity select only the server, never the extract pod.
+  # The Service selects only the server, never the extract pod.
   protomaps_server_labels  = merge(local.protomaps_labels, { "app.kubernetes.io/component" = "server" })
   protomaps_extract_labels = merge(local.protomaps_labels, { "app.kubernetes.io/component" = "extract" })
   # Protomaps "light" flavor, generated with @protomaps/basemaps 5.7.2
@@ -30,7 +34,7 @@ locals {
   # (Protomaps, OpenStreetMap/ODbL) is in the source.
   protomaps_style = replace(replace(file("${path.module}/files/protomaps-light-style.json"),
   "__BASE__", local.protomaps_base_url), "\"maxzoom\":99999", "\"maxzoom\":${var.geo_protomaps_max_zoom}")
-  # A changed source, area or zoom makes a new Job, which replaces the archive.
+  # A changed source, area or zoom makes a new PVC and a new Job, which build a new archive.
   # Same pull secret as the GoodData.CN chart (gooddata-cn.tf): the image comes from the gdc-nas build registry.
   protomaps_pull_secrets = local.use_internal_registry_auth ? [kubernetes_secret_v1.internal_registry[0].metadata[0].name] : []
   protomaps_extract_hash = substr(sha256(join("|", [var.geo_protomaps_source_url, var.geo_protomaps_bbox, var.geo_protomaps_max_zoom])), 0, 8)
@@ -53,7 +57,7 @@ resource "kubernetes_persistent_volume_claim_v1" "protomaps" {
   count = local.protomaps_enabled && var.geo_protomaps_existing_claim == "" ? 1 : 0
 
   metadata {
-    name      = local.protomaps_name
+    name      = local.protomaps_claim
     namespace = var.gdcn_namespace
     labels    = local.protomaps_labels
   }
@@ -68,6 +72,12 @@ resource "kubernetes_persistent_volume_claim_v1" "protomaps" {
 
   # The volume binds when the first pod (the extract Job) mounts it.
   wait_until_bound = false
+
+  # The name changes with the extract hash. Create the new PVC first: the running server still
+  # mounts the old one until the Deployment switches, and a PVC in use cannot be deleted.
+  lifecycle {
+    create_before_destroy = true
+  }
 
   depends_on = [kubernetes_namespace_v1.gdcn]
 }
@@ -105,22 +115,6 @@ resource "kubernetes_job_v1" "protomaps_extract" {
           fs_group        = 65532
           seccomp_profile { type = "RuntimeDefault" }
           se_linux_options { level = local.protomaps_selinux_level }
-        }
-
-        # The volume is ReadWriteOnce: prefer the node of the running server
-        # when the archive is replaced later.
-        affinity {
-          pod_affinity {
-            preferred_during_scheduling_ignored_during_execution {
-              weight = 100
-              pod_affinity_term {
-                topology_key = "kubernetes.io/hostname"
-                label_selector {
-                  match_labels = local.protomaps_server_labels
-                }
-              }
-            }
-          }
         }
 
         container {
@@ -324,7 +318,7 @@ resource "kubernetes_deployment_v1" "protomaps" {
     }
   }
 
-  depends_on = [kubernetes_job_v1.protomaps_extract, kubernetes_secret_v1.internal_registry]
+  depends_on = [kubernetes_job_v1.protomaps_extract, kubernetes_persistent_volume_claim_v1.protomaps, kubernetes_secret_v1.internal_registry]
 }
 
 resource "kubernetes_service_v1" "protomaps" {

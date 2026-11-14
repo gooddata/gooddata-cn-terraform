@@ -82,7 +82,12 @@ resource "helm_release" "istiod" {
   namespace  = kubernetes_namespace_v1.istio_system[0].metadata[0].name
 
   values = [yamlencode({
-    meshConfig = { accessLogFile = "/dev/stdout" }
+    meshConfig = {
+      accessLogFile = "/dev/stdout"
+      # Prometheus scrapes the merged sidecar endpoint (port 15020), see prometheus-metrics-merge.tf.
+      # This is the default in current Istio; set it explicitly because the scrape depends on it.
+      enablePrometheusMerge = true
+    }
     global = merge(
       # Native sidecars start the Envoy proxy before init containers, so
       # init containers participate in mTLS and the mesh from the start.
