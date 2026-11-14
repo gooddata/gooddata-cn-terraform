@@ -98,12 +98,24 @@ resource "null_resource" "k3d_servers_memory" {
     interpreter = ["bash", "-c"]
     command     = <<-EOT
       set -euo pipefail
-      if [ -n "${var.k3d_servers_memory}" ]; then
-        for c in $(docker ps -q --filter "label=k3d.cluster=${var.k3d_cluster_name}" --filter "label=k3d.role=server"); do
-          docker update --memory "${var.k3d_servers_memory}" --memory-swap "${var.k3d_servers_memory}" "$c" >/dev/null
-          echo ">> Memory limit ${var.k3d_servers_memory} on server node $c"
-        done
+      # -a: also stopped server containers. A failed docker ps stops the script (set -e on the assignment).
+      ids=$(docker ps -aq --filter "label=k3d.cluster=${var.k3d_cluster_name}" --filter "label=k3d.role=server")
+      if [ -z "$ids" ]; then
+        echo "ERROR: no server node container found for k3d cluster ${var.k3d_cluster_name}" >&2
+        exit 1
       fi
+      if [ -n "${var.k3d_servers_memory}" ]; then
+        memory="${var.k3d_servers_memory}"
+        swap="${var.k3d_servers_memory}"
+      else
+        # Empty: no limit. docker update cannot clear a limit, so set it to all memory of the Docker VM.
+        memory=$(docker info --format '{{.MemTotal}}')
+        swap=-1
+      fi
+      for c in $ids; do
+        docker update --memory "$memory" --memory-swap "$swap" "$c" >/dev/null
+        echo ">> Memory limit $memory on server node $c"
+      done
     EOT
   }
 }
