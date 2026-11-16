@@ -63,55 +63,30 @@ case "${CURRENT_DIR}" in
     ;;
 
   stackit)
+    require_command stackit "STACKIT CLI not found; install it to configure kubectl."
     require_command kubectl "kubectl not found; install it to interact with Kubernetes."
     require_tf_outputs
 
     SKE_CLUSTER_NAME=$(tf_output_value "ske_cluster_name")
-    SKE_KUBECONFIG=$(tf_output_value "kubeconfig")
+    STACKIT_PROJECT_ID=$(tf_output_value "stackit_project_id")
+    STACKIT_REGION=$(tf_output_value "stackit_region")
 
-    if [[ -z "${SKE_CLUSTER_NAME}" || -z "${SKE_KUBECONFIG}" ]]; then
-      echo ">> ERROR: Missing required Terraform outputs (ske_cluster_name, kubeconfig)." >&2
+    if [[ -z "${SKE_CLUSTER_NAME}" || -z "${STACKIT_PROJECT_ID}" || -z "${STACKIT_REGION}" ]]; then
+      echo ">> ERROR: Missing required Terraform outputs (ske_cluster_name, stackit_project_id, stackit_region)." >&2
       exit 1
     fi
 
-    # Outputs keep the kubeconfig from the last apply and never renew it, so an
-    # expired one would only surface later as 401s from kubectl.
-    SKE_EXPIRES_AT=$(tf_output_value "kubeconfig_expires_at")
-    if [[ -n "${SKE_EXPIRES_AT}" ]] && jq -en --arg t "${SKE_EXPIRES_AT}" \
-      '($t | sub("\\.[0-9]+"; "") | fromdateiso8601) <= now' >/dev/null 2>&1; then
-      echo ">> ERROR: The SKE kubeconfig expired at ${SKE_EXPIRES_AT}. Renew it with 'terraform apply -var-file=settings.tfvars -target=stackit_ske_kubeconfig.main', then rerun this script." >&2
-      exit 1
-    fi
-
-    # SKE hands out a ready-made kubeconfig rather than an exec-credential
-    # plugin, so it is merged into the default kubeconfig here. It is short-lived:
-    # rerun this script once it expires.
-    SKE_KUBECONFIG_TMP=$(mktemp)
-    SKE_MERGED_TMP=$(mktemp)
-    # shellcheck disable=SC2064
-    trap "rm -f '${SKE_KUBECONFIG_TMP}' '${SKE_MERGED_TMP}'" EXIT
-    printf '%s' "${SKE_KUBECONFIG}" >"${SKE_KUBECONFIG_TMP}"
-
-    echo ">> Merging kubeconfig for SKE cluster '${SKE_CLUSTER_NAME}'..."
+    # --login: kubectl fetches short-lived tokens from the STACKIT CLI, so it never expires.
+    # The CLI writes to $KUBECONFIG when set; unset it to target the default file.
+    echo ">> Configuring kubectl for SKE cluster '${SKE_CLUSTER_NAME}'..."
     unset KUBECONFIG || true
-    DEFAULT_KUBECONFIG="${HOME}/.kube/config"
-    mkdir -p "$(dirname "${DEFAULT_KUBECONFIG}")"
-    # The SKE file comes first so its entries win: the kubeconfig is short-lived,
-    # and rerunning this must replace the expired one rather than be ignored.
-    # --raw keeps credentials intact without --flatten, which would inline every
-    # other cluster's key material into the user's config.
-    KUBECONFIG="${SKE_KUBECONFIG_TMP}:${DEFAULT_KUBECONFIG}" \
-      kubectl config view --raw >"${SKE_MERGED_TMP}"
-    cp "${SKE_MERGED_TMP}" "${DEFAULT_KUBECONFIG}"
-    chmod 600 "${DEFAULT_KUBECONFIG}"
+    stackit ske kubeconfig create "${SKE_CLUSTER_NAME}" --login \
+      --project-id "${STACKIT_PROJECT_ID}" \
+      --region "${STACKIT_REGION}" \
+      --assume-yes --output-format none
 
-    SKE_CONTEXT=$(KUBECONFIG="${SKE_KUBECONFIG_TMP}" kubectl config current-context)
-    echo ">> Switching kubectl context to '${SKE_CONTEXT}'..."
-    kubectl config use-context "${SKE_CONTEXT}"
-
-    if [[ -n "${SKE_EXPIRES_AT}" ]]; then
-      echo ">> NOTE: this kubeconfig expires at ${SKE_EXPIRES_AT}; rerun this script afterwards."
-    fi
+    # The CLI merges the context (named after the cluster) but does not switch to it.
+    kubectl config use-context "${SKE_CLUSTER_NAME}"
 
     echo ">> kubectl configured successfully."
     ;;

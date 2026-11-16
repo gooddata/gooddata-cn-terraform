@@ -25,7 +25,7 @@ Terraform provisions:
 1. Install the following CLI utilities:
     - [Terraform](https://developer.hashicorp.com/terraform/install)
     - Cloud provider CLI ([AWS](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), [Azure](https://learn.microsoft.com/cli/azure/install-azure-cli))
-    - For STACKIT deployments: the [STACKIT CLI](https://github.com/stackitcloud/stackit-cli) is optional — Terraform authenticates from a service account key. It is useful for listing machine types and PostgreSQL Flex flavors.
+    - For STACKIT deployments: the [STACKIT CLI](https://github.com/stackitcloud/stackit-cli). Terraform does not need it, but `configure-kubectl.sh` and kubectl use it to get cluster credentials.
     - For Azure deployments: [kubelogin](https://azure.github.io/kubelogin/install.html)
     - [kubectl](https://kubernetes.io/docs/tasks/tools/)
     - [helm](https://helm.sh/docs/intro/install/)
@@ -85,7 +85,8 @@ Requirements:
     - For Azure: `az login`
     - Azure note: Terraform's Kubernetes authentication uses `kubelogin` with your Azure CLI session.
     - For STACKIT: create a service account key and export `STACKIT_SERVICE_ACCOUNT_KEY_PATH` (or save it to `~/.stackit/credentials.json`). See the [provider authentication docs](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs#authentication).
-    - STACKIT note: SKE issues a kubeconfig that expires after 24 hours. To renew it, run `terraform apply -var-file=settings.tfvars -target=stackit_ske_kubeconfig.main`, then rerun `../scripts/configure-kubectl.sh`. A full apply can fail first, because the Kubernetes and Helm providers still use the expired kubeconfig.
+    - For kubectl access to STACKIT, also log in the STACKIT CLI: `stackit auth login`, or `stackit auth activate-service-account --service-account-key-path <key file>`.
+    - STACKIT note: Terraform uses an SKE kubeconfig that expires after 24 hours. If a plan or apply fails with authentication errors, renew it with `terraform apply -var-file=settings.tfvars -target=stackit_ske_kubeconfig.main`. A full apply can fail first, because the Kubernetes and Helm providers still use the expired kubeconfig. kubectl is not affected.
     - STACKIT note: STACKIT Object Storage refuses to delete a bucket that still holds objects, so empty the buckets before `terraform destroy`.
 
 1. Initialize Terraform: `terraform init`
