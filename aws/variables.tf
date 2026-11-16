@@ -403,7 +403,7 @@ variable "helm_loki_version" {
   description = "Version of the loki Helm chart to deploy (grafana-community). https://github.com/grafana-community/helm-charts/tree/main/charts/loki"
   type        = string
   # renovate: depName=loki registryUrl=https://grafana-community.github.io/helm-charts
-  default = "21.0.0"
+  default = "21.2.3"
 }
 
 variable "helm_metrics_server_version" {
