@@ -90,8 +90,6 @@ module "k8s_common" {
   enable_image_cache           = var.enable_image_cache
   enable_gdcn_autoscaling      = var.enable_gdcn_autoscaling
   registry_dockerio            = local.registry_dockerio
-  registry_quayio              = local.registry_quayio
-  registry_k8sio               = local.registry_k8sio
 
   internal_registry_password    = var.internal_registry_password
   internal_registry_server      = var.internal_registry_server
@@ -101,6 +99,8 @@ module "k8s_common" {
   helm_cert_manager_version          = var.helm_cert_manager_version
   internal_chart_repository          = var.internal_chart_repository
   helm_gdcn_version                  = var.helm_gdcn_version
+  dhi_username                       = var.dockerhub_username
+  dhi_access_token                   = var.dockerhub_access_token
   helm_istio_version                 = var.helm_istio_version
   helm_pulsar_version                = var.helm_pulsar_version
   helm_traefik_version               = var.helm_traefik_version

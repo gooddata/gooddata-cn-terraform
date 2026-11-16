@@ -40,14 +40,14 @@ variable "enable_observability" {
 }
 
 variable "helm_cnpg_version" {
-  description = "Version of the CloudNativePG Helm chart to deploy."
+  description = "Version of the CloudNativePG Helm chart from dhi.io (dhi.io/cloudnative-pg-chart), for example 0.29.1."
   type        = string
-  # renovate: depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
+  # renovate: datasource=docker depName=dhi.io/cloudnative-pg-chart
   default = "0.29.1"
 }
 
 variable "helm_seaweedfs_version" {
-  description = "Version of the SeaweedFS Helm chart to deploy."
+  description = "Version of the SeaweedFS Helm chart to deploy. Its major.minor also selects the dhi.io/seaweedfs image tag, so keep it on a version dhi.io/seaweedfs publishes."
   type        = string
   # renovate: depName=seaweedfs registryUrl=https://seaweedfs.github.io/seaweedfs/helm
   default = "4.53.0"
@@ -64,9 +64,10 @@ variable "kubeconfig_path" {
 }
 
 variable "postgres_image" {
-  description = "PostgreSQL container image for the CloudNativePG Cluster."
+  description = "PostgreSQL container image for the CloudNativePG Cluster (Docker Hardened Image from dhi.io; its postgres user is UID/GID 70)."
   type        = string
-  default     = "ghcr.io/cloudnative-pg/postgresql:16.4"
+  # renovate: datasource=docker depName=dhi.io/postgres
+  default = "dhi.io/postgres:16.15-debian13"
 }
 
 variable "prometheus_crds_ready" {
@@ -187,4 +188,15 @@ variable "seaweedfs_storage_size" {
   description = "Size of the SeaweedFS data PVC. Backs all S3 buckets (Quiver cache, exports, datasource FS, Loki chunks, Tempo traces), so it must hold object-storage retention for every signal. Under local-path this request is not enforced as a quota — the node's disk is the real limit — and the PVC cannot be expanded in place, so raising this on an existing deployment means deleting and recreating it (losing its buckets)."
   type        = string
   default     = "50Gi"
+}
+
+variable "dhi_access_token" {
+  description = "Docker Hub PAT used to pull Docker Hardened Images from dhi.io."
+  type        = string
+  sensitive   = true
+}
+
+variable "dhi_username" {
+  description = "Docker Hub username used to pull Docker Hardened Images from dhi.io."
+  type        = string
 }

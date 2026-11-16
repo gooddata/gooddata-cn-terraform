@@ -18,8 +18,9 @@ module "k8s_aws" {
   route53_zone_id    = var.route53_zone_id
   ingress_replicas   = local.profile.ingress_replicas
 
-  registry_k8sio = local.registry_k8sio
-  fips_enabled   = var.fips_enabled
+  dhi_username     = var.dockerhub_username
+  dhi_access_token = var.dockerhub_access_token
+  fips_enabled     = var.fips_enabled
 
   helm_aws_lb_controller_version = var.helm_aws_lb_controller_version
   helm_metrics_server_version    = var.helm_metrics_server_version

@@ -1,11 +1,12 @@
 ###
 # Install Istio (optional)
 #
-# When ingress_controller = "istio_gateway", we install Istio.
+# When ingress_controller = "istio_gateway", we install Istio from the
+# Docker Hardened Images (DHI) Helm charts (oci://dhi.io, see dhi.tf).
 ###
 
 locals {
-  istio_chart_repo    = "https://istio-release.storage.googleapis.com/charts"
+  istio_chart_repo    = "oci://${local.dhi_registry}"
   istio_system_ns     = "istio-system"
   istio_ingress_ns    = "istio-ingress"
   istio_ingress_name  = "istio-ingress"
@@ -58,11 +59,22 @@ resource "kubernetes_namespace_v1" "istio_system" {
   }
 }
 
+resource "kubernetes_namespace_v1" "istio_ingress" {
+  count = local.use_istio_gateway ? 1 : 0
+
+  metadata {
+    name = local.istio_ingress_ns
+  }
+}
+
 resource "helm_release" "istio_base" {
   count = local.use_istio_gateway ? 1 : 0
 
+  # Upstream base chart (CRDs and validation config only, no images). The DHI
+  # istio-base-chart has Chart.yaml version 1.0.0 under the OCI tag 1.30.8, and
+  # the helm provider rejects that ("Planned version is different").
   name       = "istio-base"
-  repository = local.istio_chart_repo
+  repository = "https://istio-release.storage.googleapis.com/charts"
   chart      = "base"
   version    = var.helm_istio_version
   namespace  = kubernetes_namespace_v1.istio_system[0].metadata[0].name
@@ -77,9 +89,12 @@ resource "helm_release" "istiod" {
 
   name       = "istiod"
   repository = local.istio_chart_repo
-  chart      = "istiod"
+  chart      = "istio-discovery-chart"
   version    = var.helm_istio_version
   namespace  = kubernetes_namespace_v1.istio_system[0].metadata[0].name
+
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
 
   values = [yamlencode({
     meshConfig = {
@@ -88,17 +103,17 @@ resource "helm_release" "istiod" {
       # This is the default in current Istio; set it explicitly because the scrape depends on it.
       enablePrometheusMerge = true
     }
-    global = merge(
+    global = {
       # Native sidecars start the Envoy proxy before init containers, so
       # init containers participate in mTLS and the mesh from the start.
       # Local single-node clusters: a 100m CPU request per sidecar (about 40 pods) leaves too
       # little CPU to schedule GoodData.CN on one node.
-      { proxy = merge({ nativeSidecar = true }, var.cloud == "local" ? {
+      proxy = merge({ nativeSidecar = true }, var.cloud == "local" ? {
         resources = { requests = { cpu = "10m", memory = "64Mi" } }
-      } : {}) },
-      # Route Istio images through the pull-through cache when enabled
-      var.enable_image_cache ? { hub = "${var.registry_dockerio}/istio" } : {}
-    )
+      } : {})
+      # Also added to every injected pod (sidecar and gateway).
+      imagePullSecrets = [local.dhi_pull_secret_name]
+    }
     pilot = {
       env = {
         # Enable reconciliation of Kubernetes Ingress resources (needed for cert-manager HTTP-01
@@ -117,20 +132,24 @@ resource "helm_release" "istiod" {
 
   depends_on = [
     helm_release.istio_base,
+    module.dhi_pull,
   ]
 }
 
 resource "helm_release" "istio_ingress_gateway" {
   count = local.use_istio_gateway ? 1 : 0
 
-  name             = local.istio_ingress_name
-  repository       = local.istio_chart_repo
-  chart            = "gateway"
-  version          = var.helm_istio_version
-  namespace        = local.istio_ingress_ns
-  create_namespace = true
+  name       = local.istio_ingress_name
+  repository = local.istio_chart_repo
+  chart      = "istio-gateway-chart"
+  version    = var.helm_istio_version
+  namespace  = kubernetes_namespace_v1.istio_ingress[0].metadata[0].name
+
+  repository_username = var.dhi_username
+  repository_password = var.dhi_access_token
 
   values = [yamlencode({
+    imagePullSecrets = [{ name = local.dhi_pull_secret_name }]
     labels = {
       istio = local.istio_ingress_label
     }
@@ -142,7 +161,11 @@ resource "helm_release" "istio_ingress_gateway" {
         { name = "https", port = 443, targetPort = 8443, protocol = "TCP" },
       ]
       annotations = merge(
-        { "external-dns.alpha.kubernetes.io/hostname" = join(",", local.istio_gateway_hosts) },
+        # external-dns >= 0.20 reads external-dns.kubernetes.io/; older versions read the alpha prefix.
+        {
+          "external-dns.kubernetes.io/hostname"       = join(",", local.istio_gateway_hosts)
+          "external-dns.alpha.kubernetes.io/hostname" = join(",", local.istio_gateway_hosts)
+        },
         var.cloud == "aws" ? merge(local.aws_nlb_common_annotations, {
           "service.beta.kubernetes.io/aws-load-balancer-name" = local.aws_istio_nlb_load_balancer_name
         }) : {}
@@ -156,6 +179,7 @@ resource "helm_release" "istio_ingress_gateway" {
 
   depends_on = [
     helm_release.istiod,
+    module.dhi_pull,
   ]
 }
 
