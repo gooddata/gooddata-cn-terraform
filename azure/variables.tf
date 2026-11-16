@@ -263,7 +263,7 @@ variable "helm_cert_manager_version" {
 variable "helm_clickhouse_operator_version" {
   description = "Version of the clickhouse-operator-helm Helm chart to deploy. https://github.com/ClickHouse/clickhouse-operator"
   type        = string
-  # renovate: depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm datasource=docker
+  # renovate: datasource=docker depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm
   default = "0.0.7"
 }
 

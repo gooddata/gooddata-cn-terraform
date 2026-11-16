@@ -18,6 +18,8 @@ locals {
   loki_object_store = var.loki_objstore != null ? var.loki_objstore.object_store : "filesystem"
 
   # dotdc Kubernetes dashboards loaded into Grafana (see dashboards block below).
+  # renovate: datasource=github-tags depName=dotdc/grafana-dashboards-kubernetes
+  grafana_kubernetes_dashboards_version = "v3.0.8"
   grafana_kubernetes_dashboards = [
     "k8s-system-api-server",
     "k8s-system-coredns",
@@ -376,7 +378,8 @@ resource "helm_release" "grafana" {
         replicas = 1
         image = {
           registry = var.registry_dockerio
-          tag      = "latest"
+          # renovate: datasource=docker depName=grafana/grafana-image-renderer
+          tag = "v5.12.11"
         }
         env = {
           HTTP_HOST           = "0.0.0.0"
@@ -410,7 +413,7 @@ resource "helm_release" "grafana" {
       dashboards = {
         grafana-dashboards-kubernetes = {
           for name in local.grafana_kubernetes_dashboards : name => {
-            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/${name}.json"
+            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/${local.grafana_kubernetes_dashboards_version}/dashboards/${name}.json"
             token = ""
           }
         }

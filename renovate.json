@@ -57,6 +57,14 @@
       ],
       "datasourceTemplate": "endoflife-date",
       "depNameTemplate": "azure-kubernetes-service"
+    },
+    {
+      "customType": "regex",
+      "description": "`# renovate:`-annotated tool versions in devcontainer shell scripts",
+      "managerFilePatterns": ["/^\\.devcontainer/.+\\.sh$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n\\s*\\w+=\"(?<currentValue>[^\"]+)\""
+      ]
     }
   ],
   "packageRules": [
