@@ -54,7 +54,8 @@ resource "kubernetes_stateful_set_v1" "langfuse_valkey" {
         }
 
         container {
-          name  = "valkey"
+          name = "valkey"
+          # renovate: datasource=docker depName=valkey/valkey
           image = "${var.registry_dockerio}/valkey/valkey:8.1.9-alpine"
 
           # Image entrypoint is kept, so args start with the server binary.

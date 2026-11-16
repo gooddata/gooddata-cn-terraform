@@ -69,6 +69,7 @@ locals {
   }
 
   pg_password_key = local.pg_user_defaults.key
+  # renovate: datasource=docker depName=postgres
   pg_client_image = "${var.registry_dockerio}/library/postgres:16-alpine"
 
   langfuse_postgres_username = local.pg_users.langfuse.role

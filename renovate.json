@@ -60,6 +60,14 @@
     },
     {
       "customType": "regex",
+      "description": "`# renovate:`-annotated YAML `image:` lines in Terraform heredocs and templates",
+      "managerFilePatterns": ["/\\.tf$/", "/\\.tftpl$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*image:\\s*\"?[^\\s\"]*:(?<currentValue>[^\\s\"]+)\"?"
+      ]
+    },
+    {
+      "customType": "regex",
       "description": "`# renovate:`-annotated tool versions in devcontainer shell scripts",
       "managerFilePatterns": ["/^\\.devcontainer/.+\\.sh$/"],
       "matchStrings": [
@@ -73,6 +81,19 @@
       "matchDatasources": ["endoflife-date"],
       "matchDepNames": ["amazon-eks"],
       "extractVersion": "^(?<version>\\d+\\.\\d+)"
+    },
+    {
+      "description": "PostgreSQL majors need a data migration (CNPG) and must match the server, so upgrade them manually",
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["postgres", "ghcr.io/cloudnative-pg/postgresql"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Keep the Langfuse ClickHouse image on LTS releases (YY.3 and YY.8)",
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["clickhouse/clickhouse-server"],
+      "allowedVersions": "/^\\d+\\.(3|8)-alpine$/"
     }
   ]
 }

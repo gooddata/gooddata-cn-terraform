@@ -19,6 +19,7 @@ locals {
   langfuse_clickhouse_username = "langfuse"
 
   # Keeper and server must stay on the same ClickHouse release.
+  # renovate: datasource=docker depName=clickhouse/clickhouse-server
   langfuse_clickhouse_image_tag = "26.8-alpine"
 
   # Langfuse migrates its schema in place and never issues CREATE DATABASE, so

@@ -337,6 +337,7 @@ resource "kubectl_manifest" "export_builder_localhost_forwarder" {
         spec:
           containers:
             - name: localhost-forwarder
+              # renovate: datasource=docker depName=alpine/socat
               image: ${var.registry_dockerio}/alpine/socat:1.8.0.3
               imagePullPolicy: IfNotPresent
               command:

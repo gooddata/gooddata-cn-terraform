@@ -75,7 +75,8 @@ resource "kubernetes_job_v1" "ingress_class_migration" {
         service_account_name = kubernetes_service_account_v1.ingress_class_migration[0].metadata[0].name
 
         container {
-          name  = "migrate"
+          name = "migrate"
+          # renovate: datasource=docker depName=alpine/k8s
           image = "${var.registry_dockerio}/alpine/k8s:1.33.4"
 
           command = ["/bin/sh", "-ec", join("\n", [
