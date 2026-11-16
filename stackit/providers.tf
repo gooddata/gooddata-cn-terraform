@@ -34,9 +34,8 @@ terraform {
   }
 }
 
-# Credentials come from the environment, not from tfvars: either the key flow
-# (STACKIT_SERVICE_ACCOUNT_KEY_PATH, or ~/.stackit/credentials.json) or workload
-# identity federation (STACKIT_USE_OIDC).
+# Credentials come from the environment: a service account key (STACKIT_SERVICE_ACCOUNT_KEY_PATH
+# or ~/.stackit/credentials.json) or OIDC federation (STACKIT_USE_OIDC).
 provider "stackit" {
   default_region = var.stackit_region
 }

@@ -1,9 +1,8 @@
 ###
 # Provision PostgreSQL Flex for GoodData.CN metadata
 #
-# Sizing resolved in size-profiles.tf. Unlike the other clouds there is no
-# random_password here: PostgreSQL Flex generates the user's password server-side
-# and the provider exposes it as a read-only attribute.
+# Sizing resolved in size-profiles.tf. PostgreSQL Flex generates the user's
+# password server-side, so there is no random_password.
 ###
 
 locals {
@@ -26,10 +25,8 @@ resource "stackit_postgresflex_instance" "main" {
   backup_schedule = "0 2 * * *"
   retention_days  = local.postgresflex_backup_retention_days
 
-  # The instance has a public endpoint that only the cluster's egress ranges can
-  # reach. Placing it in the Network Area (access_scope = "SNA") is a STACKIT
-  # Private Preview feature that the API rejects unless the account is enabled.
-  # The provider requires exactly one of acl or network.acl, so the ACL is set here.
+  # Public endpoint limited to the cluster's egress ranges: access_scope = "SNA" is
+  # Private Preview and rejected by the API. The provider needs exactly one of acl/network.acl.
   network = {
     access_scope = "PUBLIC"
     acl          = stackit_ske_cluster.main.egress_address_ranges
@@ -45,11 +42,8 @@ resource "stackit_postgresflex_instance" "main" {
   }
 }
 
-# createdb lets the GoodData.CN chart bootstrap its own metadata databases, the
-# same way the admin login does on the other clouds. The user owns every database
-# it creates, which is enough to CREATE EXTENSION pg_trgm — trusted since
-# PostgreSQL 13 — so no server-parameter allow-listing is needed here.
-# createrole lets the gen-ai migration create its obs_owner role.
+# createdb lets the chart bootstrap its databases; the owner can CREATE EXTENSION
+# pg_trgm (trusted since PG 13). createrole lets the gen-ai migration create obs_owner.
 resource "stackit_postgresflex_user" "gdcn" {
   project_id  = var.stackit_project_id
   instance_id = stackit_postgresflex_instance.main.instance_id
