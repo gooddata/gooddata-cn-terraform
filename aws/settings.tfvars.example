@@ -174,7 +174,7 @@ gdcn_orgs = [
 # EKS & infrastructure (optional)
 ###
 # Uncomment to override EKS defaults
-# eks_version                      = "1.35"
+# eks_version                      = "1.37"
 # eks_endpoint_public_access       = true
 # eks_endpoint_public_access_cidrs = ["x.x.x.x/32"]
 # eks_endpoint_private_access      = false
