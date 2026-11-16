@@ -67,7 +67,7 @@ variable "postgres_image" {
   description = "PostgreSQL container image for the CloudNativePG Cluster."
   type        = string
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
-  default = "ghcr.io/cloudnative-pg/postgresql:16.4"
+  default = "ghcr.io/cloudnative-pg/postgresql:16.15"
 }
 
 variable "prometheus_crds_ready" {
