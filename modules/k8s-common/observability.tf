@@ -113,8 +113,7 @@ resource "helm_release" "loki" {
   count = var.enable_observability ? 1 : 0
 
   name = "loki"
-  # OSS Loki chart. grafana.github.io/helm-charts/loki is Grafana Enterprise
-  # Logs only since 7.x; the OSS chart now lives in grafana-community.
+  # OSS Loki chart (grafana.github.io/loki is Enterprise-only since 7.x).
   repository = "https://grafana-community.github.io/helm-charts"
   chart      = "loki"
   version    = var.helm_loki_version
@@ -167,8 +166,9 @@ resource "helm_release" "loki" {
         podLabels = var.obs_pod_labels
         # On object storage this PVC holds only the WAL + index cache, so it is
         # a small fixed size (obs_wal_disk), not retention-sized.
+        # Delete the PVC with the release (community chart defaults to keeping it).
         persistence = merge(
-          { enabled = true, size = var.obs_wal_disk },
+          { enabled = true, size = var.obs_wal_disk, enableStatefulSetAutoDeletePVC = true },
           var.gdcn_storage_class != "" ? { storageClass = var.gdcn_storage_class } : {}
         )
         resources = {
@@ -192,7 +192,7 @@ resource "helm_release" "loki" {
         image = { registry = var.registry_dockerio }
       }
       lokiCanary = {
-        # Without this the chart deploys the loki-canary DaemonSet by default.
+        # Chart deploys the loki-canary DaemonSet unless disabled.
         enabled = false
         image   = { registry = var.registry_dockerio }
       }
