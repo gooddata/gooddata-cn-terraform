@@ -82,3 +82,52 @@ resource "kubectl_manifest" "karpenter_node_pool" {
 
   depends_on = [kubectl_manifest.karpenter_node_class]
 }
+
+# Dedicated 4-vCPU nodes for etcd (prod-large). A shared node made etcd compaction stall all queries.
+# Empty unless a pod tolerates the taint.
+# E-series (8 GiB/vCPU, 32 GiB at 4 vCPU): etcd requests 13Gi, and AKS allocatable
+# on a 16 GiB D4as is only ~13 GiB before daemonsets, so it would not fit.
+resource "kubectl_manifest" "karpenter_node_pool_etcd" {
+  yaml_body = yamlencode({
+    apiVersion = "karpenter.sh/v1"
+    kind       = "NodePool"
+    metadata = {
+      name = "etcd"
+    }
+    spec = {
+      template = {
+        metadata = {
+          labels = { workload = "etcd" }
+        }
+        spec = {
+          taints = [{
+            key    = "dedicated"
+            value  = "etcd"
+            effect = "NoSchedule"
+          }]
+          requirements = [
+            { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
+            { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
+            { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
+            { key = "karpenter.azure.com/sku-series", operator = "In", values = ["Eas_v6", "Eas_v7"] },
+            { key = "karpenter.azure.com/sku-cpu", operator = "In", values = ["4"] },
+            { key = "karpenter.azure.com/sku-storage-premium-capable", operator = "In", values = ["true"] },
+          ]
+          nodeClassRef = {
+            group = "karpenter.azure.com"
+            kind  = "AKSNodeClass"
+            name  = "default"
+          }
+          expireAfter = "720h"
+        }
+      }
+      # WhenEmpty: never consolidate a node that runs an etcd member.
+      disruption = {
+        consolidationPolicy = "WhenEmpty"
+        consolidateAfter    = "5m"
+      }
+    }
+  })
+
+  depends_on = [kubectl_manifest.karpenter_node_class]
+}

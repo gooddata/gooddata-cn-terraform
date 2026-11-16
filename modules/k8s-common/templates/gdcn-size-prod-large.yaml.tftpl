@@ -119,8 +119,8 @@ customEtcd:
     limits:
       cpu: 3000m
       memory: 13Gi
-%{ if cloud == "aws" ~}
-  # Dedicated nodes from the "etcd" Karpenter NodePool (aws/karpenter.tf).
+%{ if cloud == "aws" || cloud == "azure" ~}
+  # Dedicated nodes from the "etcd" Karpenter NodePool (aws/karpenter.tf, azure/karpenter.tf).
   nodeSelector:
     workload: etcd
   tolerations:
@@ -516,10 +516,11 @@ sqlExecutor:
     - name: DS_POOL_MAXCONNECTIONS
       value: "12"
   # Pool per data source and pod: floor(0.8 x (max_connections - 10) / (16 pods x 4 data sources)) = 12.
+  # Assumes the load-test setup (4 data sources, ~1000 max_connections). Recompute for your DB and data-source count.
   replicaCount: 16
   pulsar:
     sqlSelect:
-      # Match pre-fetch depth to the JDBC pool size to avoid connection exhaustion.
+      # Kept slightly below the JDBC pool of 12, so pre-fetched queries cannot exhaust it.
       receiverQueueSize: 10
   resources:
     limits:

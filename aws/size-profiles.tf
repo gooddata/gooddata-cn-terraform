@@ -51,7 +51,7 @@ locals {
     prod-large = {
       rds = {
         instance_class    = "db.r6g.4xlarge"
-        allocated_storage = 100
+        allocated_storage = 200
       }
       system_node_type   = "m8a.xlarge"
       system_node_count  = 3
@@ -61,30 +61,9 @@ locals {
       storage_class      = "gp3-perf"
       fast_storage_class = "gp3-etcd"
       postgres = {
-        work_mem_mb             = 32
-        maintenance_work_mem_mb = 512
-      }
-      gdcn_size          = "prod-large"
-      pulsar_size        = "prod-large"
-      observability_size = "prod-large"
-    }
-    prod-xl = {
-      rds = {
-        instance_class    = "db.r6g.2xlarge"
-        allocated_storage = 200
-      }
-      system_node_type   = "m8a.xlarge"
-      system_node_count  = 3
-      node_cpu_limit     = 480
-      node_cpu_max       = 16
-      ingress_replicas   = 3
-      storage_class      = "gp3-perf"
-      fast_storage_class = "gp3-perf"
-      postgres = {
         work_mem_mb             = 64
         maintenance_work_mem_mb = 1024
       }
-      # There is no prod-xl workload spec, so prod-xl reuses prod-large.
       gdcn_size          = "prod-large"
       pulsar_size        = "prod-large"
       observability_size = "prod-large"

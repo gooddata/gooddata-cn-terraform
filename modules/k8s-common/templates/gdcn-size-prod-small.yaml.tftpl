@@ -32,7 +32,7 @@ afmExecApi:
             value: 100
             periodSeconds: 30
     minReplicaCount: 2
-    maxReplicaCount: 3
+    maxReplicaCount: 8
     targetCPUUtilization: 70
   jvmOptions: -XX:MaxMetaspaceSize=256M -XX:MaxDirectMemorySize=96M -XX:MaxRAMPercentage=34 -XX:ActiveProcessorCount=1
   resources:
@@ -79,7 +79,7 @@ calcique:
   kedaAutoscaling:
     behavior: *fastScaleUp
     minReplicaCount: 2
-    maxReplicaCount: 3
+    maxReplicaCount: 8
     targetCPUUtilization: 70
   jvmOptions: -XX:MaxMetaspaceSize=224M -XX:MaxDirectMemorySize=650M -XX:MaxRAMPercentage=42 -XX:ActiveProcessorCount=1
   resources:
@@ -275,7 +275,7 @@ resultCache:
   kedaAutoscaling:
     behavior: *fastScaleUp
     minReplicaCount: 2
-    maxReplicaCount: 4
+    maxReplicaCount: 8
     targetCPUUtilization: 70
   jvmOptions: -XX:MaxMetaspaceSize=220M -XX:MaxDirectMemorySize=384M -XX:MaxRAMPercentage=74 -XX:ActiveProcessorCount=1
   resources:
