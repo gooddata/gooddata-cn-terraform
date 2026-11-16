@@ -323,7 +323,7 @@ variable "helm_clickhouse_operator_version" {
   description = "Version of the clickhouse-operator-helm Helm chart to deploy. https://github.com/ClickHouse/clickhouse-operator"
   type        = string
   # renovate: datasource=docker depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm
-  default = "0.0.7"
+  default = "0.0.8"
 }
 
 variable "helm_external_dns_version" {
