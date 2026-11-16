@@ -112,12 +112,14 @@ locals {
   rds_backup_retention_period = coalesce(var.rds_backup_retention_period, local.rds_is_prod ? 14 : 7)
   # Instance type and count of the system node group; not user-configurable.
   # Karpenter sizes the workload nodes, using the vCPU bounds below.
-  system_node_type  = local.profile.system_node_type
+  # arm64: the profile's size on Graviton (m8g, then m7g for regions without m8g).
+  system_node_size  = split(".", local.profile.system_node_type)[1]
+  system_node_types = var.eks_node_arch == "arm64" ? ["m8g.${local.system_node_size}", "m7g.${local.system_node_size}"] : [local.profile.system_node_type]
   system_node_count = local.profile.system_node_count
   # Ceiling on total workload vCPUs Karpenter may run (NodePool spec.limits.cpu).
   eks_node_cpu_limit = coalesce(var.eks_node_cpu_limit, local.profile.node_cpu_limit)
   # Largest workload node Karpenter may pick, in vCPUs (NodePool instance-cpu Lt).
-  # The m*a types it selects from have no member below 2 vCPU, so no floor is set.
+  # The m*a types have no member below 2 vCPU; the arm64 pools add a floor (karpenter.tf).
   eks_node_cpu_max = coalesce(var.eks_node_cpu_max, local.profile.node_cpu_max)
   # StorageClass for GoodData.CN chart PVCs. Overridable via var.eks_storage_class.
   storage_class = coalesce(var.eks_storage_class, local.profile.storage_class)

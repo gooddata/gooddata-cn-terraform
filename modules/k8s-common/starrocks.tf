@@ -134,6 +134,7 @@ resource "helm_release" "starrocks" {
       catalog_user_password_secret = kubernetes_secret_v1.starrocks_catalog_user_password[0].metadata[0].name
       s3_tables_credentials_secret = kubernetes_secret_v1.starrocks_s3_tables_credentials[0].metadata[0].name
       aws_region                   = var.aws_region
+      aws_s3_endpoint              = var.aws_s3_endpoint != "" ? var.aws_s3_endpoint : "https://s3${var.aws_fips_endpoints ? "-fips" : ""}.${var.aws_region}.amazonaws.com"
       aws_account_id               = var.aws_account_id
       starrocks_s3_bucket_id       = var.starrocks_s3_bucket_id
       s3_tables_bucket_name        = var.starrocks_s3_tables_bucket_name

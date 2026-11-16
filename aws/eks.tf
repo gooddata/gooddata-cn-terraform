@@ -81,6 +81,9 @@ module "eks" {
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
       service_account_role_arn    = aws_iam_role.ebs_csi_irsa.arn
+      configuration_values = var.fips_enabled ? jsonencode({
+        controller = { env = local.aws_fips_env }
+      }) : null
     }
   }
 
@@ -95,8 +98,8 @@ module "eks" {
   # workload capacity just-in-time.
   eks_managed_node_groups = {
     system = {
-      ami_type       = "BOTTLEROCKET_x86_64"
-      instance_types = [local.system_node_type]
+      ami_type       = local.eks_ami_type
+      instance_types = local.system_node_types
 
       # A custom launch template is what puts these nodes in the shared node
       # security group. Bottlerocket stores containers on /dev/xvdb.

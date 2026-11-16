@@ -17,6 +17,13 @@ exportBuilder:
   kedaAutoscaling:
     minReplicaCount: 1
     maxReplicaCount: 3
+# The chart requests 2 CPU and 4000Mi for Chromium; on a one-node local cluster that
+# blocks other pods from scheduling. Limits stay as in the chart.
+exportBuilderChromium:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1000Mi
 genAiMetadataSync:
   kedaAutoscaling:
     minReplicaCount: 1

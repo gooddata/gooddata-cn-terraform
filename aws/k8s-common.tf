@@ -45,25 +45,40 @@ module "k8s_common" {
     external   = external
   }
 
-  deployment_name        = var.deployment_name
-  gdcn_namespace         = var.gdcn_namespace
-  gdcn_license_key       = var.gdcn_license_key
-  gdcn_orgs              = var.gdcn_orgs
-  gdcn_helm_extra_values = var.gdcn_helm_extra_values
-  ingress_replicas       = local.profile.ingress_replicas
-  gdcn_size              = local.profile.gdcn_size
-  gdcn_storage_class     = local.storage_class
-  fast_storage_class     = local.fast_storage_class
-  pulsar_size            = local.profile.pulsar_size
-  observability_size     = local.profile.observability_size
-  ai_lake_size_profile   = var.ai_lake_size_profile
-  cloud                  = "aws"
-  ingress_controller     = var.ingress_controller
-  gdcn_irsa_role_arn     = aws_iam_role.gdcn_irsa.arn
+  deployment_name              = var.deployment_name
+  gdcn_namespace               = var.gdcn_namespace
+  gdcn_license_key             = var.gdcn_license_key
+  gdcn_orgs                    = var.gdcn_orgs
+  gdcn_helm_extra_values       = var.gdcn_helm_extra_values
+  gdcn_helm_extra_values_files = var.gdcn_helm_extra_values_files
+  gdcn_chart_path              = var.gdcn_chart_path
+  istio_gateway_fips_tls       = var.istio_gateway_fips_tls || var.fips_enabled
+  ingress_replicas             = local.profile.ingress_replicas
+  gdcn_size                    = local.profile.gdcn_size
+  gdcn_storage_class           = local.storage_class
+  fast_storage_class           = local.fast_storage_class
+  pulsar_size                  = local.profile.pulsar_size
+  observability_size           = local.profile.observability_size
+  ai_lake_size_profile         = var.ai_lake_size_profile
+  cloud                        = "aws"
+  ingress_controller           = var.ingress_controller
+  gdcn_irsa_role_arn           = aws_iam_role.gdcn_irsa.arn
 
-  geo_basemap_provider    = var.geo_basemap_provider
-  geo_aws_location_region = var.geo_aws_location_region
-  geo_mapbox_token        = var.geo_mapbox_token
+  # Hardening: see the README section "Hardening".
+  gdcn_hardened               = var.gdcn_hardened
+  gdcn_deploy_dex             = var.gdcn_deploy_dex
+  gdcn_embedding_origins      = var.gdcn_embedding_origins
+  gdcn_hardening_next_release = var.gdcn_hardening_next_release
+
+  geo_basemap_provider         = var.geo_basemap_provider
+  geo_aws_location_region      = var.geo_aws_location_region
+  geo_mapbox_token             = var.geo_mapbox_token
+  geo_protomaps_image          = var.geo_protomaps_image
+  geo_protomaps_source_url     = var.geo_protomaps_source_url
+  geo_protomaps_bbox           = var.geo_protomaps_bbox
+  geo_protomaps_max_zoom       = var.geo_protomaps_max_zoom
+  geo_protomaps_storage_size   = var.geo_protomaps_storage_size
+  geo_protomaps_existing_claim = var.geo_protomaps_existing_claim
 
   letsencrypt_email = var.letsencrypt_email
   auth_hostname     = var.auth_hostname
@@ -113,6 +128,7 @@ module "k8s_common" {
   # role, so no static keys are passed and the default endpoint applies.
   langfuse_s3_bucket                   = var.enable_llm_observability ? aws_s3_bucket.langfuse[0].id : ""
   langfuse_s3_region                   = var.aws_region
+  langfuse_s3_endpoint                 = local.s3_endpoint_url
   langfuse_service_account_annotations = var.enable_llm_observability ? { "eks.amazonaws.com/role-arn" = aws_iam_role.langfuse_irsa[0].arn } : {}
 
   # Observability object storage: Loki + Tempo write to S3 (no big PVC),
@@ -128,21 +144,27 @@ module "k8s_common" {
         ruler  = aws_s3_bucket.observability["loki"].id
         admin  = aws_s3_bucket.observability["loki"].id
       }
-      # IRSA supplies credentials; only the region is needed (default endpoint).
-      s3 = {
+      # IRSA supplies credentials. The region is needed. The endpoint follows the object-storage endpoint
+      # rule (fips.tf): only an explicit s3_endpoint is set. Loki's AWS SDK refuses a custom endpoint together
+      # with AWS_USE_FIPS_ENDPOINT=true ("A custom endpoint cannot be combined with FIPS"); without one, the SDK
+      # resolves s3-fips.<region>.amazonaws.com (and the STS FIPS endpoint) itself, see obs_fips_env.
+      # The endpoint is a host without scheme, as in local/ (SeaweedFS); "insecure" selects http.
+      s3 = merge({
         region = var.aws_region
-      }
+      }, local.s3_endpoint_is_set ? { endpoint = local.s3_endpoint_host } : {}, startswith(local.s3_endpoint_url, "http://") ? { insecure = true } : {})
     }
   }
   tempo_objstore = {
     backend = "s3"
-    s3 = {
+    # minio-go wants a host without scheme; "insecure" selects http.
+    s3 = merge({
       bucket   = aws_s3_bucket.observability["tempo"].id
-      endpoint = "s3.${var.aws_region}.amazonaws.com"
+      endpoint = local.s3_host
       region   = var.aws_region
-    }
+    }, startswith(local.s3_endpoint_url, "http://") ? { insecure = true } : {})
     wal = { path = "/var/tempo/wal" }
   }
+  obs_extra_env = local.obs_fips_env
   obs_sa_annotations = {
     "eks.amazonaws.com/role-arn" = aws_iam_role.observability_irsa.arn
   }
@@ -164,11 +186,16 @@ module "k8s_common" {
   aws_account_id                        = data.aws_caller_identity.current.account_id
 
   db_hostname = module.rds_postgresql.db_instance_address
-  db_username = local.db_username
-  db_password = local.db_password
+  # FIPS: the Secret postgres-ca-cert (regional RDS CA bundle) lets gen-ai and ai-lake verify the server certificate.
+  db_ca_cert_enabled = var.fips_enabled
+  db_ca_cert         = var.fips_enabled ? data.http.rds_ca_bundle[0].response_body : ""
+  db_username        = local.db_username
+  db_password        = local.db_password
 
   # AWS-specific storage configuration
   aws_region                   = var.aws_region
+  aws_fips_endpoints           = local.s3_sdk_fips
+  aws_s3_endpoint              = local.s3_endpoint_url
   s3_quiver_cache_bucket_id    = aws_s3_bucket.buckets["quiver_cache"].id
   s3_datasource_fs_bucket_id   = aws_s3_bucket.buckets["datasource_fs"].id
   s3_exports_bucket_id         = aws_s3_bucket.buckets["exports"].id

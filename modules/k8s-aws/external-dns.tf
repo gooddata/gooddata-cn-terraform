@@ -115,7 +115,7 @@ resource "helm_release" "external_dns" {
 
   # Tolerate the system pool taint: this runs before Karpenter has provisioned
   # any untainted capacity, so the system nodes are the only place it can land.
-  values = [yamlencode({
+  values = [yamlencode(merge({
     image = {
       repository = "${var.registry_k8sio}/external-dns/external-dns"
     }
@@ -138,6 +138,8 @@ resource "helm_release" "external_dns" {
     extraArgs = var.ingress_controller == "alb" ? [
       "--aws-prefer-cname"
     ] : []
-  })]
+    }, var.fips_enabled ? {
+    env = [for k, v in local.fips_env : { name = k, value = v }]
+  } : {}))]
 }
 

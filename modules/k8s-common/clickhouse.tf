@@ -144,7 +144,7 @@ resource "kubectl_manifest" "langfuse_clickhouse" {
       name      = local.langfuse_clickhouse_cr_name
       namespace = kubernetes_namespace_v1.langfuse[0].metadata[0].name
     }
-    spec = {
+    spec = merge({
       shards   = 1
       replicas = 1
 
@@ -213,7 +213,17 @@ resource "kubectl_manifest" "langfuse_clickhouse" {
           }
         }
       }
-    }
+      },
+      # Istio metrics merging: the sidecar pulls the ClickHouse metrics (port 9363) from these
+      # annotations and serves them on its merged endpoint (prometheus-metrics-merge.tf).
+      local.metrics_merge_enabled ? {
+        annotations = {
+          "prometheus.io/scrape" = "true"
+          "prometheus.io/port"   = "9363"
+          "prometheus.io/path"   = "/metrics"
+        }
+      } : {}
+    )
   })
 
   depends_on = [
@@ -225,8 +235,9 @@ resource "kubectl_manifest" "langfuse_clickhouse" {
 
 # ClickHouse serves its own metrics on port 9363, which the operator publishes on
 # the headless Service; the operator ships no ServiceMonitor for the server.
+# With Istio, prometheus-metrics-merge.tf scrapes ClickHouse through the sidecar instead.
 resource "kubectl_manifest" "langfuse_clickhouse_servicemonitor" {
-  count = var.enable_llm_observability && var.enable_observability ? 1 : 0
+  count = var.enable_llm_observability && var.enable_observability && !local.metrics_merge_enabled ? 1 : 0
 
   yaml_body = yamlencode({
     apiVersion = "monitoring.coreos.com/v1"

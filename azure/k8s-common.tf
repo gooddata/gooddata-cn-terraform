@@ -18,6 +18,8 @@ module "k8s_common" {
   gdcn_license_key       = var.gdcn_license_key
   gdcn_orgs              = var.gdcn_orgs
   gdcn_helm_extra_values = var.gdcn_helm_extra_values
+  gdcn_chart_path        = var.gdcn_chart_path
+  istio_gateway_fips_tls = var.istio_gateway_fips_tls
   ingress_replicas       = local.profile.ingress_replicas
   gdcn_size              = local.profile.gdcn_size
   gdcn_storage_class     = local.storage_class
@@ -25,6 +27,12 @@ module "k8s_common" {
   observability_size     = local.profile.observability_size
   cloud                  = "azure"
   ingress_controller     = var.ingress_controller
+
+  # Hardening: see the README section "Hardening".
+  gdcn_hardened               = var.gdcn_hardened
+  gdcn_deploy_dex             = var.gdcn_deploy_dex
+  gdcn_embedding_origins      = var.gdcn_embedding_origins
+  gdcn_hardening_next_release = var.gdcn_hardening_next_release
 
   letsencrypt_email = var.letsencrypt_email
   auth_hostname     = var.auth_hostname
@@ -73,7 +81,7 @@ module "k8s_common" {
   # only supports shared-key auth, so account name/key replace the S3 credentials.
   langfuse_s3_storage_provider  = "azure"
   langfuse_s3_bucket            = var.enable_llm_observability ? azurerm_storage_container.containers["langfuse"].name : ""
-  langfuse_s3_endpoint          = "https://${azurerm_storage_account.main.name}.blob.core.windows.net"
+  langfuse_s3_endpoint          = "https://${azurerm_storage_account.main.name}.blob.${var.azure_storage_endpoint_suffix}"
   langfuse_s3_access_key_id     = azurerm_storage_account.main.name
   langfuse_s3_secret_access_key = azurerm_storage_account.main.primary_access_key
 
@@ -83,6 +91,7 @@ module "k8s_common" {
 
   # Azure-specific storage configuration
   azure_storage_account_name    = azurerm_storage_account.main.name
+  azure_storage_endpoint_suffix = var.azure_storage_endpoint_suffix
   azure_exports_container       = azurerm_storage_container.containers["exports"].name
   azure_quiver_container        = azurerm_storage_container.containers["quiver-cache"].name
   azure_datasource_fs_container = azurerm_storage_container.containers["quiver-datasource-fs"].name
@@ -90,8 +99,14 @@ module "k8s_common" {
   azure_geo_collections_container = try(azurerm_storage_container.containers["geo-collections"].name, "")
   azure_uami_client_id            = azurerm_user_assigned_identity.gdcn.client_id
 
-  geo_basemap_provider = var.geo_basemap_provider
-  geo_mapbox_token     = var.geo_mapbox_token
+  geo_basemap_provider         = var.geo_basemap_provider
+  geo_mapbox_token             = var.geo_mapbox_token
+  geo_protomaps_image          = var.geo_protomaps_image
+  geo_protomaps_source_url     = var.geo_protomaps_source_url
+  geo_protomaps_bbox           = var.geo_protomaps_bbox
+  geo_protomaps_max_zoom       = var.geo_protomaps_max_zoom
+  geo_protomaps_storage_size   = var.geo_protomaps_storage_size
+  geo_protomaps_existing_claim = var.geo_protomaps_existing_claim
 
   # Observability object storage: Loki + Tempo write to Blob (no big PVC),
   # authenticating via workload identity (obs UAMI federated to their SAs).
@@ -106,19 +121,20 @@ module "k8s_common" {
         ruler  = azurerm_storage_container.containers["loki"].name
         admin  = azurerm_storage_container.containers["loki"].name
       }
-      azure = {
+      # endpointSuffix only for a non-public cloud, so that the default render does not change.
+      azure = merge({
         accountName       = azurerm_storage_account.main.name
         useFederatedToken = true
-      }
+      }, var.azure_storage_endpoint_suffix == "core.windows.net" ? {} : { endpointSuffix = "blob.${var.azure_storage_endpoint_suffix}" })
     }
   }
   tempo_objstore = {
     backend = "azure"
-    azure = {
+    azure = merge({
       container_name       = azurerm_storage_container.containers["tempo"].name
       storage_account_name = azurerm_storage_account.main.name
       use_federated_token  = true
-    }
+    }, var.azure_storage_endpoint_suffix == "core.windows.net" ? {} : { endpoint_suffix = "blob.${var.azure_storage_endpoint_suffix}" })
     wal = { path = "/var/tempo/wal" }
   }
   obs_sa_annotations = {

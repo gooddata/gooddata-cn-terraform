@@ -121,14 +121,17 @@ resource "helm_release" "seaweedfs" {
 
         # Default -volume.max is 8 which is quickly exhausted when
         # multiple buckets/collections are in use.  Raise it so
-        # SeaweedFS can allocate volumes for every collection.
+        # SeaweedFS can allocate volumes for every collection.  The
+        # master grows 7 volumes at a time for each new collection, so
+        # the default collection plus quiver-cache, datasource-fs,
+        # geo-collections and exports already need more than 24.
         #
         # Raise garbageThreshold (default 0.3) so the continuous vacuum
         # loop only compacts volumes with significant garbage.  The
         # quiver-cache health-check writes/deletes a small file every
         # ~60 s, creating tombstones that otherwise trigger compaction
         # on every vacuum pass across all volumes.
-        extraArgs = ["-volume.max=24", "-master.garbageThreshold=0.5"]
+        extraArgs = ["-volume.max=64", "-master.garbageThreshold=0.5"]
 
         s3 = {
           enabled    = true
