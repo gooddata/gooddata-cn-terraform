@@ -21,6 +21,7 @@ module "k8s_common" {
   ingress_replicas       = local.profile.ingress_replicas
   gdcn_size              = local.profile.gdcn_size
   gdcn_storage_class     = local.storage_class
+  fast_storage_class     = local.fast_storage_class
   pulsar_size            = local.profile.pulsar_size
   observability_size     = local.profile.observability_size
   cloud                  = "azure"
@@ -133,6 +134,7 @@ module "k8s_common" {
     # Storage classes + the default-class annotations must exist before any Helm
     # release provisions PVCs, since every PVC references a class by name per profile.
     kubernetes_storage_class_v1.premium_ssd_v2,
+    kubernetes_storage_class_v1.premium_ssd_v2_etcd,
     kubernetes_storage_class_v1.premium_ssd,
     kubernetes_annotations.default_storage_class,
     azurerm_role_assignment.gdcn_blob_contrib,
@@ -156,6 +158,7 @@ module "k8s_common" {
     # Node capacity must outlive the helm releases too: deleting the NodePool
     # taints every Karpenter node, leaving pre-delete hooks unschedulable.
     kubectl_manifest.karpenter_node_pool,
+    kubectl_manifest.karpenter_node_pool_etcd,
     # Deleting a LoadBalancer Service needs subnet join, so this grant must
     # outlive the ingress release or the Azure LB can never be torn down.
     azurerm_role_assignment.aks_system_identity_network_contributor,

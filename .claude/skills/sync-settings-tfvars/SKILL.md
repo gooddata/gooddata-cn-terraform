@@ -204,10 +204,9 @@ list it in the report so the user can confirm it's still wanted.
 **Respect per-cloud asymmetry — check before adding.** The three environments
 have genuinely different variable sets, so never copy a section across clouds by
 analogy. Confirm against that environment's `variables.tf` that a variable exists
-and a value is legal before introducing it. Two real examples: AI Lake
+and a value is legal before introducing it. A real example: AI Lake
 (`enable_ai_lake`, `starrocks_size_profile`) exists for AWS and has no Azure
-counterpart, and `size_profile` accepts `prod-xl` on AWS while Azure's validation
-block rejects it. Comments listing valid values are part of this — an
+counterpart. Comments listing valid values are part of this — an
 AWS-accurate list pasted into Azure documents a value that fails validation.
 
 **Fix comments that are wrong, and say that you did.** Occasionally a private

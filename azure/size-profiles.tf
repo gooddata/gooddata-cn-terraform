@@ -1,9 +1,9 @@
 ###
 # All Azure sizing per size_profile. Managed infra (PostgreSQL, AKS system
 # nodes, Karpenter/NAP vCPU bounds, ingress replicas) is defined inline;
-# GoodData.CN, Pulsar and observability sizing is referenced by name. prod-xl
-# is AWS-only. Managed values are overridable by the matching var.* input where
-# one exists. PostgreSQL storage size takes its default from the profile; its
+# GoodData.CN, Pulsar and observability sizing is referenced by name. Managed
+# values are overridable by the matching var.* input where one exists.
+# PostgreSQL storage size takes its default from the profile; its
 # performance tier is pinned by the profile, and Azure derives it once the size
 # is overridden.
 ###
@@ -27,6 +27,7 @@ locals {
       node_cpu_limit     = 48
       node_cpu_max       = 8
       storage_class      = "managed-csi"
+      fast_storage_class = "" # empty: etcd stays on storage_class
       ingress_replicas   = 1
       gdcn_size          = "dev"
       pulsar_size        = "dev"
@@ -51,6 +52,7 @@ locals {
       node_cpu_limit     = 96
       node_cpu_max       = 8
       storage_class      = "premium-ssd-v2"
+      fast_storage_class = "" # empty: etcd stays on storage_class
       ingress_replicas   = 2
       gdcn_size          = "prod-small"
       pulsar_size        = "prod-small"
@@ -73,6 +75,7 @@ locals {
       node_cpu_limit     = 320
       node_cpu_max       = 16
       storage_class      = "premium-ssd-v2"
+      fast_storage_class = "premium-ssd-v2-etcd"
       ingress_replicas   = 3
       gdcn_size          = "prod-large"
       pulsar_size        = "prod-large"
@@ -107,4 +110,7 @@ locals {
   # StorageClass for GoodData.CN chart PVCs: managed-csi on dev,
   # premium-ssd-v2 on prod.
   storage_class = coalesce(var.azure_storage_class, local.profile.storage_class)
+  # Class for latency-sensitive PVCs (etcd only). Empty falls back to storage_class,
+  # so only prod-large moves etcd; the PVC template is immutable on upgrade.
+  fast_storage_class = local.profile.fast_storage_class
 }

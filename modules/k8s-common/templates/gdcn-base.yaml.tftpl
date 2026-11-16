@@ -74,6 +74,23 @@ quiver:
   datasourceFs:
     maxFileSize: 209715200
     maxFileSizeTotal: 1073741824
+  # Rust etcd event apply for every Quiver component. The Python path fell behind at ~95 executions/s.
+  # Helm replaces lists, so a profile that sets one of these lists must repeat this entry.
+  extraEnvVarsCache:
+    - name: QUIVER_USE_RUST_EXTENSION
+      value: "1"
+  extraEnvVarsDatasource:
+    - name: QUIVER_USE_RUST_EXTENSION
+      value: "1"
+  extraEnvVarsMl:
+    - name: QUIVER_USE_RUST_EXTENSION
+      value: "1"
+  extraEnvVarsPolicy:
+    - name: QUIVER_USE_RUST_EXTENSION
+      value: "1"
+  extraEnvVarsXtab:
+    - name: QUIVER_USE_RUST_EXTENSION
+      value: "1"
 
 # Turn off tools deployment by default
 tools:
