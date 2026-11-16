@@ -108,8 +108,9 @@ resource "null_resource" "k3d_servers_memory" {
         memory="${var.k3d_servers_memory}"
         swap="${var.k3d_servers_memory}"
       else
-        # Empty: no limit. docker update cannot clear a limit, so set it to all memory of the Docker VM.
-        memory=$(docker info --format '{{.MemTotal}}')
+        # Empty: no limit. docker update cannot clear a limit, so set a fixed value far above any Docker VM
+        # (1 TiB, swap unlimited). Unlike the VM memory total, it does not keep a snapshot that a bigger VM outgrows.
+        memory=1024g
         swap=-1
       fi
       for c in $ids; do
