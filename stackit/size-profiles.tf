@@ -1,24 +1,13 @@
 ###
-# All STACKIT sizing per size_profile. Managed infra (PostgreSQL Flex, SKE node
-# pools, ingress replicas) is defined inline; GoodData.CN, Pulsar and
-# observability sizing is referenced by name. prod-xl is AWS-only. Any managed
-# value can be overridden by the matching var.* input.
+# STACKIT sizing per size_profile (prod-xl is AWS-only). The matching var.* input
+# overrides any managed value.
 ###
 
-# SKE has no Karpenter provider, so workload capacity comes from a declared node
-# pool with min/max bounds that SKE's cluster autoscaler scales between, rather
-# than from just-in-time instance selection. machine_type is therefore the main
-# sizing lever and is user-overridable, unlike the Azure system pool's VM size.
+# SKE has no Karpenter, so capacity comes from a min/max node pool that SKE's cluster
+# autoscaler scales. machine_type is the main sizing lever and user-overridable.
 
-# Machine types: g = 1:4 vCPU:RAM, "2a" = AMD gen2, trailing "d" = no CPU
-# overcommit. g2a is the STACKIT analogue of the AMD 4 GiB/vCPU Das_v6 fleet the
-# Azure NodePool pins. Check what your region offers with:
-#   stackit ske options --machine-types
-#
-# PostgreSQL Flex flavor IDs are vCPU.RAM with a -replica suffix for 3-node
-# replication. Only 2.4, 2.16, 4.8, 4.32, 8.16, 16.32 and 16.128 exist, so the
-# shapes below are the nearest available to the Azure profiles, not exact matches.
-#   stackit postgresflex flavor list
+# Machine types: g = 1:4 vCPU:RAM, "2a" = AMD gen2, "d" = no overcommit; list with
+# `stackit ske options --machine-types`. PG Flex flavors are fixed, so shapes only approximate Azure's.
 locals {
   size_profiles = {
     dev = {
@@ -31,7 +20,8 @@ locals {
       system_nodes = {
         machine_type = "g2a.4d"
         min          = 1
-        max          = 2
+        # The system pool max must be >= the number of availability zones.
+        max = 3
       }
       workload_nodes = {
         machine_type = "g2a.4d"
@@ -110,10 +100,11 @@ locals {
   postgresflex_backup_retention_days = coalesce(var.postgresflex_backup_retention_days, local.profile.postgresflex.retention_days)
   ske_system_machine_type            = coalesce(var.ske_system_machine_type, local.profile.system_nodes.machine_type)
   ske_system_min_nodes               = coalesce(var.ske_system_min_nodes, local.profile.system_nodes.min)
-  ske_system_max_nodes               = local.profile.system_nodes.max
-  ske_workload_machine_type          = coalesce(var.ske_workload_machine_type, local.profile.workload_nodes.machine_type)
-  ske_workload_min_nodes             = coalesce(var.ske_workload_min_nodes, local.profile.workload_nodes.min)
-  ske_workload_max_nodes             = coalesce(var.ske_workload_max_nodes, local.profile.workload_nodes.max)
+  # Raised to the zone count: Gardener rejects a pool whose max is below it.
+  ske_system_max_nodes      = max(local.profile.system_nodes.max, length(var.stackit_availability_zones))
+  ske_workload_machine_type = coalesce(var.ske_workload_machine_type, local.profile.workload_nodes.machine_type)
+  ske_workload_min_nodes    = coalesce(var.ske_workload_min_nodes, local.profile.workload_nodes.min)
+  ske_workload_max_nodes    = coalesce(var.ske_workload_max_nodes, local.profile.workload_nodes.max)
   # SKE ships these classes; Terraform only references them by name. The fast
   # class backs GoodData.CN's etcd PVC, whose fsync latency Quiver blocks on.
   storage_class      = coalesce(var.stackit_storage_class, local.profile.storage_class)
