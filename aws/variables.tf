@@ -141,7 +141,7 @@ variable "eks_storage_class" {
 variable "eks_version" {
   description = "Version of EKS to deploy."
   type        = string
-  default     = "1.35"
+  default     = "1.37"
 }
 
 variable "enable_ai_features" {
