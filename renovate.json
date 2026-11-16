@@ -58,5 +58,13 @@
       "datasourceTemplate": "endoflife-date",
       "depNameTemplate": "azure-kubernetes-service"
     }
+  ],
+  "packageRules": [
+    {
+      "description": "endoflife.date reports EKS releases as e.g. 1.37-eks-4; keep only major.minor so the value fits eks_version",
+      "matchDatasources": ["endoflife-date"],
+      "matchDepNames": ["amazon-eks"],
+      "extractVersion": "^(?<version>\\d+\\.\\d+)"
+    }
   ]
 }
