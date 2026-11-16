@@ -322,7 +322,7 @@ variable "helm_cert_manager_version" {
 variable "helm_clickhouse_operator_version" {
   description = "Version of the clickhouse-operator-helm Helm chart to deploy. https://github.com/ClickHouse/clickhouse-operator"
   type        = string
-  # renovate: depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm datasource=docker
+  # renovate: datasource=docker depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm
   default = "0.0.7"
 }
 
@@ -388,7 +388,7 @@ variable "helm_istio_version" {
 variable "helm_karpenter_version" {
   description = "Version of the Karpenter Helm chart (oci://public.ecr.aws/karpenter/karpenter) to deploy. https://github.com/aws/karpenter-provider-aws/releases"
   type        = string
-  # renovate: depName=karpenter packageName=public.ecr.aws/karpenter/karpenter datasource=docker
+  # renovate: datasource=docker depName=karpenter packageName=public.ecr.aws/karpenter/karpenter
   default = "1.6.3"
 }
 

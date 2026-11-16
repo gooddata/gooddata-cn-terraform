@@ -66,7 +66,8 @@ variable "kubeconfig_path" {
 variable "postgres_image" {
   description = "PostgreSQL container image for the CloudNativePG Cluster."
   type        = string
-  default     = "ghcr.io/cloudnative-pg/postgresql:16.4"
+  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
+  default = "ghcr.io/cloudnative-pg/postgresql:16.4"
 }
 
 variable "prometheus_crds_ready" {
