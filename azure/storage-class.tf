@@ -32,6 +32,34 @@ resource "kubernetes_storage_class_v1" "premium_ssd_v2" {
   ]
 }
 
+# etcd class for prod-large: 10000 IOPS / 500 MBps, paid above the free floor.
+# Needs at least 20 GiB (500 IOPS per GiB); the chart requests 30Gi.
+resource "kubernetes_storage_class_v1" "premium_ssd_v2_etcd" {
+  metadata {
+    name = "premium-ssd-v2-etcd"
+
+    annotations = {
+      "storageclass.kubernetes.io/is-default-class" = "false"
+    }
+  }
+
+  storage_provisioner    = "disk.csi.azure.com"
+  reclaim_policy         = "Delete"
+  volume_binding_mode    = "WaitForFirstConsumer"
+  allow_volume_expansion = true
+
+  parameters = {
+    skuname           = "PremiumV2_LRS"
+    DiskIOPSReadWrite = "10000"
+    DiskMBpsReadWrite = "500"
+  }
+
+  depends_on = [
+    azurerm_kubernetes_cluster.main,
+    azurerm_role_assignment.aks_creator_cluster_admin,
+  ]
+}
+
 # Premium SSD v1: IOPS follow capacity alone (128GiB=500, 512GiB=2300, 1TiB=5000).
 # Non-default, for workloads needing snapshots or a region without v2.
 resource "kubernetes_storage_class_v1" "premium_ssd" {

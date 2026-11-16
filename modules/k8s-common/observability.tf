@@ -18,6 +18,8 @@ locals {
   loki_object_store = var.loki_objstore != null ? var.loki_objstore.object_store : "filesystem"
 
   # dotdc Kubernetes dashboards loaded into Grafana (see dashboards block below).
+  # renovate: datasource=github-tags depName=dotdc/grafana-dashboards-kubernetes
+  grafana_kubernetes_dashboards_version = "v3.0.8"
   grafana_kubernetes_dashboards = [
     "k8s-system-api-server",
     "k8s-system-coredns",
@@ -84,8 +86,8 @@ resource "helm_release" "kube_prometheus_stack" {
           }
           retention = var.prometheus_retention_period
           resources = {
-            requests = { cpu = "100m", memory = local.obs_mem.prometheus.request }
-            limits   = { cpu = "500m", memory = local.obs_mem.prometheus.limit }
+            requests = { cpu = "500m", memory = local.obs_mem.prometheus.request }
+            limits   = { cpu = "2", memory = local.obs_mem.prometheus.limit }
           }
           storageSpec = {
             volumeClaimTemplate = {
@@ -112,15 +114,17 @@ resource "helm_release" "kube_prometheus_stack" {
 resource "helm_release" "loki" {
   count = var.enable_observability ? 1 : 0
 
-  name       = "loki"
-  repository = "https://grafana.github.io/helm-charts"
+  name = "loki"
+  # OSS Loki chart (grafana.github.io/loki is Enterprise-only since 7.x).
+  repository = "https://grafana-community.github.io/helm-charts"
   chart      = "loki"
   version    = var.helm_loki_version
   namespace  = kubernetes_namespace_v1.observability[0].metadata[0].name
 
   values = [
     yamlencode({
-      deploymentMode = "SingleBinary"
+      # "SingleBinary" was renamed "Monolithic" in community chart 12.0.0.
+      deploymentMode = "Monolithic"
       loki = {
         image = { registry = var.registry_dockerio }
         commonConfig = {
@@ -164,8 +168,9 @@ resource "helm_release" "loki" {
         podLabels = var.obs_pod_labels
         # On object storage this PVC holds only the WAL + index cache, so it is
         # a small fixed size (obs_wal_disk), not retention-sized.
+        # Delete the PVC with the release (community chart defaults to keeping it).
         persistence = merge(
-          { enabled = true, size = var.obs_wal_disk },
+          { enabled = true, size = var.obs_wal_disk, enableStatefulSetAutoDeletePVC = true },
           var.gdcn_storage_class != "" ? { storageClass = var.gdcn_storage_class } : {}
         )
         resources = {
@@ -185,16 +190,13 @@ resource "helm_release" "loki" {
       chunksCache  = { enabled = false }
       resultsCache = { enabled = false }
       gateway      = { enabled = false }
-      minio        = { enabled = false }
       sidecar = {
         image = { registry = var.registry_dockerio }
       }
       lokiCanary = {
-        image = { registry = var.registry_dockerio }
-      }
-      monitoring = {
-        selfMonitoring = { enabled = false }
-        lokiCanary     = { enabled = false }
+        # Chart deploys the loki-canary DaemonSet unless disabled.
+        enabled = false
+        image   = { registry = var.registry_dockerio }
       }
       test = { enabled = false }
     })
@@ -376,7 +378,8 @@ resource "helm_release" "grafana" {
         replicas = 1
         image = {
           registry = var.registry_dockerio
-          tag      = "latest"
+          # renovate: datasource=docker depName=grafana/grafana-image-renderer
+          tag = "v5.12.11"
         }
         env = {
           HTTP_HOST           = "0.0.0.0"
@@ -410,7 +413,7 @@ resource "helm_release" "grafana" {
       dashboards = {
         grafana-dashboards-kubernetes = {
           for name in local.grafana_kubernetes_dashboards : name => {
-            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/${name}.json"
+            url   = "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/${local.grafana_kubernetes_dashboards_version}/dashboards/${name}.json"
             token = ""
           }
         }

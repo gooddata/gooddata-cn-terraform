@@ -64,6 +64,7 @@ extraObjects:
           restartPolicy: Never
           containers:
             - name: kubectl
+              # renovate: datasource=docker depName=registry.k8s.io/kubectl
               image: registry.k8s.io/kubectl:v1.33.4
               command:
                 - kubectl

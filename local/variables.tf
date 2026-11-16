@@ -157,7 +157,7 @@ variable "helm_cert_manager_version" {
 variable "helm_clickhouse_operator_version" {
   description = "Version of the clickhouse-operator-helm Helm chart to deploy."
   type        = string
-  # renovate: depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm datasource=docker
+  # renovate: datasource=docker depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm
   default = "0.0.7"
 }
 
@@ -217,22 +217,22 @@ variable "helm_langfuse_version" {
 variable "helm_loki_version" {
   description = "Version of the loki Helm chart to deploy."
   type        = string
-  # renovate: depName=loki registryUrl=https://grafana.github.io/helm-charts
-  default = "7.3.0"
+  # renovate: depName=loki registryUrl=https://grafana-community.github.io/helm-charts
+  default = "21.0.0"
 }
 
 variable "helm_kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to deploy."
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "92.22.0"
+  default = "93.3.0"
 }
 
 variable "helm_prometheus_operator_crds_version" {
   description = "Version of the prometheus-operator-crds Helm chart. Must match the prometheus-operator version bundled in helm_kube_prometheus_stack_version."
   type        = string
   # renovate: depName=prometheus-operator-crds registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "32.0.2"
+  default = "33.0.2"
 }
 
 variable "helm_promtail_version" {
@@ -260,7 +260,7 @@ variable "helm_traefik_version" {
   description = "Version of the Traefik Helm chart to deploy."
   type        = string
   # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
-  default = "42.3.1"
+  default = "42.4.0"
 }
 
 variable "ingress_behind_l7" {

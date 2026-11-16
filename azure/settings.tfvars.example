@@ -17,7 +17,7 @@ azure_location = "East US"
 ###
 # GoodData.CN deployment configuration
 ###
-helm_gdcn_version = "4.15.1" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
+helm_gdcn_version = "4.16.0" # use latest version here: https://www.gooddata.com/docs/cloud-native/latest/whats-new-cn/
 deployment_name   = "gooddata-cn"
 
 # GoodData.CN license key
@@ -156,7 +156,7 @@ gdcn_orgs = [
 # AKS & infrastructure (optional)
 ###
 # Uncomment to override AKS defaults
-# aks_version                         = "1.36"
+# aks_version                         = "1.37"
 # aks_api_server_authorized_ip_ranges = ["x.x.x.x/32"]
 
 # Uncomment to replicate backups to the Azure paired region.

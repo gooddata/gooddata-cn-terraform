@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TINKEY_VERSION="$(curl -fsSL https://api.github.com/repos/tink-crypto/tink-tinkey/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
-K9S_VERSION="$(curl -fsSL https://api.github.com/repos/derailed/k9s/releases/latest | jq -r '.tag_name')"
-KUBELOGIN_VERSION="$(curl -fsSL https://api.github.com/repos/Azure/kubelogin/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
-K3D_VERSION="$(curl -fsSL https://api.github.com/repos/k3d-io/k3d/releases/latest | jq -r '.tag_name')"
-STACKIT_CLI_VERSION="$(curl -fsSL https://api.github.com/repos/stackitcloud/stackit-cli/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
-
-for var_name in TINKEY_VERSION K9S_VERSION KUBELOGIN_VERSION K3D_VERSION STACKIT_CLI_VERSION; do
-  val="${!var_name}"
-  if [ -z "${val}" ] || [ "${val}" = "null" ]; then
-    echo "ERROR: Failed to fetch ${var_name} from GitHub API" >&2
-    exit 1
-  fi
-done
+# Tool versions are pinned and kept current by Renovate (see renovate.json).
+# renovate: datasource=github-releases depName=tink-crypto/tink-tinkey extractVersion=^v(?<version>.+)$
+TINKEY_VERSION="1.14.0"
+# renovate: datasource=github-releases depName=derailed/k9s
+K9S_VERSION="v0.51.0"
+# renovate: datasource=github-releases depName=Azure/kubelogin extractVersion=^v(?<version>.+)$
+KUBELOGIN_VERSION="0.2.22"
+# renovate: datasource=github-releases depName=k3d-io/k3d
+K3D_VERSION="v5.9.0"
+# renovate: datasource=github-releases depName=stackitcloud/stackit-cli extractVersion=^v(?<version>.+)$
+STACKIT_CLI_VERSION="0.77.2"
 
 # Install Java and vim
 sudo apt-get update

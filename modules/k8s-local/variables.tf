@@ -50,7 +50,7 @@ variable "helm_seaweedfs_version" {
   description = "Version of the SeaweedFS Helm chart to deploy."
   type        = string
   # renovate: depName=seaweedfs registryUrl=https://seaweedfs.github.io/seaweedfs/helm
-  default = "4.53.0"
+  default = "4.54.0"
 }
 
 variable "kubeconfig_context" {
@@ -66,7 +66,8 @@ variable "kubeconfig_path" {
 variable "postgres_image" {
   description = "PostgreSQL container image for the CloudNativePG Cluster."
   type        = string
-  default     = "ghcr.io/cloudnative-pg/postgresql:16.4"
+  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
+  default = "ghcr.io/cloudnative-pg/postgresql:16.4"
 }
 
 variable "prometheus_crds_ready" {

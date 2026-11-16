@@ -309,7 +309,7 @@ variable "helm_aws_lb_controller_version" {
   description = "Version of the aws-load-balancer-controller Helm chart to deploy. https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller"
   type        = string
   # renovate: depName=aws-load-balancer-controller registryUrl=https://aws.github.io/eks-charts
-  default = "3.6.2"
+  default = "3.6.3"
 }
 
 variable "helm_cert_manager_version" {
@@ -322,7 +322,7 @@ variable "helm_cert_manager_version" {
 variable "helm_clickhouse_operator_version" {
   description = "Version of the clickhouse-operator-helm Helm chart to deploy. https://github.com/ClickHouse/clickhouse-operator"
   type        = string
-  # renovate: depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm datasource=docker
+  # renovate: datasource=docker depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm
   default = "0.0.7"
 }
 
@@ -388,7 +388,7 @@ variable "helm_istio_version" {
 variable "helm_karpenter_version" {
   description = "Version of the Karpenter Helm chart (oci://public.ecr.aws/karpenter/karpenter) to deploy. https://github.com/aws/karpenter-provider-aws/releases"
   type        = string
-  # renovate: depName=karpenter packageName=public.ecr.aws/karpenter/karpenter datasource=docker
+  # renovate: datasource=docker depName=karpenter packageName=public.ecr.aws/karpenter/karpenter
   default = "1.6.3"
 }
 
@@ -400,10 +400,10 @@ variable "helm_langfuse_version" {
 }
 
 variable "helm_loki_version" {
-  description = "Version of the loki Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/loki"
+  description = "Version of the loki Helm chart to deploy (grafana-community). https://github.com/grafana-community/helm-charts/tree/main/charts/loki"
   type        = string
-  # renovate: depName=loki registryUrl=https://grafana.github.io/helm-charts
-  default = "7.3.0"
+  # renovate: depName=loki registryUrl=https://grafana-community.github.io/helm-charts
+  default = "21.0.0"
 }
 
 variable "helm_metrics_server_version" {
@@ -417,7 +417,7 @@ variable "helm_kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack"
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "92.22.0"
+  default = "93.3.0"
 }
 
 variable "helm_promtail_version" {
@@ -452,7 +452,7 @@ variable "helm_traefik_version" {
   description = "Version of the Traefik Helm chart to deploy. https://artifacthub.io/packages/helm/traefik/traefik"
   type        = string
   # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
-  default = "42.3.1"
+  default = "42.4.0"
 }
 
 variable "ingress_behind_l7" {
@@ -640,8 +640,8 @@ variable "size_profile" {
   type        = string
   default     = "prod-small"
   validation {
-    condition     = contains(["dev", "prod-small", "prod-xl", "prod-large"], var.size_profile)
-    error_message = "size_profile must be one of: dev, prod-small, prod-xl, prod-large."
+    condition     = contains(["dev", "prod-small", "prod-large"], var.size_profile)
+    error_message = "size_profile must be one of: dev, prod-small, prod-large."
   }
 }
 

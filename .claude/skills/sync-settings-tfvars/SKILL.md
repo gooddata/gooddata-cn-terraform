@@ -205,14 +205,12 @@ list it in the report so the user can confirm it's still wanted.
 **Respect per-cloud asymmetry — check before adding.** The four environments
 have genuinely different variable sets, so never copy a section across clouds by
 analogy. Confirm against that environment's `variables.tf` that a variable exists
-and a value is legal before introducing it. Three real examples: AI Lake
+and a value is legal before introducing it. Two real examples: AI Lake
 (`enable_ai_lake`, `starrocks_size_profile`) exists for AWS and has no Azure
-counterpart, and `size_profile` accepts `prod-xl` on AWS while Azure's validation
-block rejects it; and STACKIT has no `enable_image_cache` variable and no
-`dockerhub_*` variables at all, because STACKIT's
-container registry has no Terraform resources. Comments listing valid values
-are part of this — an AWS-accurate list pasted into Azure documents a value
-that fails validation.
+counterpart; and STACKIT has no `enable_image_cache` variable and no
+`dockerhub_*` variables at all, because STACKIT's container registry has no
+Terraform resources. Comments listing valid values are part of this — an
+AWS-accurate list pasted into Azure documents a value that fails validation.
 
 **Fix comments that are wrong, and say that you did.** Occasionally a private
 file carries a comment that no longer describes the code under it — a leftover

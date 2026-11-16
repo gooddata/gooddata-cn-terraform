@@ -209,7 +209,7 @@ variable "helm_keda_version" {
   description = "Version of the KEDA Helm chart to deploy."
   type        = string
   # renovate: depName=keda registryUrl=https://kedacore.github.io/charts
-  default = "2.21.0"
+  default = "2.21.1"
 }
 
 variable "helm_grafana_version" { type = string }
@@ -459,7 +459,7 @@ variable "gdcn_size" {
   type = string
   validation {
     condition     = contains(local.workload_size_tiers, var.gdcn_size)
-    error_message = "gdcn_size must be one of: ${join(", ", local.workload_size_tiers)} (fold prod-xl to prod-large in the env's size-profiles.tf)."
+    error_message = "gdcn_size must be one of: ${join(", ", local.workload_size_tiers)}."
   }
 }
 
@@ -473,7 +473,7 @@ variable "observability_size" {
   type = string
   validation {
     condition     = contains(local.workload_size_tiers, var.observability_size)
-    error_message = "observability_size must be one of: ${join(", ", local.workload_size_tiers)} (fold prod-xl to prod-large in the env's size-profiles.tf)."
+    error_message = "observability_size must be one of: ${join(", ", local.workload_size_tiers)}."
   }
 }
 
@@ -481,7 +481,7 @@ variable "pulsar_size" {
   type = string
   validation {
     condition     = contains(local.workload_size_tiers, var.pulsar_size)
-    error_message = "pulsar_size must be one of: ${join(", ", local.workload_size_tiers)} (fold prod-xl to prod-large in the env's size-profiles.tf)."
+    error_message = "pulsar_size must be one of: ${join(", ", local.workload_size_tiers)}."
   }
 }
 

@@ -25,7 +25,7 @@ variable "aks_node_cpu_max" {
 variable "aks_version" {
   description = "Version of AKS to deploy."
   type        = string
-  default     = "1.36"
+  default     = "1.37"
 }
 
 variable "auth_hostname" {
@@ -263,7 +263,7 @@ variable "helm_cert_manager_version" {
 variable "helm_clickhouse_operator_version" {
   description = "Version of the clickhouse-operator-helm Helm chart to deploy. https://github.com/ClickHouse/clickhouse-operator"
   type        = string
-  # renovate: depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm datasource=docker
+  # renovate: datasource=docker depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm
   default = "0.0.7"
 }
 
@@ -321,17 +321,17 @@ variable "helm_langfuse_version" {
 }
 
 variable "helm_loki_version" {
-  description = "Version of the loki Helm chart to deploy. https://artifacthub.io/packages/helm/grafana/loki"
+  description = "Version of the loki Helm chart to deploy (grafana-community). https://github.com/grafana-community/helm-charts/tree/main/charts/loki"
   type        = string
-  # renovate: depName=loki registryUrl=https://grafana.github.io/helm-charts
-  default = "7.3.0"
+  # renovate: depName=loki registryUrl=https://grafana-community.github.io/helm-charts
+  default = "21.0.0"
 }
 
 variable "helm_kube_prometheus_stack_version" {
   description = "Version of the kube-prometheus-stack Helm chart to deploy. https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack"
   type        = string
   # renovate: depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-  default = "92.22.0"
+  default = "93.3.0"
 }
 
 variable "helm_promtail_version" {
@@ -359,7 +359,7 @@ variable "helm_traefik_version" {
   description = "Version of the Traefik Helm chart to deploy. https://artifacthub.io/packages/helm/traefik/traefik"
   type        = string
   # renovate: depName=traefik registryUrl=https://traefik.github.io/charts
-  default = "42.3.1"
+  default = "42.4.0"
 }
 
 variable "ingress_behind_l7" {
