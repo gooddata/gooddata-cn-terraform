@@ -1,5 +1,5 @@
-# Exports reach the ingress over loopback via the socat sidecar, and Chrome has
-# to accept the self-signed local certificate.
+# Exports reach the ingress over loopback via the socat sidecar, with a
+# self-signed certificate that Chrome must accept.
 
 visualExporterProxy:
   permittedDestinations: "127.0.0.1/32 ::1/128"

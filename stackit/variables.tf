@@ -44,16 +44,6 @@ variable "enable_gdcn_autoscaling" {
   }
 }
 
-variable "enable_image_cache" {
-  description = "Image caching is unavailable on STACKIT: its Container Registry has no Terraform resources, so no pull-through cache can be provisioned. Point registry_dockerio at a mirror instead."
-  type        = bool
-  default     = false
-  validation {
-    condition     = var.enable_image_cache == false
-    error_message = "enable_image_cache is not supported on STACKIT. Set registry_dockerio/registry_quayio/registry_k8sio to a mirror instead."
-  }
-}
-
 variable "enable_observability" {
   description = "Enable observability stack (Prometheus, Loki, Tempo, Grafana)"
   type        = bool
@@ -141,13 +131,6 @@ variable "helm_cert_manager_version" {
   default = "v1.21.3"
 }
 
-variable "helm_clickhouse_operator_version" {
-  description = "Version of the clickhouse-operator-helm Helm chart to deploy. https://github.com/ClickHouse/clickhouse-operator"
-  type        = string
-  # renovate: depName=clickhouse-operator-helm packageName=ghcr.io/clickhouse/clickhouse-operator-helm datasource=docker
-  default = "0.0.7"
-}
-
 variable "helm_gdcn_version" {
   description = "Version of the gooddata-cn Helm chart to deploy. https://artifacthub.io/packages/helm/gooddata-cn/gooddata-cn"
   type        = string
@@ -183,13 +166,6 @@ variable "helm_istio_version" {
   type        = string
   # renovate: depName=base registryUrl=https://istio-release.storage.googleapis.com/charts
   default = "1.30.8"
-}
-
-variable "helm_langfuse_version" {
-  description = "Version of the langfuse Helm chart to deploy. https://artifacthub.io/packages/helm/langfuse/langfuse"
-  type        = string
-  # renovate: depName=langfuse registryUrl=https://langfuse.github.io/langfuse-k8s
-  default = "2.2.4"
 }
 
 variable "helm_loki_version" {

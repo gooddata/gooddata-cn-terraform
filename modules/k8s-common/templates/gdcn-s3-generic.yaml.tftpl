@@ -48,8 +48,8 @@ quiver:
 
 deployQuiverGeoCollections: true
 
-# The ingestion job uploads with rclone, whose built-in "s3" remote targets AWS
-# unless it is pointed at the S3-compatible endpoint.
+# rclone's built-in "s3" remote targets AWS unless pointed at the S3-compatible
+# endpoint.
 mapIngestionJob:
   enabled: true
   extraEnvVars:

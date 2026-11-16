@@ -208,8 +208,8 @@ analogy. Confirm against that environment's `variables.tf` that a variable exist
 and a value is legal before introducing it. Three real examples: AI Lake
 (`enable_ai_lake`, `starrocks_size_profile`) exists for AWS and has no Azure
 counterpart, and `size_profile` accepts `prod-xl` on AWS while Azure's validation
-block rejects it; and STACKIT declares `enable_image_cache` but validates that
-it stays `false`, with no `dockerhub_*` variables at all, because STACKIT's
+block rejects it; and STACKIT has no `enable_image_cache` variable and no
+`dockerhub_*` variables at all, because STACKIT's
 container registry has no Terraform resources. Comments listing valid values
 are part of this — an AWS-accurate list pasted into Azure documents a value
 that fails validation.

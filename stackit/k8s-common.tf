@@ -35,9 +35,6 @@ module "k8s_common" {
   enable_ai_features           = var.enable_ai_features
   enable_experimental_features = var.enable_experimental_features
   enable_gdcn_autoscaling      = var.enable_gdcn_autoscaling
-  # AI lake is AWS-only: its StarRocks shared-data storage config exists only in
-  # the AWS values template, so enabling it elsewhere never brings StarRocks up.
-  enable_ai_lake = false
   # STACKIT has no Terraform-manageable container registry, so images come
   # straight from the configured registries.
   enable_image_cache = false
@@ -55,10 +52,6 @@ module "k8s_common" {
   helm_promtail_version              = var.helm_promtail_version
   helm_tempo_version                 = var.helm_tempo_version
   helm_grafana_version               = var.helm_grafana_version
-  # Required by the module even though LLM observability (Langfuse) stays off on
-  # STACKIT (enable_llm_observability defaults to false).
-  helm_clickhouse_operator_version = var.helm_clickhouse_operator_version
-  helm_langfuse_version            = var.helm_langfuse_version
 
   enable_observability        = var.enable_observability
   observability_hostname      = var.observability_hostname
@@ -70,24 +63,24 @@ module "k8s_common" {
   db_username = local.db_username
   db_password = local.db_password
 
-  # STACKIT-specific storage configuration. Object storage is S3-compatible with
-  # an endpoint override and static keys, so it shares the generic-S3 values file
-  # with the local install rather than having its own.
-  stackit_s3_endpoint_override    = local.s3_endpoint_url
-  stackit_s3_region               = var.stackit_region
-  stackit_s3_access_key           = stackit_objectstorage_credential.gdcn.access_key
-  stackit_s3_secret_key           = stackit_objectstorage_credential.gdcn.secret_access_key
-  stackit_s3_exports_bucket       = local.bucket_names["exports"]
-  stackit_s3_quiver_cache_bucket  = local.bucket_names["quiver-cache"]
-  stackit_s3_datasource_fs_bucket = local.bucket_names["quiver-datasource-fs"]
+  # Object storage is S3-compatible with static keys, so it reuses the generic-S3
+  # values file.
+  generic_s3 = {
+    scheme                 = "https"
+    endpoint_override      = local.s3_endpoint_url
+    region                 = var.stackit_region
+    access_key             = stackit_objectstorage_credential.main["gdcn"].access_key
+    secret_key             = stackit_objectstorage_credential.main["gdcn"].secret_access_key
+    exports_bucket         = local.bucket_names["exports"]
+    quiver_cache_bucket    = local.bucket_names["quiver-cache"]
+    datasource_fs_bucket   = local.bucket_names["quiver-datasource-fs"]
+    geo_collections_bucket = try(local.bucket_names["geo-collections"], "")
+  }
+  geo_basemap_provider = var.geo_basemap_provider
+  geo_mapbox_token     = var.geo_mapbox_token
 
-  stackit_s3_geo_collections_bucket = try(local.bucket_names["geo-collections"], "")
-  geo_basemap_provider              = var.geo_basemap_provider
-  geo_mapbox_token                  = var.geo_mapbox_token
-
-  # Observability object storage: Loki + Tempo write to Object Storage (no big
-  # PVC) using their own credentials group. Their S3 clients want a bare host,
-  # while the GoodData.CN chart above takes the full URL.
+  # Loki/Tempo use their own credentials group. Their S3 clients want a bare host,
+  # while the GoodData.CN chart takes the full URL.
   loki_objstore = {
     object_store = "s3"
     storage = {
@@ -102,8 +95,8 @@ module "k8s_common" {
       s3 = {
         endpoint         = local.s3_endpoint_host
         region           = var.stackit_region
-        accessKeyId      = stackit_objectstorage_credential.observability.access_key
-        secretAccessKey  = stackit_objectstorage_credential.observability.secret_access_key
+        accessKeyId      = stackit_objectstorage_credential.main["observability"].access_key
+        secretAccessKey  = stackit_objectstorage_credential.main["observability"].secret_access_key
         s3ForcePathStyle = true
       }
     }
@@ -114,8 +107,8 @@ module "k8s_common" {
       bucket         = local.bucket_names["tempo"]
       endpoint       = local.s3_endpoint_host
       region         = var.stackit_region
-      access_key     = stackit_objectstorage_credential.observability.access_key
-      secret_key     = stackit_objectstorage_credential.observability.secret_access_key
+      access_key     = stackit_objectstorage_credential.main["observability"].access_key
+      secret_key     = stackit_objectstorage_credential.main["observability"].secret_access_key
       forcepathstyle = true
     }
     wal = { path = "/var/tempo/wal" }
@@ -125,13 +118,11 @@ module "k8s_common" {
 
   depends_on = [
     stackit_ske_cluster.main,
-    # Object storage must outlive the helm releases: pre-delete hooks still read
-    # and write it, so listing these here makes destroy tear down k8s_common
-    # first and the buckets after.
+    # Pre-delete hooks still use object storage, so destroy must remove k8s_common
+    # before the buckets.
     stackit_objectstorage_bucket.exports,
     stackit_objectstorage_bucket.buckets,
-    stackit_objectstorage_credential.gdcn,
-    stackit_objectstorage_credential.observability,
+    stackit_objectstorage_credential.main,
     # The database user must exist before the chart bootstraps its schemas.
     stackit_postgresflex_user.gdcn,
   ]
@@ -162,25 +153,11 @@ output "org_ids" {
   value       = module.k8s_common.org_ids
 }
 
-# The kubernetes provider is already wired to the cluster, so the LoadBalancer IP
-# is read directly instead of shelling out to a cloud CLI.
+# Read the LoadBalancer IP through the kubernetes provider, not a cloud CLI.
 data "kubernetes_service_v1" "ingress_lb" {
-  count = var.ingress_controller == "traefik" ? 1 : 0
-
   metadata {
-    name      = "traefik"
-    namespace = "traefik"
-  }
-
-  depends_on = [module.k8s_common]
-}
-
-data "kubernetes_service_v1" "istio_ingress_lb" {
-  count = var.ingress_controller == "istio_gateway" ? 1 : 0
-
-  metadata {
-    name      = "istio-ingress"
-    namespace = "istio-ingress"
+    name      = var.ingress_controller == "traefik" ? "traefik" : "istio-ingress"
+    namespace = var.ingress_controller == "traefik" ? "traefik" : "istio-ingress"
   }
 
   depends_on = [module.k8s_common]
@@ -188,14 +165,12 @@ data "kubernetes_service_v1" "istio_ingress_lb" {
 
 locals {
   # May be empty early in provisioning, before yawol assigns an address.
-  ingress_lb_ip       = try(data.kubernetes_service_v1.ingress_lb[0].status[0].load_balancer[0].ingress[0].ip, "")
-  istio_ingress_lb_ip = try(data.kubernetes_service_v1.istio_ingress_lb[0].status[0].load_balancer[0].ingress[0].ip, "")
-  resolved_lb_ip      = var.ingress_controller == "istio_gateway" ? local.istio_ingress_lb_ip : local.ingress_lb_ip
+  ingress_lb_ip = try(data.kubernetes_service_v1.ingress_lb.status[0].load_balancer[0].ingress[0].ip, "")
 }
 
 output "manual_dns_records" {
   description = "DNS records to create for STACKIT ingress. Empty until the load balancer has a public IP."
-  value = local.resolved_lb_ip == "" ? [] : [
+  value = local.ingress_lb_ip == "" ? [] : [
     for hostname in distinct(compact(concat(
       [module.k8s_common.auth_hostname],
       module.k8s_common.org_domains,
@@ -203,7 +178,7 @@ output "manual_dns_records" {
       ))) : {
       hostname    = hostname
       record_type = "A"
-      value       = local.resolved_lb_ip
+      value       = local.ingress_lb_ip
     }
   ]
 }

@@ -12,10 +12,8 @@
 --   deptype 'a'/'i' - sequences owned by a table column, which Postgres
 --     refuses to reassign on their own; they follow their table.
 --   deptype 'e'     - objects belonging to an extension, which stay with it.
---   pg_has_role     - objects whose owner the bootstrap user is not a member
---     of. ALTER OWNER fails on them, for example on the user_management and
---     metric_helpers schemas that STACKIT PostgreSQL Flex (Spilo) puts into
---     every database, owned by the postgres superuser.
+--   pg_has_role     - objects owned by a role the bootstrap user is not in (STACKIT
+--     Flex's user_management/metric_helpers schemas); ALTER OWNER fails on them.
 -- The owner comparisons make a re-run emit nothing at all.
 
 select format('alter schema %I owner to %I', nspname, :'role')
