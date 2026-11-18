@@ -8,10 +8,12 @@
 --
 -- Three statements cover everything: ALTER TABLE also owns views, materialized
 -- views and sequences, and ALTER ROUTINE covers both functions and procedures.
--- Two exclusions matter:
+-- Three exclusions matter:
 --   deptype 'a'/'i' - sequences owned by a table column, which Postgres
 --     refuses to reassign on their own; they follow their table.
 --   deptype 'e'     - objects belonging to an extension, which stay with it.
+--   pg_has_role     - objects owned by a role the bootstrap user is not in (STACKIT
+--     Flex's user_management/metric_helpers schemas); ALTER OWNER fails on them.
 -- The owner comparisons make a re-run emit nothing at all.
 
 select format('alter schema %I owner to %I', nspname, :'role')
@@ -19,6 +21,7 @@ select format('alter schema %I owner to %I', nspname, :'role')
   where nspname <> 'information_schema'
     and nspname !~ '^pg_'
     and nspowner <> :'role'::regrole
+    and pg_has_role(nspowner, 'MEMBER')
 
 union all
 
@@ -29,6 +32,7 @@ select format('alter table %I.%I owner to %I', n.nspname, c.relname, :'role')
     and n.nspname <> 'information_schema'
     and n.nspname !~ '^pg_'
     and c.relowner <> :'role'::regrole
+    and pg_has_role(c.relowner, 'MEMBER')
     and not exists (
       select 1 from pg_depend d
       where d.classid = 'pg_class'::regclass
@@ -46,6 +50,7 @@ select format('alter routine %I.%I(%s) owner to %I',
     and n.nspname <> 'information_schema'
     and n.nspname !~ '^pg_'
     and p.proowner <> :'role'::regrole
+    and pg_has_role(p.proowner, 'MEMBER')
     and not exists (
       select 1 from pg_depend d
       where d.classid = 'pg_proc'::regclass

@@ -189,17 +189,19 @@ module "k8s_common" {
   gdcn_helm_extra_values = var.gdcn_helm_extra_values
 
   # Local SeaweedFS-backed S3 (used for CSV upload storage via Quiver datasource FS)
-  local_s3_endpoint_override    = module.k8s_local.seaweedfs_s3_endpoint
-  local_s3_region               = module.k8s_local.seaweedfs_region
-  local_s3_access_key           = module.k8s_local.seaweedfs_gdcn_access_key
-  local_s3_secret_key           = module.k8s_local.seaweedfs_gdcn_secret_key
-  local_s3_exports_bucket       = module.k8s_local.seaweedfs_bucket_exports
-  local_s3_datasource_fs_bucket = module.k8s_local.seaweedfs_bucket_datasource_fs
-  local_s3_quiver_cache_bucket  = module.k8s_local.seaweedfs_bucket_quiver_cache
-
-  local_s3_geo_collections_bucket = module.k8s_local.seaweedfs_bucket_geo_collections
-  geo_basemap_provider            = var.geo_basemap_provider
-  geo_mapbox_token                = var.geo_mapbox_token
+  generic_s3 = {
+    scheme                 = "http"
+    endpoint_override      = module.k8s_local.seaweedfs_s3_endpoint
+    region                 = module.k8s_local.seaweedfs_region
+    access_key             = module.k8s_local.seaweedfs_gdcn_access_key
+    secret_key             = module.k8s_local.seaweedfs_gdcn_secret_key
+    exports_bucket         = module.k8s_local.seaweedfs_bucket_exports
+    datasource_fs_bucket   = module.k8s_local.seaweedfs_bucket_datasource_fs
+    quiver_cache_bucket    = module.k8s_local.seaweedfs_bucket_quiver_cache
+    geo_collections_bucket = module.k8s_local.seaweedfs_bucket_geo_collections
+  }
+  geo_basemap_provider = var.geo_basemap_provider
+  geo_mapbox_token     = var.geo_mapbox_token
 
   # Local DB provisioned in-cluster by modules/k8s-local
   db_hostname = local.local_db_hostname

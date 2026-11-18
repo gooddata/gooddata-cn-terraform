@@ -16,6 +16,20 @@ locals {
   # One flag gates the api-gw basemap plugin and the geo collections storage.
   geo_enabled        = var.geo_basemap_provider != "none"
   geo_mapbox_enabled = var.geo_basemap_provider == "mapbox"
+
+  # Generic S3 (endpoint override + static keys); null on clouds with native storage.
+  # The null check is unwrapped so the sensitive object doesn't hide the values list.
+  generic_s3 = nonsensitive(var.generic_s3 == null) ? null : merge({
+    scheme                    = var.generic_s3.scheme
+    s3_endpoint_override      = var.generic_s3.endpoint_override
+    s3_region                 = var.generic_s3.region
+    s3_access_key             = var.generic_s3.access_key
+    s3_secret_key             = var.generic_s3.secret_key
+    s3_exports_bucket         = var.generic_s3.exports_bucket
+    s3_datasource_fs_bucket   = var.generic_s3.datasource_fs_bucket
+    s3_quiver_cache_bucket    = var.generic_s3.quiver_cache_bucket
+    s3_geo_collections_bucket = var.generic_s3.geo_collections_bucket
+  }, { geo_enabled = local.geo_enabled })
 }
 
 # Enforce STRICT mTLS for all inbound traffic to workloads in the GoodData.CN namespace.
@@ -205,18 +219,8 @@ resource "helm_release" "gooddata_cn" {
     var.enable_observability ? templatefile("${path.module}/templates/gdcn-observability.yaml.tftpl", {
       observability_namespace = kubernetes_namespace_v1.observability[0].metadata[0].name
     }) : null,
-    var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local.yaml.tftpl", {
-      s3_endpoint_override    = var.local_s3_endpoint_override
-      s3_region               = var.local_s3_region
-      s3_access_key           = var.local_s3_access_key
-      s3_secret_key           = var.local_s3_secret_key
-      s3_exports_bucket       = var.local_s3_exports_bucket
-      s3_datasource_fs_bucket = var.local_s3_datasource_fs_bucket
-      s3_quiver_cache_bucket  = var.local_s3_quiver_cache_bucket
-
-      geo_enabled               = local.geo_enabled
-      s3_geo_collections_bucket = var.local_s3_geo_collections_bucket
-    }) : null,
+    local.generic_s3 != null ? templatefile("${path.module}/templates/gdcn-s3-generic.yaml.tftpl", local.generic_s3) : null,
+    var.cloud == "local" ? templatefile("${path.module}/templates/gdcn-local-insecure.yaml.tftpl", {}) : null,
     local.geo_enabled ? templatefile("${path.module}/templates/gdcn-geo.yaml.tftpl", {
       provider            = var.geo_basemap_provider
       aws_location_region = var.geo_aws_location_region != "" ? var.geo_aws_location_region : var.aws_region

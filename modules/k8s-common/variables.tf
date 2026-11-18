@@ -42,7 +42,16 @@ variable "azure_uami_client_id" {
   default = ""
 }
 
-variable "cloud" { type = string }
+# An unlisted cloud silently loses its object-storage values file; keep in sync
+# with the env directories.
+variable "cloud" {
+  type = string
+
+  validation {
+    condition     = contains(["aws", "azure", "local", "stackit"], var.cloud)
+    error_message = "cloud must be one of: aws, azure, local, stackit."
+  }
+}
 
 variable "db_hostname" { type = string }
 
@@ -183,7 +192,16 @@ variable "enable_gdcn_autoscaling" {
 
 variable "helm_cert_manager_version" { type = string }
 
-variable "helm_clickhouse_operator_version" { type = string }
+variable "helm_clickhouse_operator_version" {
+  description = "Version of the clickhouse-operator-helm Helm chart. Required only when enable_llm_observability = true."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = !var.enable_llm_observability || var.helm_clickhouse_operator_version != null
+    error_message = "helm_clickhouse_operator_version is required when enable_llm_observability = true."
+  }
+}
 
 variable "helm_gdcn_version" { type = string }
 
@@ -198,7 +216,16 @@ variable "helm_grafana_version" { type = string }
 
 variable "helm_istio_version" { type = string }
 
-variable "helm_langfuse_version" { type = string }
+variable "helm_langfuse_version" {
+  description = "Version of the langfuse Helm chart. Required only when enable_llm_observability = true."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = !var.enable_llm_observability || var.helm_langfuse_version != null
+    error_message = "helm_langfuse_version is required when enable_llm_observability = true."
+  }
+}
 
 variable "helm_loki_version" { type = string }
 
@@ -353,54 +380,21 @@ variable "llm_observability_hostname" {
   }
 }
 
-variable "local_s3_access_key" {
-  description = "S3 access key for local S3-compatible storage."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "local_s3_datasource_fs_bucket" {
-  description = "Bucket name used for Quiver datasource FS (CSV uploads) in local S3-compatible storage."
-  type        = string
-  default     = ""
-}
-
-variable "local_s3_endpoint_override" {
-  description = "S3 endpoint override URL (with scheme) for local S3-compatible storage."
-  type        = string
-  default     = ""
-}
-
-variable "local_s3_exports_bucket" {
-  description = "Bucket name used for exports in local S3-compatible storage."
-  type        = string
-  default     = ""
-}
-
-variable "local_s3_geo_collections_bucket" {
-  description = "Bucket holding the geo collections used by geo charts in local S3-compatible storage."
-  type        = string
-  default     = ""
-}
-
-variable "local_s3_quiver_cache_bucket" {
-  description = "Bucket name used for Quiver durable cache in local S3-compatible storage."
-  type        = string
-  default     = ""
-}
-
-variable "local_s3_region" {
-  description = "S3 region value for local S3-compatible storage."
-  type        = string
-  default     = ""
-}
-
-variable "local_s3_secret_key" {
-  description = "S3 secret key for local S3-compatible storage."
-  type        = string
-  default     = ""
-  sensitive   = true
+variable "generic_s3" {
+  description = "Generic S3 storage for GoodData.CN: endpoint override plus static keys (local SeaweedFS, STACKIT Object Storage). scheme is http or https. Null on clouds with native object storage."
+  type = object({
+    scheme                 = string
+    endpoint_override      = string
+    region                 = string
+    access_key             = string
+    secret_key             = string
+    exports_bucket         = string
+    datasource_fs_bucket   = string
+    quiver_cache_bucket    = string
+    geo_collections_bucket = optional(string, "")
+  })
+  default   = null
+  sensitive = true
 }
 
 variable "loki_retention_period" {

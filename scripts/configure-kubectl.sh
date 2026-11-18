@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Configure kubectl to connect to the Kubernetes cluster provisioned by Terraform.
-# Run this script from the aws/, azure/, or local/ directory after running `terraform apply`.
+# Run this script from the aws/, azure/, stackit/, or local/ directory after running `terraform apply`.
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=/dev/null
@@ -62,6 +62,35 @@ case "${CURRENT_DIR}" in
     echo ">> kubectl configured successfully."
     ;;
 
+  stackit)
+    require_command stackit "STACKIT CLI not found; install it to configure kubectl."
+    require_command kubectl "kubectl not found; install it to interact with Kubernetes."
+    require_tf_outputs
+
+    SKE_CLUSTER_NAME=$(tf_output_value "ske_cluster_name")
+    STACKIT_PROJECT_ID=$(tf_output_value "stackit_project_id")
+    STACKIT_REGION=$(tf_output_value "stackit_region")
+
+    if [[ -z "${SKE_CLUSTER_NAME}" || -z "${STACKIT_PROJECT_ID}" || -z "${STACKIT_REGION}" ]]; then
+      echo ">> ERROR: Missing required Terraform outputs (ske_cluster_name, stackit_project_id, stackit_region)." >&2
+      exit 1
+    fi
+
+    # --login: kubectl fetches short-lived tokens from the STACKIT CLI, so it never expires.
+    # The CLI writes to $KUBECONFIG when set; unset it to target the default file.
+    echo ">> Configuring kubectl for SKE cluster '${SKE_CLUSTER_NAME}'..."
+    unset KUBECONFIG || true
+    stackit ske kubeconfig create "${SKE_CLUSTER_NAME}" --login \
+      --project-id "${STACKIT_PROJECT_ID}" \
+      --region "${STACKIT_REGION}" \
+      --assume-yes --output-format none
+
+    # The CLI merges the context (named after the cluster) but does not switch to it.
+    kubectl config use-context "${SKE_CLUSTER_NAME}"
+
+    echo ">> kubectl configured successfully."
+    ;;
+
   local)
     require_command k3d "k3d CLI not found; install it to configure kubectl for local clusters."
     require_command kubectl "kubectl not found; install it to interact with Kubernetes."
@@ -99,14 +128,16 @@ case "${CURRENT_DIR}" in
 
   *)
     cat <<EOF
->> ERROR: This script must be run from the 'aws', 'azure', or 'local' directory.
+>> ERROR: This script must be run from the 'aws', 'azure', 'stackit', or 'local' directory.
 
 Usage:
-  cd aws   && ../scripts/configure-kubectl.sh
+  cd aws     && ../scripts/configure-kubectl.sh
   # or
-  cd azure && ../scripts/configure-kubectl.sh
+  cd azure   && ../scripts/configure-kubectl.sh
   # or
-  cd local && ../scripts/configure-kubectl.sh
+  cd stackit && ../scripts/configure-kubectl.sh
+  # or
+  cd local   && ../scripts/configure-kubectl.sh
 EOF
     exit 1
     ;;
