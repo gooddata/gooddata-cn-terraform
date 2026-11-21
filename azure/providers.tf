@@ -7,7 +7,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
     azuread = {
       source  = "hashicorp/azuread"
@@ -49,6 +49,22 @@ provider "azurerm" {
 
   subscription_id = var.azure_subscription_id
   tenant_id       = var.azure_tenant_id
+
+  # Register only the resource providers this deployment uses.
+  resource_provider_registrations = "none"
+  resource_providers_to_register = [
+    "Microsoft.Authorization",
+    "Microsoft.Compute",
+    "Microsoft.ContainerRegistry",
+    "Microsoft.ContainerService",
+    "Microsoft.DBforPostgreSQL",
+    "Microsoft.KeyVault",
+    "Microsoft.ManagedIdentity",
+    "Microsoft.Network",
+    "Microsoft.PolicyInsights",
+    "Microsoft.Resources",
+    "Microsoft.Storage",
+  ]
 }
 
 provider "azuread" {
