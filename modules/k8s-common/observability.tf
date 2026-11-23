@@ -19,7 +19,7 @@ locals {
 
   # dotdc Kubernetes dashboards loaded into Grafana (see dashboards block below).
   # renovate: datasource=github-tags depName=dotdc/grafana-dashboards-kubernetes
-  grafana_kubernetes_dashboards_version = "v3.0.8"
+  grafana_kubernetes_dashboards_version = "v3.0.9"
   grafana_kubernetes_dashboards = [
     "k8s-system-api-server",
     "k8s-system-coredns",
