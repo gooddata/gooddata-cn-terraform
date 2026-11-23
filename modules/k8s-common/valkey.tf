@@ -56,7 +56,7 @@ resource "kubernetes_stateful_set_v1" "langfuse_valkey" {
         container {
           name = "valkey"
           # renovate: datasource=docker depName=valkey/valkey
-          image = "${var.registry_dockerio}/valkey/valkey:9.1.3-alpine"
+          image = "${var.registry_dockerio}/valkey/valkey:9.2.0-alpine"
 
           # Image entrypoint is kept, so args start with the server binary.
           # noeviction is required by Langfuse: evicting drops queued events.
