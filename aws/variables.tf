@@ -389,7 +389,7 @@ variable "helm_karpenter_version" {
   description = "Version of the Karpenter Helm chart (oci://public.ecr.aws/karpenter/karpenter) to deploy. https://github.com/aws/karpenter-provider-aws/releases"
   type        = string
   # renovate: datasource=docker depName=karpenter packageName=public.ecr.aws/karpenter/karpenter
-  default = "1.15.2"
+  default = "1.15.3"
 }
 
 variable "helm_langfuse_version" {
