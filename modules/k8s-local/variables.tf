@@ -50,7 +50,7 @@ variable "helm_seaweedfs_version" {
   description = "Version of the SeaweedFS Helm chart to deploy."
   type        = string
   # renovate: depName=seaweedfs registryUrl=https://seaweedfs.github.io/seaweedfs/helm
-  default = "4.54.0"
+  default = "4.55.0"
 }
 
 variable "kubeconfig_context" {
