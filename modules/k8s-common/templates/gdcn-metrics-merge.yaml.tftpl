@@ -1,0 +1,67 @@
+# Prometheus scraping under Istio STRICT mTLS (Istio metrics merging).
+#
+# Prometheus scrapes the merged endpoint of the sidecar (port 15020, path /stats/prometheus). The
+# sidecar pulls the application metrics from the port and path in the pod annotations
+# prometheus.io/port and prometheus.io/path. The PodMonitors in prometheus-metrics-merge.tf do the
+# scrape. The PodMonitors of the chart are off: they scrape the application port directly, and
+# STRICT mTLS resets that connection.
+podMonitor:
+  enabled: false
+
+# These components turn on their own PodMonitor in the chart defaults.
+aiLake:
+  podMonitor:
+    enabled: false
+aiLakeWorker:
+  podMonitor:
+    enabled: false
+genAiKnowledgeProjection:
+  podMonitor:
+    enabled: false
+inferenceGateway:
+  podMonitor:
+    enabled: false
+
+# The chart sets the prometheus.io annotations for the Spring actuator components, dex, quiver,
+# ai-lake and the redis exporter. These components have a metrics port but no annotations. The
+# ports are the container ports of the gooddata-cn chart (4.15); a component that is not deployed
+# is ignored.
+apiGw:
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9202"
+    prometheus.io/path: "/metrics"
+customEtcd:
+  podMonitor:
+    enabled: false
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+genAi:
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9134"
+    prometheus.io/path: "/metrics"
+genAiMetadataSync:
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9135"
+    prometheus.io/path: "/metrics"
+mcpServer:
+  podMonitor:
+    enabled: false
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9138"
+    prometheus.io/path: "/metrics"
+organizationController:
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8081"
+    prometheus.io/path: "/"
+tabularExporter:
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9132"
+    prometheus.io/path: "/"

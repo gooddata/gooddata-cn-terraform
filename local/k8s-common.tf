@@ -186,7 +186,17 @@ module "k8s_common" {
     wal = { path = "/var/tempo/wal" }
   }
 
-  gdcn_helm_extra_values = var.gdcn_helm_extra_values
+  gdcn_helm_extra_values       = var.gdcn_helm_extra_values
+  gdcn_helm_extra_values_files = var.gdcn_helm_extra_values_files
+
+  gdcn_chart_path        = var.gdcn_chart_path
+  istio_gateway_fips_tls = var.istio_gateway_fips_tls
+
+  # Hardening: see the README section "Hardening".
+  gdcn_hardened               = var.gdcn_hardened
+  gdcn_deploy_dex             = var.gdcn_deploy_dex
+  gdcn_embedding_origins      = var.gdcn_embedding_origins
+  gdcn_hardening_next_release = var.gdcn_hardening_next_release
 
   # Local SeaweedFS-backed S3 (used for CSV upload storage via Quiver datasource FS)
   local_s3_endpoint_override    = module.k8s_local.seaweedfs_s3_endpoint
@@ -200,11 +210,20 @@ module "k8s_common" {
   local_s3_geo_collections_bucket = module.k8s_local.seaweedfs_bucket_geo_collections
   geo_basemap_provider            = var.geo_basemap_provider
   geo_mapbox_token                = var.geo_mapbox_token
+  geo_protomaps_image             = var.geo_protomaps_image
+  geo_protomaps_source_url        = var.geo_protomaps_source_url
+  geo_protomaps_bbox              = var.geo_protomaps_bbox
+  geo_protomaps_max_zoom          = var.geo_protomaps_max_zoom
+  geo_protomaps_storage_size      = var.geo_protomaps_storage_size
+  geo_protomaps_existing_claim    = var.geo_protomaps_existing_claim
 
   # Local DB provisioned in-cluster by modules/k8s-local
   db_hostname = local.local_db_hostname
   db_username = local.local_db_username
   db_password = random_password.local_postgres_password.result
+  db_ca_cert  = module.k8s_local.postgres_ca_cert
+  # sslMode verify-full for gen-ai and the services only with the hardened profile.
+  db_ca_cert_enabled = var.gdcn_hardened
 
   depends_on = [
     null_resource.k3d_cluster,

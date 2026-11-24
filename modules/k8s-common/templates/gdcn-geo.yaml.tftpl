@@ -1,12 +1,33 @@
 # Geo chart basemap provider. Credentials stay on api-gw, never in the browser.
 
+%{ if provider == "none" && plugin_none_supported ~}
+# No basemap provider. The chart then calls no map service (location routes
+# answer 404) and turns the geo chart feature flags off. Amazon Location Service,
+# the chart default, has no FIPS endpoint.
 apiGw:
+  locationService:
+    plugin: "none"
+%{ endif ~}
 %{ if provider == "awslocation" ~}
+apiGw:
   awsLocationRegion: "${aws_location_region}"
   locationService:
     plugin: "AwsLocation"
 %{ endif ~}
+%{ if provider == "protomaps" ~}
+# Self-hosted OpenStreetMap basemap in the cluster (protomaps.tf). api-gw proxies
+# the tiles, glyphs and sprites; no request leaves the cluster.
+apiGw:
+  locationService:
+    plugin: "CustomLocation"
+    custom:
+      styles:
+        - id: "protomaps"
+          url: "${protomaps_style_url}"
+          title: "OpenStreetMap (Protomaps)"
+%{ endif ~}
 %{ if provider == "mapbox" ~}
+apiGw:
   # api-gw reads MAPBOX_TOKEN only at pod start. A token change modifies this
   # checksum, so the pods restart and use the new token.
   podAnnotations:

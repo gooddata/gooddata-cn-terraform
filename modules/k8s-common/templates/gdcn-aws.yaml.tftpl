@@ -1,29 +1,56 @@
 # AWS-specific overrides
+%{ if aws_fips_endpoints ~}
+
+# Every GoodData container calls the AWS FIPS endpoints (S3, STS for IRSA, and others).
+global:
+  aws:
+    useFipsEndpoint: true
+%{ endif ~}
 
 serviceAccount:
   name: ${gdcn_service_account_name}
   annotations:
     eks.amazonaws.com/role-arn: "${gdcn_irsa_role_arn}"
 
+%{ if aws_s3_endpoint != "" ~}
+# Explicit S3 endpoint (aws_s3_endpoint): every S3 store uses it, and global.aws.useFipsEndpoint stays off
+# (object-storage endpoint rule). The chart applies endpointOverride only with the exportS3Storage form.
 exportController:
-  fileStorageBaseUrl: s3://s3.${aws_region}.amazonaws.com/${s3_exports_bucket_id}
+  storageType: "s3"
+  exportS3Storage:
+    s3Region: "${aws_region}"
+    s3Bucket: "${s3_exports_bucket_id}"
+    endpointOverride: "${aws_s3_endpoint}"
+%{ else ~}
+exportController:
+  fileStorageBaseUrl: s3://${s3_host}/${s3_exports_bucket_id}
+%{ endif ~}
 
 quiver:
   durableStorageType: "S3"
   s3DurableStorage:
     s3Region: "${aws_region}"
     s3Bucket: "${s3_quiver_cache_bucket_id}"
+%{ if aws_s3_endpoint != "" ~}
+    endpointOverride: "${aws_s3_endpoint}"
+%{ endif ~}
   datasourceFs:
     storageType: "S3"
   s3DatasourceFsStorage:
     s3Region: "${aws_region}"
     s3Bucket: "${s3_datasource_fs_bucket_id}"
+%{ if aws_s3_endpoint != "" ~}
+    endpointOverride: "${aws_s3_endpoint}"
+%{ endif ~}
 %{ if geo_enabled ~}
   geoCollections:
     storageType: "S3"
   s3GeoCollectionsStorage:
     s3Region: "${aws_region}"
     s3Bucket: "${s3_geo_collections_bucket_id}"
+%{ if aws_s3_endpoint != "" ~}
+    endpointOverride: "${aws_s3_endpoint}"
+%{ endif ~}
     authType: "aws_default"
 
 deployQuiverGeoCollections: true

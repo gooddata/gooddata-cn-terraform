@@ -11,6 +11,7 @@ locals {
   k3d_config_content = templatefile("${path.module}/k3d-config.yaml", {
     k3d_cluster_name       = var.k3d_cluster_name
     kubeapi_host           = var.k3d_kubeapi_host
+    k3d_agents             = var.k3d_agents
     dockerhub_username     = var.dockerhub_username
     dockerhub_access_token = var.dockerhub_access_token
   })
@@ -82,3 +83,40 @@ resource "null_resource" "k3d_cluster" {
   ]
 }
 
+# Memory limit of the server nodes through docker update (the k3d serversMemory option bind-mounts a
+# file from ~/.config/k3d, which Docker Desktop refuses when Terraform runs in a dev container).
+# Separate from null_resource.k3d_cluster: changing k3d_servers_memory updates the running containers
+# and never replaces (and deletes) the cluster. It runs again when the cluster is recreated.
+resource "null_resource" "k3d_servers_memory" {
+  triggers = {
+    cluster_id     = null_resource.k3d_cluster.id
+    cluster_name   = var.k3d_cluster_name
+    servers_memory = var.k3d_servers_memory
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      # -a: also stopped server containers. A failed docker ps stops the script (set -e on the assignment).
+      ids=$(docker ps -aq --filter "label=k3d.cluster=${var.k3d_cluster_name}" --filter "label=k3d.role=server")
+      if [ -z "$ids" ]; then
+        echo "ERROR: no server node container found for k3d cluster ${var.k3d_cluster_name}" >&2
+        exit 1
+      fi
+      if [ -n "${var.k3d_servers_memory}" ]; then
+        memory="${var.k3d_servers_memory}"
+        swap="${var.k3d_servers_memory}"
+      else
+        # Empty: no limit. docker update cannot clear a limit, so set a fixed value far above any Docker VM
+        # (1 TiB, swap unlimited). Unlike the VM memory total, it does not keep a snapshot that a bigger VM outgrows.
+        memory=1024g
+        swap=-1
+      fi
+      for c in $ids; do
+        docker update --memory "$memory" --memory-swap "$swap" "$c" >/dev/null
+        echo ">> Memory limit $memory on server node $c"
+      done
+    EOT
+  }
+}

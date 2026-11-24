@@ -102,3 +102,8 @@ output "postgres_namespace" {
   value       = kubernetes_namespace_v1.postgres.metadata[0].name
 }
 
+
+output "postgres_ca_cert" {
+  description = "PEM CA certificate of the in-cluster PostgreSQL (CloudNativePG) server certificate (no key)."
+  value       = base64decode(data.external.postgres_ca_cert.result.ca_crt_b64)
+}
