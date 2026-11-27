@@ -10,6 +10,8 @@ K9S_VERSION="v0.51.0"
 KUBELOGIN_VERSION="0.2.22"
 # renovate: datasource=github-releases depName=k3d-io/k3d
 K3D_VERSION="v5.9.0"
+# renovate: datasource=github-releases depName=stackitcloud/stackit-cli extractVersion=^v(?<version>.+)$
+STACKIT_CLI_VERSION="0.77.2"
 
 # Install Java and vim
 sudo apt-get update
@@ -45,6 +47,22 @@ curl -fsSL -o /tmp/kubelogin.zip "https://github.com/Azure/kubelogin/releases/do
 sudo unzip -q /tmp/kubelogin.zip -d /tmp
 sudo install -m 0755 "/tmp/bin/linux_${PKG_ARCH}/kubelogin" /usr/local/bin/kubelogin
 sudo rm -rf /tmp/kubelogin.zip /tmp/bin
+
+# Install the STACKIT CLI. Terraform authenticates from a service account key, so
+# this is for listing machine types and PostgreSQL Flex flavors.
+ARCH=$(dpkg --print-architecture)
+case "$ARCH" in
+  amd64) PKG_ARCH="amd64" ;;
+  arm64) PKG_ARCH="arm64" ;;
+  *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+# mktemp, not a fixed /tmp path: dpkg runs under sudo, so a pre-created file or
+# symlink there would hand a local process control of what gets installed.
+STACKIT_DEB="$(mktemp --suffix=.deb)"
+trap 'rm -f -- "${STACKIT_DEB}"' EXIT
+curl -fsSL -o "${STACKIT_DEB}" "https://github.com/stackitcloud/stackit-cli/releases/download/v${STACKIT_CLI_VERSION}/stackit_${STACKIT_CLI_VERSION}_linux_${PKG_ARCH}.deb"
+sudo dpkg -i "${STACKIT_DEB}" || sudo apt-get -y -f install
+command -v stackit >/dev/null || { echo "ERROR: stackit CLI install failed" >&2; exit 1; }
 
 # Install k3d (for local deployments)
 ARCH=$(uname -m)
